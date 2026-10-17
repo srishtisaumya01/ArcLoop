@@ -40,4 +40,4 @@
 - The landing page FAQ expand animation was confirmed to open and set `aria-expanded`; the animation itself was not reviewed frame by frame.
 - Footer "Product" links use hash/route links; "Groups" is a landing-page anchor, not a page.
 - Vitest first-import of lazy routes is slow, so tests use a 5 s async timeout and 20 s test timeout (`tests/setup.js`, `vite.config.js`).
-- Nothing has been committed to git yet.
+- Git: a single commit ("first commit", 127 files) is on `main` and pushed to `origin` (github.com/srishtisaumya01/ArcLoop). Later documentation edits are uncommitted.

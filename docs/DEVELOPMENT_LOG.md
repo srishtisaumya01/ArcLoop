@@ -140,3 +140,9 @@ No UI, authentication, Supabase migration or RLS change. No dependency added or 
 
 ### Git state observation
 At the end of the work, everything was found **staged** in the index (status `A`), although no `git add` was run by this work, and no commit exists. The staged copy of `src/utils/planner/timeZones.js` differs from the working copy: it holds the temporary "DST gap resolves backward" line from the mutation check (`wall - after * 1000`), captured while that file was briefly modified. The working copy is correct and is what all test results above refer to. The index was left untouched. To fix the index, either `git reset` (unstage everything, keeping all files) or `git add src/utils/planner/timeZones.js` (refresh that one file) before any commit.
+
+## First commit and push
+On the owner's explicit request (GitHub quick-start commands), the project was committed and pushed.
+- Deviations from the pasted commands, deliberately: the `echo "# ArcLoop" >> README.md` line was skipped (it would have appended a duplicate heading to an existing README), and the index was refreshed with `git add -A` first so the commit matched the tested working tree. This replaced the stale staged copy of `src/utils/planner/timeZones.js` described above. `git add README.md` alone would have committed the stale copy.
+- Checked before committing: git identity already set to srishtisaumya01; no secret-shaped strings in the 127 files; `node_modules`, `dist` and any `.env` excluded.
+- Result: commit `8518149` "first commit" (127 files) on `main`, pushed to https://github.com/srishtisaumya01/ArcLoop.git; the remote head matches the local commit. The documentation updates made after this commit are uncommitted.
