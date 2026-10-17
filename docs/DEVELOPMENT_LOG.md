@@ -249,3 +249,6 @@ Replaced the standalone profile page with `/app/settings` (`SettingsPage` + `Pro
 
 ## App navigation
 The navbar now shows My Day, Week, Reminders and Settings (APP_LINKS) instead of the public links while signed in, on desktop and in the mobile menu, with the current page marked (aria-current). Public links are unchanged for signed-out visitors. Settings and the other app pages were previously reachable only from buttons on /app. tests/unit/navbar.test.jsx. Not committed.
+
+## Recurring tasks
+`/app/recurring` lists repeating templates (one-off tasks excluded) by status via `groupRecurringTemplates`/`templateStatus`, with edit (existing `updateTemplate`), end (`archiveTemplate`) and delete-before-start (`deleteTemplate`). Repeat fields were extracted from `AddTaskForm` into `RepeatFields` and are shared. Service fix: `updateTemplate` now reports validation as `details.fields` with a friendly message like `createTemplate`/`updateOccurrence`, so the form can show field errors. Navbar: five app links; labels no longer wrap between 900 and 1200px (checked in headless Chromium). Not committed.
