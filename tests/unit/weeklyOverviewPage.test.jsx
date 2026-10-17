@@ -71,6 +71,12 @@ describe('Weekly Overview page', () => {
     expect(within(days).getByRole('button', { name: /Thursday 12 Mar: Planned. 1 task planned/ })).toBeTruthy()
     expect(within(days).getByRole('button', { name: /Friday 13 Mar: Nothing planned yet/ })).toBeTruthy()
     expect(within(days).getByRole('button', { name: /Tuesday 10 Mar, today/ })).toBeTruthy()
+    // Visual regression (found in a Chromium check): marking today must not add text to the date line, which wrapped
+    // to two lines and pushed today's card out of line with its neighbours. Today is a separate badge instead.
+    const todayCard = within(days).getByRole('button', { name: /Tuesday 10 Mar, today/ })
+    expect(within(todayCard).getByText('Tue 10 Mar')).toBeTruthy()
+    expect(within(todayCard).getByText('Today')).toBeTruthy()
+    expect(within(within(days).getByRole('button', { name: /Monday 9 Mar/ })).queryByText('Today')).toBeNull()
   })
 
   it('shows the selected day\'s plan and puts the choice in the URL', async () => {

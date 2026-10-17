@@ -39,6 +39,7 @@ export const routes = [
           { path: ROUTES.app, ...lazyPage(() => import('../pages/app/AppHomePage.jsx')) },
           { path: ROUTES.day, ...lazyPage(() => import('../pages/app/MyDayPage.jsx')) },
           { path: ROUTES.settings, ...lazyPage(() => import('../pages/app/SettingsPage.jsx')) },
+          { path: ROUTES.progress, ...lazyPage(() => import('../pages/app/ProgressPage.jsx')) },
           { path: ROUTES.recurring, ...lazyPage(() => import('../pages/app/RecurringTasksPage.jsx')) },
           { path: ROUTES.reminders, ...lazyPage(() => import('../pages/app/ReminderSettingsPage.jsx')) },
           { path: ROUTES.week, ...lazyPage(() => import('../pages/app/WeeklyOverviewPage.jsx')) },

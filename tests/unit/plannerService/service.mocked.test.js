@@ -55,6 +55,8 @@ const CALLS = {
   getPlanSnapshot: [TODAY],
   listSnapshots: [{ from: '2026-03-01', to: TODAY }],
   getWeekSummary: [{}],
+  getHabitProgress: [{}],
+  getRecoveryStatus: [],
 }
 
 describe('coverage guard', () => {
@@ -287,6 +289,45 @@ describe('reads', () => {
     expect(week).toMatchObject({ plannedDays: 2, daysWithProgress: 1, averagePercent: 50, eligible: false })
     const range = client.calls.filter((c) => c.table === 'day_plans').flatMap((c) => c.filters).map((f) => `${f.op}:${f.value}`)
     expect(range).toEqual(expect.arrayContaining(['gte:2026-03-09', 'lte:2026-03-15']))
+  })
+
+  it('getHabitProgress reads only the requested period up to today and summarises with the pure rules', async () => {
+    const templateId = uuid()
+    const { client, service } = setup({
+      templates: [tplRow({ id: templateId, title: 'Walk' })],
+      days: [dayRow({ plan_date: '2026-03-09' }), dayRow({ plan_date: '2026-03-10', day_mode: 'rest' })],
+      occurrences: [
+        occRow({ template_id: templateId, plan_date: '2026-03-09', completion: 1 }),
+        occRow({ template_id: templateId, plan_date: '2026-03-10', completion: 0 }), // a rest day: not counted
+        occRow({ template_id: templateId, plan_date: '2026-02-20', completion: 1 }), // before the period
+      ],
+    })
+    const result = await service.getHabitProgress({ days: 7 })
+    expect(result).toMatchObject({ from: '2026-03-04', to: '2026-03-10', days: 7 })
+    expect(result.habits).toEqual([expect.objectContaining({ title: 'Walk', planned: 1, done: 1, percent: 100 })])
+    const range = client.calls.filter((c) => c.table === 'task_occurrences').flatMap((c) => c.filters).map((f) => `${f.op}:${f.value}`)
+    expect(range).toEqual(expect.arrayContaining(['gte:2026-03-04', 'lte:2026-03-10']))
+  })
+
+  it('getRecoveryStatus only reads the recent days and never writes', async () => {
+    const { client, service } = setup({ days: [dayRow({ plan_date: '2026-03-09' })], occurrences: [occRow({ plan_date: '2026-03-09', completion: 0 })] })
+    expect(await service.getRecoveryStatus()).toEqual({ returning: true, missedDates: ['2026-03-09'], lastPlannedDate: '2026-03-09' })
+    expect(client.calls.every((c) => c.op === 'select')).toBe(true)
+    const range = client.calls.filter((c) => c.table === 'day_plans').flatMap((c) => c.filters).map((f) => `${f.op}:${f.value}`)
+    expect(range).toEqual(expect.arrayContaining(['gte:2026-02-11', 'lte:2026-03-10']))
+  })
+
+  it('getRecoveryStatus says nothing when there is no plan to have missed', async () => {
+    const { service } = setup()
+    expect(await service.getRecoveryStatus()).toEqual({ returning: false, missedDates: [], lastPlannedDate: null })
+  })
+
+  it('getHabitProgress rejects a period outside 7 to 90 whole days without reading anything', async () => {
+    const { client, service } = setup()
+    for (const days of [0, 6, 91, 7.5, '30']) {
+      expect((await rejection(service.getHabitProgress({ days }))).code).toBe(SERVICE_ERROR.VALIDATION)
+    }
+    expect(client.calls.filter((c) => c.table === 'task_occurrences')).toEqual([])
   })
 
   it('an empty week has no average and is not eligible', async () => {

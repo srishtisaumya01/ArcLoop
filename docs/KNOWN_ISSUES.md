@@ -61,6 +61,30 @@
 - Vitest first-import of lazy routes is slow, so tests use a 5 s async timeout and 20 s test timeout (`tests/setup.js`, `vite.config.js`).
 - Git: a single commit ("first commit", 127 files) is on `main` and pushed to `origin` (github.com/srishtisaumya01/ArcLoop). Later documentation edits are uncommitted.
 
+## Real-Supabase verification (prepared, not yet run)
+- **Not run.** No test project, credentials or Supabase CLI have been available, so nothing has been verified against a hosted project. What exists: a read-only schema check (`supabase/verification/schema_checks.sql`, tested against the migrations in PGlite), a guarded runner (`scripts/verify-supabase.mjs`) whose 23-step journey is validated in PGlite, and the setup steps in `docs/SUPABASE_SETUP.md` section 6. The runner's network, sign-in and PostgREST paths have never executed. `node --env-file=.env scripts/verify-supabase.mjs --preflight` checks readiness locally without contacting anything.
+- **Four helper functions** (`planner_max_active_templates`, `planner_max_occurrences_per_day`, `planner_valid_weekdays`, `reminder_weekdays_valid`) have no explicit privilege handling; on a hosted project the default grants may let `anon` call them through the API. They are pure constants and validators. The schema check reports them as REVIEW items; decide after reading the real result.
+- Test users created by the runner cannot be deleted by it (that needs a privileged key it deliberately does not use); delete them in the dashboard.
+
+## Core journey
+- The end-to-end journey test uses the real app routes, pages, services and migrations in PGlite, but sign-in is simulated at the mocked auth boundary. Real Supabase sign-in, email flows, PostgREST behaviour and RLS on a hosted project are still unverified: no test project or credentials have been available.
+- A future day only receives its repeating tasks when it is opened (on the day, or with "Add my repeating tasks" / "Start this day"). The Week's "Coming up" counts only tasks on days that already exist, so it can understate upcoming workload until those days are opened.
+
+## Visual QA scope
+- Layout has been inspected in headless Chromium at 1440px and 390px only, for Week, Progress, My Day and the mobile menu, with mocked sign-in and data. Recurring Tasks, Reminders and Settings were not part of that pass (Recurring Tasks was checked earlier at the same widths; Reminders and Settings were not). No tablet widths, other browsers, or physical devices were tested, and there are still no committed e2e specs.
+- In development, React runs effects twice, so My Day sends two day-creation requests; the second is refused as a duplicate and the service recovers. A 409 line in the dev console on a first visit is expected.
+
+## Welcome-back notes
+- The note is based on the last planned day within 28 days (provisional). Someone away longer than that, or whose older days were never planned, sees nothing: absence alone is never treated as a missed day.
+- A rest day or an empty day between does not hide an older unfinished planned day; the note follows the most recent planned day.
+- Dismissals are kept in this browser only, so another browser or device shows the note again.
+- The weekly note appears for any past or current week that has a past planned day with no progress, including earlier weeks you open to review.
+
+## Progress
+- Recurring-task figures cover the last 28 days and count only tasks still linked to their repeating task: if a repeating task is permanently deleted, its older records stay in My Day and the weekly numbers but drop out of this list.
+- The page loads 8 weeks with one request set per week; fine for now, but it is not optimised for very busy accounts.
+- Goals with targets are not built: the spec calls them a separate later concept and there is no approved data model.
+
 ## Recurring tasks
 - **There is no pause or resume.** The planner has no paused state (a repeating task is running or ended), and an ended task cannot be restarted; create a new one. Adding pause would need a data-model decision.
 - Ending a task ends it after today. Days you already opened keep their copy (remove them in My Day). Editing a schedule leaves already-planned days that no longer match in place and says so.
@@ -86,7 +110,7 @@
 - The next-week limit uses the provisional `planAheadDays` (30).
 
 ## Integration verification findings
-- **There is no planner UI.** My Day, its hooks and its routes do not exist, so nothing has been verified in a browser and a person cannot use the planner. Playwright/Chromium are installed but no e2e specs exist.
+- *(Historical, from the integration audit.)* At that time there was no planner UI. The screens have since been built, but they have only been checked with component tests against PGlite and, for layout, a headless Chromium run with a stubbed API; there are still no committed e2e specs.
 - The system-level tests (`tests/db/plannerSystem.integration.test.js`) run in PGlite through a test adapter, not on a real Supabase project or PostgREST.
 - The randomised system run did not, on its own, catch three deliberate faults (reschedule to a read-only day, rest days in the weekly average, the 99% cap); the unit tests do. It was strengthened with probes, but the re-check against those faults was not completed.
 - Fixed: `PlannerServiceError.cause` was enumerable and could leak the raw database error when an error was serialised.

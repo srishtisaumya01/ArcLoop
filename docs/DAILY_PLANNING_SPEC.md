@@ -495,7 +495,7 @@ Run in PGlite as the database owner (constraints, triggers, foreign keys) and as
 - A foreign-key error on a guessed id could reveal that the id exists; ids are random UUIDs.
 - Per-user caps and the 366-day bound are provisional numbers in `planner_max_*()` functions; changing them needs a new migration.
 
-## 16. Planner services layer (implemented; tested with mocks and in PGlite; not run against a real Supabase project; no UI uses it)
+## 16. Planner services layer (implemented; tested with mocks and in PGlite; not run against a real Supabase project; used by the My Day, Week, Recurring Tasks and Progress screens)
 
 **Status: Implemented in `src/services/planner/`. Nothing in the application imports it yet (the bundle is unchanged). It has run only against a fake client, an in-memory mock, and the real migration in PGlite through a test adapter, never against PostgREST or a Supabase project.**
 

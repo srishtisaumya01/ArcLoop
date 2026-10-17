@@ -321,6 +321,28 @@ describe('My Day against the real service and database', () => {
     expect(wednesday.occurrences.filter((o) => o.title === 'Walk' && o.planState === 'active')).toHaveLength(1)
   })
 
+  it('lets someone add repeating tasks to a future day that already exists, without duplicates', async () => {
+    // Found by the end-to-end journey: moving a task to tomorrow creates tomorrow, which then had no way to
+    // bring in tomorrow's repeating tasks until the day itself arrived.
+    await service.createTemplate(daily('Stretch'))
+    await service.createTask(TODAY, { title: 'Email Sam' })
+    const user = userEvent.setup()
+    renderDay()
+    await screen.findByText('Email Sam')
+    await user.click(screen.getByRole('button', { name: 'Move Email Sam' }))
+    await user.click(screen.getByRole('button', { name: 'Move task' }))
+    await screen.findByText('Moved to Wednesday 11 Mar')
+    expect(screen.queryByRole('button', { name: 'Add my repeating tasks' })).toBeNull() // not offered on today
+    await user.click(screen.getByRole('button', { name: 'Next day' }))
+    expect(await screen.findByText('Moved from Tuesday 10 Mar')).toBeTruthy()
+    expect(screen.queryByText('Stretch')).toBeNull() // tomorrow exists, but without its repeating tasks
+    await user.click(screen.getByRole('button', { name: 'Add my repeating tasks' }))
+    expect(await screen.findByText('Stretch')).toBeTruthy()
+    await user.click(screen.getByRole('button', { name: 'Add my repeating tasks' })) // harmless the second time
+    await waitFor(async () => expect((await service.getDayPlan('2026-03-11')).occurrences.map((o) => o.title).sort()).toEqual(['Email Sam', 'Stretch']))
+    expect(screen.getAllByText('Stretch')).toHaveLength(1)
+  })
+
   it('never shows another user\'s tasks', async () => {
     const other = await createUser(db, `other-${(seq += 1)}@example.com`, 'America/New_York')
     const otherService = createPlannerService({ getClient: () => createPgliteClient(db, { getUserId: () => other }), clock: () => Date.parse(CLOCK) })

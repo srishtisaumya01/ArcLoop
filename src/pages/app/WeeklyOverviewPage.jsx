@@ -1,5 +1,5 @@
 import { useCallback } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { Link as RouterLink, useSearchParams } from 'react-router-dom'
 import { Box, Button, Container, Skeleton, Typography } from '@mui/material'
 import { CalendarDays, RefreshCw, TriangleAlert } from 'lucide-react'
 import PageHeader from '../../components/common/PageHeader.jsx'
@@ -8,9 +8,13 @@ import WeekNavigator from '../../components/planner/WeekNavigator.jsx'
 import WeekSummary from '../../components/planner/WeekSummary.jsx'
 import DayCard from '../../components/planner/DayCard.jsx'
 import DayDetail from '../../components/planner/DayDetail.jsx'
+import { useDismissible } from '../../hooks/useDismissible.js'
 import { useWeekOverview } from '../../hooks/useWeekOverview.js'
+import GentleNote from '../../components/planner/GentleNote.jsx'
+import { WEEK_NOTE } from '../../constants/recoveryCopy.js'
 import { usePageMeta } from '../../hooks/usePageMeta.js'
-import { PLANNER_CONFIG, addDays, diffDays, isValidDate, startOfWeek } from '../../utils/planner/index.js'
+import { PLANNER_CONFIG, addDays, diffDays, isValidDate, missedDaysInWeek, startOfWeek } from '../../utils/planner/index.js'
+import { ROUTES } from '../../constants/navigation.js'
 import { contentWidths } from '../../theme/tokens.js'
 
 // Weekly Overview: Monday to Sunday of the week in ?week=YYYY-MM-DD (default: this week), with
@@ -39,6 +43,9 @@ export default function WeeklyOverviewPage() {
 
   const goToWeek = (start) => update({ week: start, day: null })
   const canGoNext = !week || diffDays(week.today, addDays(week.weekStart, 7)) <= PLANNER_CONFIG.planAheadDays
+  // The note is relevant only when this week has a past planned day with no progress.
+  const [noteDismissed, dismissNote] = useDismissible(`weekNote:${week?.weekStart ?? 'none'}`)
+  const showNote = Boolean(week) && missedDaysInWeek(week).length > 0 && !noteDismissed
   const selected = week?.days.find((d) => d.date === params.get('day')) ?? null
   const nothingPlanned = week && week.daysWithPlan === 0 && week.upcomingTasks === 0 && week.days.every((d) => d.kind !== 'planned' && d.kind !== 'rest')
 
@@ -68,6 +75,7 @@ export default function WeeklyOverviewPage() {
         )}
         {week && (
           <>
+            <Box><Button component={RouterLink} to={ROUTES.progress} size="small" variant="text" sx={{ ml: -1.25 }}>See recent weeks and recurring tasks</Button></Box>
             <WeekNavigator
               weekStart={week.weekStart}
               weekEnd={week.weekEnd}
@@ -93,6 +101,7 @@ export default function WeeklyOverviewPage() {
             {nothingPlanned && (
               <StatePanel icon={CalendarDays} title="Nothing planned this week" text="There are no plans recorded for these days. That is fine; a quiet week is still a week." />
             )}
+            {showNote && <GentleNote label="After missed days" {...WEEK_NOTE} onDismiss={dismissNote} />}
             <WeekSummary week={week} minDays={PLANNER_CONFIG.minPlannedDaysForWeeklySummary} />
             <Box component="section" aria-label="Days of the week">
               <Box sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: { xs: '1fr 1fr', sm: 'repeat(4, 1fr)', lg: 'repeat(7, 1fr)' } }}>
