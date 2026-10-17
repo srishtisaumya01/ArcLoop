@@ -1,26 +1,27 @@
 import { createElement as h } from 'react'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { ThemeProvider } from '@mui/material'
 import theme from '../../src/theme/theme.js'
 import { createPlannerService } from '../../src/services/planner/createPlannerService.js'
+import { createReminderService } from '../../src/services/reminders/createReminderService.js'
 import { createPgliteClient } from '../support/pgliteSupabase.js'
 import { createDb, createUser, useFixedClock } from './harness.js'
 import { CLOCK, TODAY, one } from './plannerSeed.js'
 
-// ProfilePage and TimezonePrompt -> REAL profileService -> the real profiles migration (RLS, column
+// SettingsPage (profile, privacy, reminders summary, account) and TimezonePrompt -> REAL profileService -> the real profiles migration (RLS, column
 // grants, timezone trigger) in PGlite. Not PostgREST or a real Supabase project, and not a browser.
-const holder = vi.hoisted(() => ({ client: null, userId: null, device: null, failNextUpdate: false }))
+const holder = vi.hoisted(() => ({ client: null, userId: null, device: null, failNextUpdate: false, failNextSelect: false }))
 vi.mock('../../src/services/supabaseClient.js', () => ({
   isSupabaseConfigured: true,
   supabase: new Proxy({}, { get: (_, key) => holder.client[key] }),
 }))
-vi.mock('../../src/hooks/useAuth.js', () => ({ useAuth: () => ({ user: { id: holder.userId } }) }))
+vi.mock('../../src/hooks/useAuth.js', () => ({ useAuth: () => ({ user: { id: holder.userId, email: 'asha@example.com' } }) }))
 vi.mock('../../src/utils/profile.js', async (importOriginal) => ({ ...(await importOriginal()), detectDeviceTimeZone: () => holder.device }))
 
-const { default: ProfilePage } = await import('../../src/pages/app/ProfilePage.jsx')
+const { default: SettingsPage } = await import('../../src/pages/app/SettingsPage.jsx')
 const { default: TimezonePrompt } = await import('../../src/components/profile/TimezonePrompt.jsx')
 
 let db
@@ -39,9 +40,15 @@ beforeEach(async () => {
   holder.userId = userId
   holder.device = 'Pacific/Auckland'
   holder.failNextUpdate = false
+  holder.failNextSelect = false
   holder.client = createPgliteClient(db, {
     getUserId: () => userId,
-    hooks: { before: async (state) => { if (state.op === 'update' && holder.failNextUpdate) { holder.failNextUpdate = false; throw new Error('connection reset') } } },
+    hooks: {
+      before: async (state) => {
+        if (state.op === 'update' && holder.failNextUpdate) { holder.failNextUpdate = false; throw new Error('connection reset') }
+        if (state.op === 'select' && state.table === 'profiles' && holder.failNextSelect) { holder.failNextSelect = false; throw new Error('connection reset') }
+      },
+    },
   })
   localStorage.clear()
 })
@@ -51,10 +58,10 @@ const profileRow = (id = userId) => one(db, 'select display_name, timezone from 
 const wrap = (path, element) => h(ThemeProvider, { theme }, h(MemoryRouter, { initialEntries: [path] }, element))
 const todayFor = () => createPlannerService({ getClient: () => holder.client, clock: () => Date.parse(CLOCK) }).getToday()
 
-describe('profile page', () => {
+describe('settings: profile section', () => {
   it('shows the current profile and saves name and timezone', async () => {
     const user = userEvent.setup()
-    render(wrap('/app/profile', h(ProfilePage)))
+    render(wrap('/app/settings', h(SettingsPage)))
     const zone = await screen.findByLabelText('Timezone')
     expect(zone.value).toBe('UTC')
     await user.type(screen.getByLabelText(/Display name/), 'Asha')
@@ -66,7 +73,7 @@ describe('profile page', () => {
 
   it('offers the device timezone and applies it only when chosen', async () => {
     const user = userEvent.setup()
-    render(wrap('/app/profile', h(ProfilePage)))
+    render(wrap('/app/settings', h(SettingsPage)))
     await screen.findByLabelText('Timezone')
     expect((await profileRow()).timezone).toBe('UTC') // nothing changes by itself
     await user.click(screen.getByRole('button', { name: 'Use this device’s timezone (Pacific/Auckland)' }))
@@ -77,7 +84,7 @@ describe('profile page', () => {
 
   it('rejects an over-long name without saving, and shows a calm message when saving fails', async () => {
     const user = userEvent.setup()
-    render(wrap('/app/profile', h(ProfilePage)))
+    render(wrap('/app/settings', h(SettingsPage)))
     const name = await screen.findByLabelText(/Display name/)
     await user.click(name)
     await user.paste('x'.repeat(61))
@@ -97,11 +104,112 @@ describe('profile page', () => {
   it('only ever changes the signed-in user\'s own profile', async () => {
     const other = await createUser(db, `prof-other-${(seq += 1)}@example.com`, 'UTC')
     const user = userEvent.setup()
-    render(wrap('/app/profile', h(ProfilePage)))
+    render(wrap('/app/settings', h(SettingsPage)))
     await user.type(await screen.findByLabelText(/Display name/), 'Mine')
     await user.click(screen.getByRole('button', { name: 'Save profile' }))
     await waitFor(async () => expect((await profileRow()).display_name).toBe('Mine'))
     expect((await profileRow(other)).display_name).toBeNull()
+  })
+})
+
+describe('settings: saving, discarding and coming back', () => {
+  const profileForm = () => screen.getByRole('form', { name: 'Profile' })
+  const privacyForm = () => screen.getByRole('form', { name: 'Privacy' })
+  const row = () => one(db, 'select display_name, timezone, profile_visibility, progress_visibility from public.profiles where id = $1', [userId])
+
+  it('keeps saved settings after leaving the page and coming back', async () => {
+    const user = userEvent.setup()
+    const first = render(wrap('/app/settings', h(SettingsPage)))
+    await user.type(await screen.findByLabelText(/Display name/), 'Asha')
+    await user.selectOptions(screen.getByLabelText('Timezone'), 'Asia/Kolkata')
+    await user.click(within(profileForm()).getByRole('button', { name: 'Save profile' }))
+    await screen.findByText(/Saved\. Your day, week and reminders now follow Asia\/Kolkata\./)
+    await user.click(within(privacyForm()).getByLabelText('Progress visibility'))
+    await user.click(await screen.findByRole('option', { name: 'Public' }))
+    await user.click(within(privacyForm()).getByRole('button', { name: 'Save privacy' }))
+    await within(privacyForm()).findByText('Saved.')
+    first.unmount()
+    render(wrap('/app/settings', h(SettingsPage)))
+    expect((await screen.findByLabelText(/Display name/)).value).toBe('Asha')
+    expect(screen.getByLabelText('Timezone').value).toBe('Asia/Kolkata')
+    expect(within(privacyForm()).getByLabelText('Progress visibility')).toHaveTextContent('Public')
+    expect(within(privacyForm()).getByLabelText('Profile visibility')).toHaveTextContent('Private')
+    expect(await row()).toEqual({ display_name: 'Asha', timezone: 'Asia/Kolkata', profile_visibility: 'private', progress_visibility: 'public' })
+  })
+
+  it('shows unsaved changes, disables Save until something changed, and discards edits', async () => {
+    const user = userEvent.setup()
+    render(wrap('/app/settings', h(SettingsPage)))
+    const name = await screen.findByLabelText(/Display name/)
+    const save = within(profileForm()).getByRole('button', { name: 'Save profile' })
+    expect(save.disabled).toBe(true)
+    expect(within(profileForm()).queryByText('You have unsaved changes.')).toBeNull()
+    await user.type(name, 'Draft')
+    expect(save.disabled).toBe(false)
+    expect(within(profileForm()).getByText('You have unsaved changes.')).toBeTruthy()
+    await user.click(within(profileForm()).getByRole('button', { name: 'Discard changes' }))
+    expect(name.value).toBe('')
+    expect(save.disabled).toBe(true)
+    expect((await row()).display_name).toBeNull() // nothing was saved
+  })
+
+  it('saves privacy on its own, without touching the profile fields or other people', async () => {
+    const other = await createUser(db, `set-other-${(seq += 1)}@example.com`, 'UTC')
+    const user = userEvent.setup()
+    render(wrap('/app/settings', h(SettingsPage)))
+    await user.type(await screen.findByLabelText(/Display name/), 'Unsaved name')
+    await user.click(within(privacyForm()).getByLabelText('Profile visibility'))
+    await user.click(await screen.findByRole('option', { name: 'Public' }))
+    await user.click(within(privacyForm()).getByRole('button', { name: 'Save privacy' }))
+    await within(privacyForm()).findByText('Saved.')
+    expect(await row()).toMatchObject({ display_name: null, profile_visibility: 'public' }) // the unsaved name was not saved
+    expect(screen.getByLabelText(/Display name/).value).toBe('Unsaved name') // and the edit is still there
+    expect(await one(db, 'select profile_visibility, progress_visibility from public.profiles where id = $1', [other])).toEqual({ profile_visibility: 'private', progress_visibility: 'private' })
+  })
+
+  it('shows a calm message when a section fails to save, and keeps the edit so it can be retried', async () => {
+    const user = userEvent.setup()
+    render(wrap('/app/settings', h(SettingsPage)))
+    await user.click(await within(await screen.findByRole('form', { name: 'Privacy' })).findByLabelText('Progress visibility'))
+    await user.click(await screen.findByRole('option', { name: 'Public' }))
+    holder.failNextUpdate = true
+    await user.click(within(privacyForm()).getByRole('button', { name: 'Save privacy' }))
+    expect(await within(privacyForm()).findByText('We couldn’t save your profile. Please try again.')).toBeTruthy()
+    expect(screen.queryByText(/connection reset/)).toBeNull()
+    expect((await row()).progress_visibility).toBe('private')
+    await user.click(within(privacyForm()).getByRole('button', { name: 'Save privacy' }))
+    await within(privacyForm()).findByText('Saved.')
+    expect((await row()).progress_visibility).toBe('public')
+  })
+
+  it('shows reminders status and links to the reminder page instead of copying its controls', async () => {
+    const first = render(wrap('/app/settings', h(SettingsPage)))
+    expect(await screen.findByText('Reminders are off')).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'Manage reminders' }).getAttribute('href')).toBe('/app/reminders')
+    expect(screen.queryByRole('switch')).toBeNull()
+    first.unmount()
+    const reminders = createReminderService({ getClient: () => holder.client, clock: () => Date.parse(CLOCK) })
+    await reminders.savePreferences({ enabled: true, remindTime: '07:30', weekdays: [1, 3, 5] })
+    render(wrap('/app/settings', h(SettingsPage)))
+    expect(await screen.findByText('Reminders are on: 07:30, Mon, Wed, Fri')).toBeTruthy()
+  })
+
+  it('shows the account email and the existing password flow, and no deletion control', async () => {
+    render(wrap('/app/settings', h(SettingsPage)))
+    expect(await screen.findByText('asha@example.com')).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'Change password' }).getAttribute('href')).toBe('/update-password')
+    expect(screen.queryByRole('button', { name: /delete/i })).toBeNull()
+    expect(screen.getByText('Deleting an account is not available yet.')).toBeTruthy()
+  })
+
+  it('shows a retry when the profile cannot be loaded, and recovers', async () => {
+    const user = userEvent.setup()
+    holder.failNextSelect = true
+    render(wrap('/app/settings', h(SettingsPage)))
+    expect(await screen.findByRole('alert')).toBeTruthy()
+    expect(screen.queryByText(/connection reset/)).toBeNull()
+    await user.click(screen.getByRole('button', { name: /Try again/ }))
+    expect(await screen.findByLabelText(/Display name/)).toBeTruthy()
   })
 })
 
@@ -156,7 +264,7 @@ describe('timezone suggestion', () => {
     await new Promise((r) => setTimeout(r, 300))
     expect(screen.queryByRole('region', { name: 'Timezone suggestion' })).toBeNull()
     localStorage.clear()
-    renderPrompt('/app/profile')
+    renderPrompt('/app/settings')
     await new Promise((r) => setTimeout(r, 300))
     expect(screen.queryByRole('region', { name: 'Timezone suggestion' })).toBeNull()
   })

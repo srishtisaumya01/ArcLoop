@@ -90,8 +90,8 @@ export default function AppHomePage() {
                   <Typography variant="body2" color="text.secondary" sx={{ mt: 3 }}>
                     New profiles start private.
                   </Typography>
-                  <Button component={RouterLink} to={ROUTES.profile} variant="outlined" color="primary" size="small" sx={{ mt: 2 }}>
-                    Edit profile
+                  <Button component={RouterLink} to={ROUTES.settings} variant="outlined" color="primary" size="small" sx={{ mt: 2 }}>
+                    Settings
                   </Button>
                 </CardContent>
               </Card>

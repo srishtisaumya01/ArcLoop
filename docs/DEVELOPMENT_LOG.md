@@ -240,3 +240,12 @@ Migration `20261018000000_create_reminders.sql` (`reminder_preferences`, `task_r
 
 ## Profile and timezone
 No migration: `profiles` already had `timezone`/`display_name`, own-row RLS, column grants and a timezone trigger. Extended `profileService` (partial `updateMyProfile`, `getMyTimezone`), added `utils/profile.js`, `/app/profile` and a lazy `TimezonePrompt` in `RequireAuth`. Planner views and the reminder scheduler refresh on a profile-changed event. Bug caught before shipping: an early version of the prompt sent a display name with the timezone and would have cleared an existing name; updates are now partial and a test pins it. Not committed.
+
+## Moving tasks between days
+My Day now uses the existing `rescheduleOccurrence` / `undoReschedule` service operations (Move form, Undo move). `readPlan` gained a read-only `moves` map (movedTo / movedFrom dates) built from the existing `rescheduled_from_id` link, so no schema change. 5 integration tests against the real service in PGlite, including week/My Day agreement and no duplicate for repeating tasks. Not committed.
+
+## Settings
+Replaced the standalone profile page with `/app/settings` (`SettingsPage` + `ProfileSection`, `PrivacySection`, shared `useSectionSave`). One profile row is loaded once and every section saves through the existing partial `updateMyProfile`, so there is a single source of truth; reminders and password stay on their own pages and are linked, not copied. `validateProfileInput` gained the two visibility fields. Weekday label helpers moved to `weekFormat.js` and are shared with the reminder page. Not committed.
+
+## App navigation
+The navbar now shows My Day, Week, Reminders and Settings (APP_LINKS) instead of the public links while signed in, on desktop and in the mobile menu, with the current page marked (aria-current). Public links are unchanged for signed-out visitors. Settings and the other app pages were previously reachable only from buttons on /app. tests/unit/navbar.test.jsx. Not committed.

@@ -20,7 +20,7 @@ export async function getMyTimezone() {
   return data?.timezone ?? null
 }
 
-// Saves the display name and/or timezone that are passed (others are left alone). Input is checked first with the shared rules; the database
+// Saves the profile fields that are passed (display name, timezone, visibility) (others are left alone). Input is checked first with the shared rules; the database
 // (RLS, column grants, timezone trigger) is still the authority. Failures carry user-safe messages
 // and, where they belong to one field, `error.fields`.
 export async function updateMyProfile(userId, changes) {
@@ -36,7 +36,7 @@ export async function updateMyProfile(userId, changes) {
   }
   if (error) {
     if (error.code === '22023') throw Object.assign(new Error('That timezone isn’t recognised.'), { fields: { timezone: 'That timezone isn’t recognised. Choose another.' } })
-    if (error.code === '23514') throw Object.assign(new Error('Please check the highlighted details.'), { fields: { displayName: 'Keep your name between 1 and 60 characters.' } })
+    if (error.code === '23514' && /display_name/.test(error.message ?? '')) throw Object.assign(new Error('Please check the highlighted details.'), { fields: { displayName: 'Keep your name between 1 and 60 characters.' } })
     throw new Error('We couldn’t save your profile. Please try again.')
   }
   if (!data || data.length !== 1) throw new Error('Your profile could not be found.')

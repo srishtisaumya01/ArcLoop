@@ -55,7 +55,7 @@ describe('database access stays inside the services layer', () => {
   it('code outside the service reaches it only through its entry point, and only from hooks', () => {
     const outside = files.filter((f) => !relative(SRC, f).replace(/\\/g, '/').startsWith('services/planner/'))
     const users = outside.filter((f) => /services\/planner/.test(strip(readFileSync(f, 'utf8'))))
-    expect(users.map((f) => relative(SRC, f).replace(/\\/g, '/'))).toEqual(['hooks/useDayPlan.js', 'hooks/useWeekOverview.js'])
+    expect(users.map((f) => relative(SRC, f).replace(/\\/g, '/'))).toEqual(['hooks/useDayPlan.js', 'hooks/useRecurringTasks.js', 'hooks/useWeekOverview.js'])
     for (const f of users) expect(strip(readFileSync(f, 'utf8'))).not.toMatch(/services\/planner\/(?!index\.js)/)
   })
 })

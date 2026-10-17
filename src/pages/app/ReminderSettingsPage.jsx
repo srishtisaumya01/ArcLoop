@@ -4,20 +4,17 @@ import { Box, Button, Checkbox, Container, FormControlLabel, Skeleton, Switch, T
 import { Bell, RefreshCw, TriangleAlert } from 'lucide-react'
 import PageHeader from '../../components/common/PageHeader.jsx'
 import StatePanel from '../../components/common/StatePanel.jsx'
-import { formatDay, weekdayName, weekdayShort } from '../../components/planner/weekFormat.js'
+import { formatDay, weekdayLabel, weekdayName, weekdaysSummary } from '../../components/planner/weekFormat.js'
 import { useAsync } from '../../hooks/useAsync.js'
 import { notifyRemindersChanged } from '../../hooks/reminderEvents.js'
 import { usePageMeta } from '../../hooks/usePageMeta.js'
 import { reminderService } from '../../services/reminders/index.js'
 import { permissionState, requestPermission } from '../../services/notifications/browserNotifications.js'
 import { ROUTES } from '../../constants/navigation.js'
-import { addDays, nextDailyReminder, upcomingTaskReminders } from '../../utils/planner/index.js'
+import { nextDailyReminder, upcomingTaskReminders } from '../../utils/planner/index.js'
 import { colors, contentWidths, radii } from '../../theme/tokens.js'
 
 const DAY_NUMBERS = [1, 2, 3, 4, 5, 6, 7]
-// Monday 2026-03-02 .. Sunday 2026-03-08, only used to get day names.
-const dayLabel = (n) => weekdayShort(addDays('2026-03-02', n - 1))
-const daysSummary = (days) => (days.length === 7 ? 'every day' : days.map(dayLabel).join(', '))
 
 const PERMISSION_COPY = {
   unsupported: 'This browser doesn’t support notifications. You’ll still see reminders inside Arcloop while it’s open.',
@@ -84,7 +81,7 @@ function SettingsForm({ prefs, onSaved }) {
         <Typography variant="body2" color="text.secondary">Remind me on</Typography>
         <Box sx={{ display: 'flex', flexWrap: 'wrap' }}>
           {DAY_NUMBERS.map((n) => (
-            <FormControlLabel key={n} control={<Checkbox checked={days.includes(n)} onChange={() => toggleDay(n)} />} label={dayLabel(n)} />
+            <FormControlLabel key={n} control={<Checkbox checked={days.includes(n)} onChange={() => toggleDay(n)} />} label={weekdayLabel(n)} />
           ))}
         </Box>
         {errors.weekdays && <Typography variant="body2" color="error">{errors.weekdays}</Typography>}
@@ -149,7 +146,7 @@ export default function ReminderSettingsPage() {
           <>
             <Box role="status" aria-label="Reminder status" sx={{ p: 2.5, borderRadius: `${radii.md}px`, bgcolor: colors.bgAlt, border: `1px solid ${colors.border}` }}>
               <Typography sx={{ fontWeight: 700 }}>
-                {prefs.enabled ? `Reminders are on: ${prefs.remindTime}, ${daysSummary(prefs.weekdays)}` : 'Reminders are off'}
+                {prefs.enabled ? `Reminders are on: ${prefs.remindTime}, ${weekdaysSummary(prefs.weekdays)}` : 'Reminders are off'}
               </Typography>
               <Typography variant="body2" color="text.secondary">
                 Times use your profile timezone ({context.timeZone}).

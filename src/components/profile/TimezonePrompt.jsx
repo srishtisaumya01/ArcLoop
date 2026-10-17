@@ -66,13 +66,13 @@ export default function TimezonePrompt() {
     }
   }
 
-  if (dismissed || pathname === ROUTES.profile || current !== 'UTC' || !device || device === 'UTC') return null
+  if (dismissed || pathname === ROUTES.settings || current !== 'UTC' || !device || device === 'UTC') return null
   return (
     <Alert severity="info" role="region" aria-label="Timezone suggestion" sx={{ borderRadius: 0 }}
       action={
         <>
           <Button color="inherit" size="small" disabled={busy} onClick={useDevice}>Use {device}</Button>
-          <Button color="inherit" size="small" component={RouterLink} to={ROUTES.profile}>Choose another</Button>
+          <Button color="inherit" size="small" component={RouterLink} to={ROUTES.settings}>Choose another</Button>
           <Button color="inherit" size="small" disabled={busy} onClick={dismiss}>Not now</Button>
         </>
       }>

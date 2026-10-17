@@ -35,8 +35,10 @@ export function timeZoneOptions({ current, device, intl = Intl } = {}) {
 }
 
 // Partial update: only the fields that are present are validated and returned, so changing the
-// timezone alone can never clear the display name (and vice versa).
-export function validateProfileInput({ displayName, timezone } = {}) {
+// timezone alone can never clear the display name (and so on).
+export const VISIBILITY_VALUES = Object.freeze(['private', 'public'])
+
+export function validateProfileInput({ displayName, timezone, profileVisibility, progressVisibility } = {}) {
   const errors = {}
   const value = {}
   if (displayName !== undefined) {
@@ -47,6 +49,14 @@ export function validateProfileInput({ displayName, timezone } = {}) {
   if (timezone !== undefined) {
     if (isValidTimeZone(timezone)) value.timezone = timezone
     else errors.timezone = 'Choose a timezone from the list.'
+  }
+  if (profileVisibility !== undefined) {
+    if (VISIBILITY_VALUES.includes(profileVisibility)) value.profile_visibility = profileVisibility
+    else errors.profileVisibility = 'Choose private or public.'
+  }
+  if (progressVisibility !== undefined) {
+    if (VISIBILITY_VALUES.includes(progressVisibility)) value.progress_visibility = progressVisibility
+    else errors.progressVisibility = 'Choose private or public.'
   }
   if (Object.keys(value).length === 0 && Object.keys(errors).length === 0) errors.form = 'Nothing to save.'
   if (Object.keys(errors).length > 0) return { ok: false, value: null, errors }

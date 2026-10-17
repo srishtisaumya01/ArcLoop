@@ -55,4 +55,12 @@ describe('validateProfileInput', () => {
     expect(validateProfileInput({}).errors.form).toBeTruthy()
     expect(validateProfileInput().ok).toBe(false)
   })
+
+  it('accepts only private or public visibility, and keeps the two settings separate', () => {
+    expect(validateProfileInput({ progressVisibility: 'public' })).toEqual({ ok: true, value: { progress_visibility: 'public' }, errors: {} })
+    expect(validateProfileInput({ profileVisibility: 'private', progressVisibility: 'private' }).value).toEqual({ profile_visibility: 'private', progress_visibility: 'private' })
+    expect(validateProfileInput({ profileVisibility: 'friends' }).errors.profileVisibility).toBeTruthy()
+    expect(validateProfileInput({ progressVisibility: 'PUBLIC' }).errors.progressVisibility).toBeTruthy()
+    expect(validateProfileInput({ profileVisibility: null }).ok).toBe(false)
+  })
 })

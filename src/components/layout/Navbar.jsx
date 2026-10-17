@@ -1,10 +1,10 @@
 import { useState } from 'react'
-import { Link as RouterLink, useNavigate } from 'react-router-dom'
+import { Link as RouterLink, NavLink, useNavigate } from 'react-router-dom'
 import { AppBar, Box, Button, Container, Drawer, IconButton, Toolbar } from '@mui/material'
 import { Menu, X } from 'lucide-react'
 import Logo from '../ui/Logo.jsx'
 import { useAuth } from '../../hooks/useAuth.js'
-import { NAV_LINKS, ROUTES } from '../../constants/navigation.js'
+import { APP_LINKS, NAV_LINKS, ROUTES } from '../../constants/navigation.js'
 import { colors, contentWidths, navHeight } from '../../theme/tokens.js'
 
 const navLinkSx = {
@@ -16,6 +16,7 @@ const navLinkSx = {
   borderRadius: 2,
   textDecoration: 'none',
   '&:hover': { color: colors.navy900, bgcolor: colors.bgAlt },
+  '&[aria-current="page"]': { color: colors.navy900, bgcolor: colors.bgAlt },
 }
 
 export default function Navbar() {
@@ -25,6 +26,9 @@ export default function Navbar() {
   const navigate = useNavigate()
   const signedIn = status === 'authenticated'
   const checking = status === 'loading' // avoid flashing "Log in" at signed-in users
+  // Signed-in users get the app's own navigation; NavLink marks the current page with aria-current.
+  const links = signedIn ? APP_LINKS : NAV_LINKS
+  const linkComponent = signedIn ? NavLink : RouterLink
 
   const handleLogout = async () => {
     close()
@@ -53,9 +57,9 @@ export default function Navbar() {
             <Logo />
           </Box>
 
-          <Box component="nav" aria-label="Primary" sx={{ display: { xs: 'none', md: 'flex' }, gap: 0.5, ml: 4 }}>
-            {NAV_LINKS.map((l) => (
-              <Box key={l.label} component={RouterLink} to={l.to} sx={navLinkSx}>
+          <Box component="nav" aria-label={signedIn ? 'App' : 'Primary'} sx={{ display: { xs: 'none', md: 'flex' }, gap: 0.5, ml: 4 }}>
+            {links.map((l) => (
+              <Box key={l.label} component={linkComponent} to={l.to} sx={navLinkSx}>
                 {l.label}
               </Box>
             ))}
@@ -111,8 +115,8 @@ export default function Navbar() {
           </IconButton>
         </Box>
         <Box component="nav" aria-label="Mobile" sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-          {NAV_LINKS.map((l) => (
-            <Box key={l.label} component={RouterLink} to={l.to} onClick={close} sx={{ ...navLinkSx, fontSize: '1.0625rem', py: 1.5 }}>
+          {links.map((l) => (
+            <Box key={l.label} component={linkComponent} to={l.to} onClick={close} sx={{ ...navLinkSx, fontSize: '1.0625rem', py: 1.5 }}>
               {l.label}
             </Box>
           ))}

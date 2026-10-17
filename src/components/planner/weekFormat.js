@@ -8,6 +8,10 @@ const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
 export const weekdayName = (date) => WEEKDAYS[isoWeekday(date) - 1]
 export const weekdayShort = (date) => weekdayName(date).slice(0, 3)
 
+// ISO weekday number (1 = Monday) to its short name, and a list of them to words.
+export const weekdayLabel = (n) => WEEKDAYS[n - 1].slice(0, 3)
+export const weekdaysSummary = (days) => (days.length === 7 ? 'every day' : days.map(weekdayLabel).join(', '))
+
 export function formatDay(date) {
   const { month, day } = parseDate(date)
   return `${day} ${MONTHS[month - 1]}`

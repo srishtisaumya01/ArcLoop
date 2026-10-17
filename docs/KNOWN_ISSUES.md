@@ -64,7 +64,7 @@
 ## Profile and timezone
 - The timezone suggestion appears only while the profile is on the UTC default and the device reports a different zone. A person who really is on UTC is never prompted; a person who dismisses it ("Not now", remembered per user in this browser only) keeps UTC until they change it on the profile page, so their "today" follows UTC until then.
 - The browser may report a zone by an older name; a small list maps six common ones to the modern name (e.g. Asia/Calcutta to Asia/Kolkata). Other legacy names are listed as the browser gives them.
-- Only display name and timezone are editable. Interests and visibility settings have no UI yet.
+- Settings edits display name, timezone and the two visibility settings. Interests are stored on the profile but have no editor because nothing uses them yet. Visibility choices are saved but do nothing yet: no feature shares data between people. Account deletion needs a trusted server function and is not available. Password changes use the existing reset-link flow.
 - The reminder settings page does not refresh by itself after a timezone change made elsewhere; reopening it does.
 
 ## Reminders
@@ -75,7 +75,7 @@
 
 ## Weekly Overview
 - `/app/week` shows a selected day read-only and links to My Day.
-- My Day cannot yet reschedule a task to another day, and there is no screen listing all repeating tasks (they can be created, and stopped from a task's Remove dialog, which ends the task after today). Choosing Busy/Rest only labels the day; it does not set tasks aside automatically.
+- A task can be moved to another day from My Day and the move undone. Undo is refused once progress was recorded on the new copy (clear it first), and a finished task cannot be moved. There is no screen listing all repeating tasks (they can be created, and stopped from a task's Remove dialog, which ends the task after today). Choosing Busy/Rest only labels the day; it does not set tasks aside automatically.
 - Tested with a mocked planner service (real weekly calculations); not checked in a real browser or against real Supabase. Layout at phone width was not visually verified.
 - The full test run with default parallelism can crash PGlite workers on low memory; `npx vitest run --maxWorkers=4` passes.
 - The next-week limit uses the provisional `planAheadDays` (30).
