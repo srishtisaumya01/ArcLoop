@@ -38,6 +38,15 @@ export default function AppHomePage() {
               <Button component={RouterLink} to={ROUTES.updatePassword} variant="outlined" color="primary" size="small">
                 Change password
               </Button>
+              <Button component={RouterLink} to={ROUTES.week} variant="contained" color="primary" size="small" sx={{ ml: 1.5 }}>
+                Your week
+              </Button>
+              <Button component={RouterLink} to={ROUTES.day} variant="contained" color="primary" size="small" sx={{ ml: 1.5 }}>
+                My Day
+              </Button>
+              <Button component={RouterLink} to={ROUTES.reminders} variant="outlined" color="primary" size="small" sx={{ ml: 1.5 }}>
+                Reminders
+              </Button>
             </CardContent>
           </Card>
 
@@ -79,8 +88,11 @@ export default function AppHomePage() {
                     ))}
                   </Box>
                   <Typography variant="body2" color="text.secondary" sx={{ mt: 3 }}>
-                    Editing your profile and onboarding are not built yet. New profiles start private.
+                    New profiles start private.
                   </Typography>
+                  <Button component={RouterLink} to={ROUTES.profile} variant="outlined" color="primary" size="small" sx={{ mt: 2 }}>
+                    Edit profile
+                  </Button>
                 </CardContent>
               </Card>
             )}

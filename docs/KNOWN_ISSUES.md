@@ -61,6 +61,25 @@
 - Vitest first-import of lazy routes is slow, so tests use a 5 s async timeout and 20 s test timeout (`tests/setup.js`, `vite.config.js`).
 - Git: a single commit ("first commit", 127 files) is on `main` and pushed to `origin` (github.com/srishtisaumya01/ArcLoop). Later documentation edits are uncommitted.
 
+## Profile and timezone
+- The timezone suggestion appears only while the profile is on the UTC default and the device reports a different zone. A person who really is on UTC is never prompted; a person who dismisses it ("Not now", remembered per user in this browser only) keeps UTC until they change it on the profile page, so their "today" follows UTC until then.
+- The browser may report a zone by an older name; a small list maps six common ones to the modern name (e.g. Asia/Calcutta to Asia/Kolkata). Other legacy names are listed as the browser gives them.
+- Only display name and timezone are editable. Interests and visibility settings have no UI yet.
+- The reminder settings page does not refresh by itself after a timezone change made elsewhere; reopening it does.
+
+## Reminders
+- **Delivery needs the app open.** Reminders are checked every 30 seconds by the page itself. If the tab or browser is closed, or the device sleeps, nothing is delivered, and a reminder is not replayed later than 2 hours after its time (provisional). Reliable background delivery would need a service worker with push and a server-side scheduler; neither exists and neither was faked.
+- Browser notifications use the Notification API from the page. Some mobile browsers refuse that without a service worker, so on those the in-app notice is the delivery. Real browsers were not tested; the tests stub `Notification`.
+- Task reminders are per day (one task on one date). A repeating task does not get a repeating reminder; the user sets it on the day.
+- Turning reminders off keeps task reminders the user set but delivers none of them.
+
+## Weekly Overview
+- `/app/week` shows a selected day read-only and links to My Day.
+- My Day cannot yet reschedule a task to another day, and there is no screen listing all repeating tasks (they can be created, and stopped from a task's Remove dialog, which ends the task after today). Choosing Busy/Rest only labels the day; it does not set tasks aside automatically.
+- Tested with a mocked planner service (real weekly calculations); not checked in a real browser or against real Supabase. Layout at phone width was not visually verified.
+- The full test run with default parallelism can crash PGlite workers on low memory; `npx vitest run --maxWorkers=4` passes.
+- The next-week limit uses the provisional `planAheadDays` (30).
+
 ## Integration verification findings
 - **There is no planner UI.** My Day, its hooks and its routes do not exist, so nothing has been verified in a browser and a person cannot use the planner. Playwright/Chromium are installed but no e2e specs exist.
 - The system-level tests (`tests/db/plannerSystem.integration.test.js`) run in PGlite through a test adapter, not on a real Supabase project or PostgREST.

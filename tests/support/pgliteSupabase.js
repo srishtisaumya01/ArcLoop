@@ -11,7 +11,7 @@ import { createQueryBuilder, shapeResult } from './queryBuilder.js'
 // { error: { code: <SQLSTATE>, message } } like supabase-js.
 
 const IDENT = /^[a-z_][a-z0-9_]*$/
-const TABLES = new Set(['profiles', 'task_templates', 'day_plans', 'task_occurrences'])
+const TABLES = new Set(['profiles', 'task_templates', 'day_plans', 'task_occurrences', 'reminder_preferences', 'task_reminders'])
 const OPERATORS = { eq: '=', neq: '<>', gt: '>', gte: '>=', lt: '<', lte: '<=' }
 
 const ident = (name) => {

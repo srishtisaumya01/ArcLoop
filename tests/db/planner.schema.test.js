@@ -438,12 +438,12 @@ describe('foreign keys: no cross-user references, history survives deletion', ()
 })
 
 describe('migration hygiene', () => {
-  it('creates exactly the three planner tables, all with RLS enabled', async () => {
+  it('creates exactly the planner and reminder tables, all with RLS enabled', async () => {
     const { rows } = await db.query(
       `select c.relname, c.relrowsecurity from pg_class c join pg_namespace n on n.oid = c.relnamespace
         where n.nspname = 'public' and c.relkind = 'r' order by c.relname`,
     )
-    expect(rows.map((r) => r.relname)).toEqual(['day_plans', 'profiles', 'task_occurrences', 'task_templates'])
+    expect(rows.map((r) => r.relname)).toEqual(['day_plans', 'profiles', 'reminder_preferences', 'task_occurrences', 'task_reminders', 'task_templates'])
     expect(rows.every((r) => r.relrowsecurity)).toBe(true)
   })
 

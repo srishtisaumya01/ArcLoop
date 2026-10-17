@@ -52,8 +52,10 @@ describe('database access stays inside the services layer', () => {
     expect(outside.filter((f) => /\.from\(\s*['"](task_templates|day_plans|task_occurrences|profiles)['"]/.test(strip(readFileSync(f, 'utf8'))))).toEqual([])
   })
 
-  it('the planner service is not used by the UI yet (this phase builds no UI)', () => {
+  it('code outside the service reaches it only through its entry point, and only from hooks', () => {
     const outside = files.filter((f) => !relative(SRC, f).replace(/\\/g, '/').startsWith('services/planner/'))
-    expect(outside.filter((f) => /services\/planner/.test(strip(readFileSync(f, 'utf8'))))).toEqual([])
+    const users = outside.filter((f) => /services\/planner/.test(strip(readFileSync(f, 'utf8'))))
+    expect(users.map((f) => relative(SRC, f).replace(/\\/g, '/'))).toEqual(['hooks/useDayPlan.js', 'hooks/useWeekOverview.js'])
+    for (const f of users) expect(strip(readFileSync(f, 'utf8'))).not.toMatch(/services\/planner\/(?!index\.js)/)
   })
 })

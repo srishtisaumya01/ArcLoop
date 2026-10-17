@@ -121,6 +121,25 @@ export function createPlannerService({ getClient, clock = () => Date.now() }) {
     return day
   }
 
+  // Where moved tasks went and came from, so a day can say "Moved to Wed 11 Mar". Read-only; the
+  // link itself (rescheduled_from_id) is the audit trail.
+  async function fetchMoves(client, occurrences) {
+    const moves = {}
+    const entry = (id) => (moves[id] ??= { movedTo: null, movedFrom: null })
+    const movedAway = occurrences.filter((o) => o.planState === PLAN_STATES.EXCLUDED && o.excludedReason === EXCLUDED_REASONS.RESCHEDULED).map((o) => o.id)
+    if (movedAway.length > 0) {
+      const rows = check(await client.from(T.occurrences).select('id, rescheduled_from_id, plan_date').in('rescheduled_from_id', movedAway)) ?? []
+      for (const row of rows) entry(row.rescheduled_from_id).movedTo = row.plan_date
+    }
+    const arrived = occurrences.filter((o) => o.rescheduledFromId)
+    if (arrived.length > 0) {
+      const rows = check(await client.from(T.occurrences).select('id, plan_date').in('id', arrived.map((o) => o.rescheduledFromId))) ?? []
+      const dates = new Map(rows.map((r) => [r.id, r.plan_date]))
+      for (const o of arrived) if (dates.has(o.rescheduledFromId)) entry(o.id).movedFrom = dates.get(o.rescheduledFromId)
+    }
+    return moves
+  }
+
   async function readPlan(client, planDate, { today, config }) {
     const day = await fetchDay(client, planDate)
     const occurrences = sortOccurrencesForDisplay(day ? await fetchOccurrencesOn(client, planDate) : [])
@@ -129,6 +148,7 @@ export function createPlannerService({ getClient, clock = () => Date.now() }) {
       exists: day !== null,
       day,
       occurrences,
+      moves: await fetchMoves(client, occurrences),
       summary: day ? summarizeDay({ day, occurrences }) : null,
       access: classifyDate(planDate, today, config), // 'read_only_past' | 'editable_past' | 'today' | 'future' | 'beyond_plan_ahead'
     }

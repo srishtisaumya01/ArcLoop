@@ -29,6 +29,10 @@
 - **Database rules:** `tests/db/profiles.rls.test.js` runs the real migration in PGlite (Postgres compiled to WebAssembly) with stand-ins for Supabase's `anon`/`authenticated` roles, `auth.users` and `auth.uid()`, and checks the table above (19 tests). It uses a stand-in, **not Supabase**. Real behaviour, including PostgREST and default privileges on a hosted project, must be re-checked per `docs/SUPABASE_SETUP.md` step 5.
 - **Client behaviour:** unit tests with mocked services, plus a scripted Chromium run against a local mock of the Supabase auth/REST endpoints (see DEVELOPMENT_LOG). The mock is not Supabase.
 
+## Reminder tables (`reminder_preferences`, `task_reminders`)
+
+Migration `20261018000000_create_reminders.sql`. RLS on both, `authenticated` only, own rows only; `anon` has no privilege. A task reminder is attached to the owner's occurrence through a composite foreign key that includes `user_id`. Clients cannot write `user_id`, the copied `plan_date`, or timestamps other than the delivery marker. Tested in PGlite only.
+
 ## Planner tables (`task_templates`, `day_plans`, `task_occurrences`)
 
 Migration `20261017100000_create_planner.sql`. Full description and test scope: `docs/DAILY_PLANNING_SPEC.md` section 15.

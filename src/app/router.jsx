@@ -35,7 +35,13 @@ export const routes = [
       },
       {
         element: <RequireAuth />,
-        children: [{ path: ROUTES.app, ...lazyPage(() => import('../pages/app/AppHomePage.jsx')) }],
+        children: [
+          { path: ROUTES.app, ...lazyPage(() => import('../pages/app/AppHomePage.jsx')) },
+          { path: ROUTES.day, ...lazyPage(() => import('../pages/app/MyDayPage.jsx')) },
+          { path: ROUTES.profile, ...lazyPage(() => import('../pages/app/ProfilePage.jsx')) },
+          { path: ROUTES.reminders, ...lazyPage(() => import('../pages/app/ReminderSettingsPage.jsx')) },
+          { path: ROUTES.week, ...lazyPage(() => import('../pages/app/WeeklyOverviewPage.jsx')) },
+        ],
       },
       { path: '*', element: <NotFoundPage /> },
     ],

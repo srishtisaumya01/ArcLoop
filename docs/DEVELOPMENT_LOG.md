@@ -226,3 +226,17 @@ Real Supabase or PostgREST behaviour; any browser or UI flow (no UI); concurrenc
 
 ### Readiness
 **Not ready for a manual acceptance test.** The logic, services and database are verified as a connected system in PGlite, but there is nothing for a person to use: the My Day screen and hooks still need to be built, and onboarding should come first so "today" is correct for a new user.
+
+
+## Weekly Overview
+Added `/app/week` (page, `useWeekOverview`, `src/components/planner/*`). `summarizeWeek` was extended (per-day task lists, remaining, upcoming workload, `isCurrentWeek`) so the UI does no recalculation. Hygiene test now allows only `hooks/useWeekOverview.js` to import the planner service entry point. New tests: `tests/unit/planner/weeklyOverview.test.js`, `tests/unit/weeklyOverviewPage.test.jsx`. Not committed.
+
+My Day added at `/app/day` (`MyDayPage`, `useDayPlan`, `TaskRow`, `AddTaskForm`). Today and the editable past are opened through `openDay`; future days and read-only history are only read so browsing creates nothing. Tests: `tests/db/myDay.integration.test.js` (UI + hook + real service + PGlite). The hygiene test now allows `useDayPlan.js` and `useWeekOverview.js`. Not committed.
+
+My Day task management: repeating tasks (createTemplate from the day), edit for one day (updateOccurrence), remove with confirmation (removeOccurrence, C1 rules), stop repeating (archiveTemplate). Shared fields in TaskFields/taskForm. 4 more integration tests in tests/db/myDay.integration.test.js. Not committed.
+
+## Reminders
+Migration `20261018000000_create_reminders.sql` (`reminder_preferences`, `task_reminders`), pure rules in `src/utils/planner/reminders.js`, `src/services/reminders/`, browser wrapper in `src/services/notifications/`, scheduler hook `useReminderScheduler` mounted lazily for signed-in users in `RequireAuth`, settings page `/app/reminders`, My Day "Remind me". Duplicate prevention: the database records delivery (`last_notified_on`, `notified_at`) with a conditional update, so only one tab/session claims each reminder. The test adapter's table whitelist and the schema test's table list were extended. Not committed.
+
+## Profile and timezone
+No migration: `profiles` already had `timezone`/`display_name`, own-row RLS, column grants and a timezone trigger. Extended `profileService` (partial `updateMyProfile`, `getMyTimezone`), added `utils/profile.js`, `/app/profile` and a lazy `TimezonePrompt` in `RequireAuth`. Planner views and the reminder scheduler refresh on a profile-changed event. Bug caught before shipping: an early version of the prompt sent a display name with the timezone and would have cleared an existing name; updates are now partial and a test pins it. Not committed.
