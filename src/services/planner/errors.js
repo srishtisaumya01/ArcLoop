@@ -23,7 +23,9 @@ export class PlannerServiceError extends Error {
     this.code = code
     this.details = details
     this.retryable = code === SERVICE_ERROR.NETWORK
-    if (cause !== undefined) this.cause = cause
+    // Non-enumerable on purpose: serialising an error (logs, telemetry, a UI dump) must not
+    // emit the raw database error. It stays readable as `error.cause` for deliberate logging.
+    if (cause !== undefined) Object.defineProperty(this, 'cause', { value: cause, enumerable: false, writable: true, configurable: true })
   }
 }
 

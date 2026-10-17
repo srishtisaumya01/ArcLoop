@@ -153,7 +153,7 @@ export function createPlannerService({ getClient, clock = () => Date.now() }) {
   async function writeOccurrence(client, id, row) {
     const rows = check(await client.from(T.occurrences).update(row).eq('id', id).select(OCCURRENCE_COLUMNS))
     if (!rows || rows.length !== 1) {
-      throw fail(SERVICE_ERROR.NOT_FOUND, 'That task could not be updated. It may have been removed, or it belongs to your read-only history.')
+      throw fail(SERVICE_ERROR.NOT_FOUND, 'That task could not be updated. It may have been removed, or it belongs to your read-only history.', { reason: 'no_rows_affected' })
     }
     return occurrenceFromRow(rows[0])
   }
@@ -161,7 +161,7 @@ export function createPlannerService({ getClient, clock = () => Date.now() }) {
   async function writeDay(client, planDate, row) {
     const rows = check(await client.from(T.days).update(row).eq('plan_date', planDate).select(DAY_COLUMNS))
     if (!rows || rows.length !== 1) {
-      throw fail(SERVICE_ERROR.NOT_FOUND, 'That day could not be updated. It may belong to your read-only history.')
+      throw fail(SERVICE_ERROR.NOT_FOUND, 'That day could not be updated. It may belong to your read-only history.', { reason: 'no_rows_affected' })
     }
     return dayFromRow(rows[0])
   }
@@ -170,7 +170,7 @@ export function createPlannerService({ getClient, clock = () => Date.now() }) {
     const rows = check(await client.from(T.occurrences).delete().eq('id', id).select('id'))
     if (!rows || rows.length !== 1) {
       // The pure planner said a delete was allowed but the database refused or found nothing.
-      throw fail(SERVICE_ERROR.CONFLICT, 'That task could not be deleted. Set it aside instead.')
+      throw fail(SERVICE_ERROR.CONFLICT, 'That task could not be deleted. Set it aside instead.', { reason: 'delete_refused' })
     }
   }
 
@@ -277,7 +277,7 @@ export function createPlannerService({ getClient, clock = () => Date.now() }) {
         client.from(T.occurrences).select(OCCURRENCE_COLUMNS).eq('template_id', templateId).gte('plan_date', today).order('plan_date').order('id').range(a, b))
       const plan = planTemplateEdit({ template, changes: changes ?? {}, occurrences: rows.map(occurrenceFromRow) }, ctx)
       const updated = check(await client.from(T.templates).update(templateUpdateRow(plan.template)).eq('id', templateId).select(TEMPLATE_COLUMNS))
-      if (!updated || updated.length !== 1) throw fail(SERVICE_ERROR.NOT_FOUND, 'That task could not be updated.')
+      if (!updated || updated.length !== 1) throw fail(SERVICE_ERROR.NOT_FOUND, 'That task could not be updated.', { reason: 'no_rows_affected' })
       const applied = []
       for (const u of plan.updates) {
         try {
@@ -300,7 +300,7 @@ export function createPlannerService({ getClient, clock = () => Date.now() }) {
       if (compareDates(template.startsOn, today) > 0) throw fail(SERVICE_ERROR.VALIDATION, 'That task has not started yet. Delete it instead.')
       const endsOn = template.endsOn && compareDates(template.endsOn, today) < 0 ? template.endsOn : today
       const rows = check(await client.from(T.templates).update({ archived_at: new Date(resolveContext(ctx).nowMs).toISOString(), ends_on: endsOn }).eq('id', templateId).select(TEMPLATE_COLUMNS))
-      if (!rows || rows.length !== 1) throw fail(SERVICE_ERROR.NOT_FOUND, 'That task could not be updated.')
+      if (!rows || rows.length !== 1) throw fail(SERVICE_ERROR.NOT_FOUND, 'That task could not be updated.', { reason: 'no_rows_affected' })
       return templateFromRow(rows[0])
     },
 
@@ -327,7 +327,7 @@ export function createPlannerService({ getClient, clock = () => Date.now() }) {
         removed += 1
       }
       const deleted = check(await client.from(T.templates).delete().eq('id', templateId).select('id'))
-      if (!deleted || deleted.length !== 1) throw fail(SERVICE_ERROR.NOT_FOUND, 'That task could not be deleted.')
+      if (!deleted || deleted.length !== 1) throw fail(SERVICE_ERROR.NOT_FOUND, 'That task could not be deleted.', { reason: 'no_rows_affected' })
       return { removedUpcoming: removed, keptWithHistory: rows.length - removed }
     },
 
