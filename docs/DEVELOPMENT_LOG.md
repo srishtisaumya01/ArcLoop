@@ -197,3 +197,32 @@ No defect in the service itself. Every initial failure was a mistake in test cod
 
 ### Not verified
 Anything on a real Supabase project or PostgREST (spec 16.8, KNOWN_ISSUES). Multi-step operations are not transactional (spec 16.5).
+
+## Integration and end-to-end verification (audit of the connected system)
+
+### Audit finding that changes the plan
+The brief assumed a My Day UI existed. **It does not.** There is no planner page, route, hook or component; `/app` is still the placeholder account page; nothing outside `src/services/planner` and `src/utils/planner` imports the planner. The docs already said so (tracker: "My Day: Spec only"). So no UI-to-database flow could be verified, and nothing in a browser was tested: UI loading states, forms and navigation cannot be exercised until the UI is built. Playwright and Chromium are installed, but there are no e2e specs and nothing to point them at. No UI was built (that would be a new feature).
+
+### What was verified (as a connected system, in PGlite, not on a real Supabase project)
+New `tests/db/plannerSystem.integration.test.js` (21 tests) runs the real pure logic, the real service and the real migration together and checks them against oracles written independently in the test file:
+- Data written in one session is exactly what a brand-new session reads (refresh persistence); recurring templates produce exactly the right tasks on every date from the window start to the future (weekly, daily, once, not-yet-started, ended).
+- "Today" and the 7-date window computed by the service agree with the database at 33 zone/instant pairs around local midnights, including daylight-saving edges and Havana's missing midnight; changing the profile timezone moves "today" and the window and rewrites no stored history.
+- User switching and session expiry on one client leak nothing; two users with identical data never bleed into each other.
+- Editing a task, and editing, archiving or deleting a template, never change recorded completion, timestamps, the original-plan flag or baselines; moving and undoing a move restores a task exactly.
+- No error message, detail or serialised form contains SQL, table names, other users' ids or credentials.
+- A seeded randomised run (3 seeds x 45 operations over 14 operation types, with deliberate edge probes) checks after every step: completion values, no duplicate occurrences, original-plan flags and baselines never change, progress never disappears or changes without an operation, read-only history never changes, another user's data never changes, and that the service's summaries and the weekly summary equal independent recomputations from raw rows. It also treats any database refusal, or a write that hits zero rows, as a disagreement between the logic and the database.
+
+### Bug found and fixed
+`PlannerServiceError.cause` was an enumerable property, so serialising an error (logging, telemetry, a UI dump) would have emitted the raw database error. It is now non-enumerable (still readable as `error.cause`). Zero-row and refused-delete failures also carry `details.reason` so a disagreement can be diagnosed. All other initial failures were mistakes in the new test file.
+
+### Verification actually run
+`npm run lint`: pass. `npm test`: **33 files, 731 tests, all pass**. `npm run build`: pass (bundle unchanged, 299.09 kB). `git diff --check`: clean. Mutation check: on the service layer 15 of 15 broken behaviours were caught; for the system-level file, 8 deliberate faults gave 5 caught on the first pass. Three were missed by the randomised run (reschedule to a read-only day, rest days in the weekly average, the 99% cap), and each of those IS caught by the planner unit tests (verified). The run was then strengthened with deterministic probes, but the re-check of those three against the system file was interrupted and **not completed**, so the stronger probes are unverified against those faults.
+
+### Incident
+An interrupted mutation run left one planted fault in `src/utils/planner/occurrences.js`. It was noticed because lint and four tests failed, confirmed to be exactly that one line, and restored from the committed version before anything was committed. No committed code contained it.
+
+### Not verified
+Real Supabase or PostgREST behaviour; any browser or UI flow (no UI); concurrency; onboarding (a new profile's timezone is UTC until it is set).
+
+### Readiness
+**Not ready for a manual acceptance test.** The logic, services and database are verified as a connected system in PGlite, but there is nothing for a person to use: the My Day screen and hooks still need to be built, and onboarding should come first so "today" is correct for a new user.

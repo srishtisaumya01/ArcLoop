@@ -60,3 +60,9 @@
 - Footer "Product" links use hash/route links; "Groups" is a landing-page anchor, not a page.
 - Vitest first-import of lazy routes is slow, so tests use a 5 s async timeout and 20 s test timeout (`tests/setup.js`, `vite.config.js`).
 - Git: a single commit ("first commit", 127 files) is on `main` and pushed to `origin` (github.com/srishtisaumya01/ArcLoop). Later documentation edits are uncommitted.
+
+## Integration verification findings
+- **There is no planner UI.** My Day, its hooks and its routes do not exist, so nothing has been verified in a browser and a person cannot use the planner. Playwright/Chromium are installed but no e2e specs exist.
+- The system-level tests (`tests/db/plannerSystem.integration.test.js`) run in PGlite through a test adapter, not on a real Supabase project or PostgREST.
+- The randomised system run did not, on its own, catch three deliberate faults (reschedule to a read-only day, rest days in the weekly average, the 99% cap); the unit tests do. It was strengthened with probes, but the re-check against those faults was not completed.
+- Fixed: `PlannerServiceError.cause` was enumerable and could leak the raw database error when an error was serialised.
