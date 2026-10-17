@@ -52,7 +52,8 @@
 - Password rule (min 8 characters) is client-side only; align with Supabase settings in Phase 3.
 
 ## Open items
-- No e2e tests yet. Playwright is installed and was used for manual verification scripts only; no spec files are committed.
+- There is no offline mode. A dropped connection shows a retry message (route load failures: "This page didn't load"); nothing is cached or queued.
+- Browser tests (`npm run test:e2e`) run the real app in Chromium against an in-memory stub of the Supabase REST and auth endpoints; they do not touch a hosted project. Firefox and WebKit are not run. Headless Chromium reports notification permission as "denied" and ignores granted permissions, so the "not asked yet" and "allowed" states of the Reminders page are covered by component tests only.
 - Browser checks were run on Chromium only (no Firefox/WebKit/Safari).
 - Contrast was measured numerically for the main text/background pairs, not exhaustively for every state (hover, disabled).
 - MUI text-field focus uses MUI's border highlight rather than the global 3px outline used on links and buttons. It is visible but a different style.
@@ -68,7 +69,7 @@
 
 ## Core journey
 - The end-to-end journey test uses the real app routes, pages, services and migrations in PGlite, but sign-in is simulated at the mocked auth boundary. Real Supabase sign-in, email flows, PostgREST behaviour and RLS on a hosted project are still unverified: no test project or credentials have been available.
-- A future day only receives its repeating tasks when it is opened (on the day, or with "Add my repeating tasks" / "Start this day"). The Week's "Coming up" counts only tasks on days that already exist, so it can understate upcoming workload until those days are opened.
+- A future day only receives its repeating tasks when it is opened (on the day, or with "Add my repeating tasks" / "Start this day"). My Day previews the exact list those actions add, from the same rule the Week uses (`templatesDueOn`), so preview, action and Week always agree. The Week's "Coming up" counts what each day from today on will hold, including repeating tasks not added yet (same rule as opening a day; nothing is created). Earlier days are never projected: they show what was recorded. **Today is projected only while it has no record**; once today has a record (My Day creates it on the first visit), that record is authoritative, and a repeating task created later joins it when My Day next opens the day. An unopened today counts under "Tasks remaining" (its card reads "Not started yet"), the same meaning the figure has once the day is opened; "Coming up" means days after today. Today with a record never gains projected tasks: My Day tops it up whenever it opens the day (lazy materialisation, spec D10), so a repeating task created later simply appears on the next visit; for future days the explicit "Add my repeating tasks" action is the only way in, and it is offered only when something is missing. End dates are inclusive, so a task ended (archived) today still belongs to an unopened today, exactly as opening the day would add it. A planned future rest day still counts its expected tasks, because rest only labels a day.
 
 ## Visual QA scope
 - Layout has been inspected in headless Chromium at 1440px and 390px only, for Week, Progress, My Day and the mobile menu, with mocked sign-in and data. Recurring Tasks, Reminders and Settings were not part of that pass (Recurring Tasks was checked earlier at the same widths; Reminders and Settings were not). No tablet widths, other browsers, or physical devices were tested, and there are still no committed e2e specs.
@@ -88,7 +89,7 @@
 ## Recurring tasks
 - **There is no pause or resume.** The planner has no paused state (a repeating task is running or ended), and an ended task cannot be restarted; create a new one. Adding pause would need a data-model decision.
 - Ending a task ends it after today. Days you already opened keep their copy (remove them in My Day). Editing a schedule leaves already-planned days that no longer match in place and says so.
-- Only title, start time, estimate, priority and schedule are editable here; description, category, end time and start/end dates are not.
+- Title, times, estimate, category, description, priority, schedule and the start and end dates are editable here. Date semantics follow the existing rules, not new ones: dates are inclusive; days already planned outside the new dates are left in place and reported (never deleted); moving the start earlier never creates history (days never opened have no record); an end date before today ends the task (it becomes read-only under Ended, records kept). **Not decided by the spec, so not offered:** restarting an ended task by extending its end date; the Ended card stays read-only and a new task must be created.
 
 ## Profile and timezone
 - The timezone suggestion appears only while the profile is on the UTC default and the device reports a different zone. A person who really is on UTC is never prompted; a person who dismisses it ("Not now", remembered per user in this browser only) keeps UTC until they change it on the profile page, so their "today" follows UTC until then.
@@ -104,7 +105,7 @@
 
 ## Weekly Overview
 - `/app/week` shows a selected day read-only and links to My Day.
-- A task can be moved to another day from My Day and the move undone. Undo is refused once progress was recorded on the new copy (clear it first), and a finished task cannot be moved. There is no screen listing all repeating tasks (they can be created, and stopped from a task's Remove dialog, which ends the task after today). Choosing Busy/Rest only labels the day; it does not set tasks aside automatically.
+- A task can be moved to another day from My Day and the move undone. Undo is refused once progress was recorded on the new copy (clear it first), and a finished task cannot be moved. There is no screen listing all repeating tasks (they can be created, and stopped from a task's Remove dialog, which ends the task after today). Choosing Busy/Rest labels the day and offers (never forces) to set aside the tasks the planner proposes; "Keep them all" hides the offer for that day and mode in this browser only. If applying the offer fails part-way, the tasks already set aside stay that way (each is reversible) and the rest are offered again.
 - Tested with a mocked planner service (real weekly calculations); not checked in a real browser or against real Supabase. Layout at phone width was not visually verified.
 - The full test run with default parallelism can crash PGlite workers on low memory; `npx vitest run --maxWorkers=4` passes.
 - The next-week limit uses the provisional `planAheadDays` (30).

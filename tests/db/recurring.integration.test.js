@@ -1,6 +1,6 @@
 import { createElement as h } from 'react'
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { ThemeProvider } from '@mui/material'
@@ -135,6 +135,79 @@ describe('recurring tasks: editing', () => {
     // A day opened later also gets the new version, once.
     expect((await service.openDay('2026-03-14')).occurrences.map((o) => o.title)).toEqual(['Long walk'])
     expect(await count(db, 'task_occurrences', 'template_id = $1', [walk.id])).toBe(6)
+  })
+
+  it('edits description, category and end time; untouched upcoming days follow, history and edited days do not', async () => {
+    const walk = await service.createTemplate(daily('Walk', { plannedStart: '07:00' }))
+    await service.openDay('2026-03-09')
+    await service.setCompletion((await occurrencesOf('2026-03-09'))[0].id, 1) // history
+    await service.openDay(TODAY)
+    await service.openDay('2026-03-11')
+    await service.updateOccurrence((await occurrencesOf('2026-03-11'))[0].id, { category: 'Mine' }) // edited by hand
+    const user = userEvent.setup()
+    renderPage()
+    await screen.findByText('Walk')
+    await user.click(within(card('Walk')).getByRole('button', { name: 'Edit Walk' }))
+    const form = screen.getByRole('form', { name: 'Edit Walk' })
+    fireEvent.change(within(form).getByLabelText(/End time/), { target: { value: '07:30' } })
+    await user.type(within(form).getByLabelText(/Category/), 'Health')
+    await user.type(within(form).getByLabelText(/Description/), 'Before breakfast.')
+    await user.click(within(form).getByRole('button', { name: 'Save changes' }))
+    expect(await screen.findByText(/Saved\. 1 upcoming day was updated\. 1 planned day was left as they are/)).toBeTruthy()
+    expect(within(card('Walk')).getByText('Every day · 07:00 to 07:30 · Health')).toBeTruthy()
+    expect(within(card('Walk')).getByText('Before breakfast.')).toBeTruthy()
+    expect((await service.listTemplates())[0]).toMatchObject({ id: walk.id, plannedEnd: '07:30', category: 'Health', description: 'Before breakfast.' })
+    expect((await occurrencesOf(TODAY))[0]).toMatchObject({ plannedEnd: '07:30', category: 'Health', description: 'Before breakfast.' }) // untouched, today: follows
+    expect((await occurrencesOf('2026-03-09'))[0]).toMatchObject({ plannedEnd: null, category: null, completion: 1 }) // history: unchanged
+    expect((await occurrencesOf('2026-03-11'))[0]).toMatchObject({ plannedEnd: null, category: 'Mine' }) // hand-edited: unchanged
+    // Validation stays the planner's: an end time without a start time is refused, under the end-time field.
+    await user.click(within(card('Walk')).getByRole('button', { name: 'Edit Walk' }))
+    const again = screen.getByRole('form', { name: 'Edit Walk' })
+    fireEvent.change(within(again).getByLabelText(/Start time/), { target: { value: '' } })
+    await user.click(within(again).getByRole('button', { name: 'Save changes' }))
+    expect(await within(again).findByText('Add a start time first.')).toBeTruthy()
+    expect((await service.listTemplates())[0].plannedStart).toBe('07:00')
+  })
+
+  it('edits the start and end dates: planned days outside the new dates stay, history stays, and an end date before today ends it', async () => {
+    const walk = await service.createTemplate(daily('Walk'))
+    await service.openDay('2026-03-09')
+    await service.setCompletion((await occurrencesOf('2026-03-09'))[0].id, 1)
+    await service.openDay(TODAY)
+    const user = userEvent.setup()
+    renderPage()
+    await screen.findByText('Walk')
+    await user.click(within(card('Walk')).getByRole('button', { name: 'Edit Walk' }))
+    const form = screen.getByRole('form', { name: 'Edit Walk' })
+    // End before start: the planner refuses it under the end-date field and nothing is saved.
+    fireEvent.change(within(form).getByLabelText(/Ends on/), { target: { value: '2026-02-01' } })
+    await user.click(within(form).getByRole('button', { name: 'Save changes' }))
+    expect(await within(form).findByText('The end date cannot be before the start date.')).toBeTruthy()
+    expect((await service.listTemplates())[0]).toMatchObject({ startsOn: '2026-03-01', endsOn: null })
+    // Start tomorrow, end on the 13th: today's planned day no longer matches and is left in place; the 9th is history.
+    fireEvent.change(within(form).getByLabelText(/Starts on/), { target: { value: '2026-03-11' } })
+    fireEvent.change(within(form).getByLabelText(/Ends on/), { target: { value: '2026-03-13' } })
+    await user.click(within(form).getByRole('button', { name: 'Save changes' }))
+    expect(await screen.findByText(/1 planned day no longer matches the new schedule and was left in place/)).toBeTruthy()
+    expect(within(card('Walk')).getByText('Starts 11 Mar')).toBeTruthy()
+    expect(within(screen.getByRole('region', { name: 'Not started yet' })).getByText('Walk')).toBeTruthy()
+    expect((await service.listTemplates())[0]).toMatchObject({ id: walk.id, startsOn: '2026-03-11', endsOn: '2026-03-13' })
+    expect(await count(db, 'task_occurrences', 'template_id = $1', [walk.id])).toBe(2) // nothing deleted
+    expect((await occurrencesOf('2026-03-09'))[0]).toMatchObject({ title: 'Walk', completion: 1 })
+    expect((await service.openDay('2026-03-14')).occurrences.map((o) => o.title)).toEqual([]) // after the end date
+    expect((await service.openDay('2026-03-12')).occurrences.map((o) => o.title)).toEqual(['Walk']) // inside the dates
+    // An end date before today ends the task: it moves to Ended, read-only, and its records stay.
+    await user.click(within(card('Walk')).getByRole('button', { name: 'Edit Walk' }))
+    const again = screen.getByRole('form', { name: 'Edit Walk' })
+    fireEvent.change(within(again).getByLabelText(/Starts on/), { target: { value: '2026-03-01' } })
+    fireEvent.change(within(again).getByLabelText(/Ends on/), { target: { value: '2026-03-09' } })
+    await user.click(within(again).getByRole('button', { name: 'Save changes' }))
+    const ended = await screen.findByRole('region', { name: 'Ended' })
+    expect(within(ended).getByText('Walk')).toBeTruthy()
+    expect(within(card('Walk')).getByText('Ended 9 Mar')).toBeTruthy()
+    expect(within(card('Walk')).queryByRole('button')).toBeNull()
+    expect((await occurrencesOf('2026-03-09'))[0]).toMatchObject({ completion: 1 })
+    expect(await count(db, 'task_occurrences', 'template_id = $1', [walk.id])).toBe(3)
   })
 
   it('changes the schedule without deleting planned days, and says so', async () => {

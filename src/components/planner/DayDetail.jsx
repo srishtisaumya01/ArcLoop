@@ -2,7 +2,7 @@ import { Link as RouterLink } from 'react-router-dom'
 import { Box, Button, Typography } from '@mui/material'
 import { ROUTES } from '../../constants/navigation.js'
 import { colors, radii } from '../../theme/tokens.js'
-import { completionLabel, describeDay, EXCLUDED_LABEL, formatDay, formatMinutes, weekdayName } from './weekFormat.js'
+import { completionLabel, describeDay, EXCLUDED_LABEL, formatDay, formatMinutes, timeRange, weekdayName } from './weekFormat.js'
 
 function TaskList({ title, tasks, setAside }) {
   return (
@@ -17,7 +17,7 @@ function TaskList({ title, tasks, setAside }) {
             </Typography>
             <Typography variant="body2" color="text.secondary">
               {setAside ? EXCLUDED_LABEL[t.excludedReason] ?? 'Set aside' : completionLabel(t.completion)}
-              {t.plannedStart ? ` · ${t.plannedStart}` : ''}
+              {timeRange(t) ? ` · ${timeRange(t)}` : ''}
               {t.estimatedMinutes ? ` · ${formatMinutes(t.estimatedMinutes)}` : ''}
             </Typography>
           </Box>

@@ -1,15 +1,17 @@
+import { useState } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
 import { Box, Button, Container, Skeleton, Typography } from '@mui/material'
 import { Repeat, RefreshCw, TriangleAlert } from 'lucide-react'
 import PageHeader from '../../components/common/PageHeader.jsx'
 import StatePanel from '../../components/common/StatePanel.jsx'
 import TemplateCard from '../../components/planner/TemplateCard.jsx'
+import { editSummary } from '../../components/planner/templateSummary.js'
 import { useRecurringTasks } from '../../hooks/useRecurringTasks.js'
 import { usePageMeta } from '../../hooks/usePageMeta.js'
 import { ROUTES } from '../../constants/navigation.js'
 import { contentWidths } from '../../theme/tokens.js'
 
-function Group({ title, status, templates, busy, run }) {
+function Group({ title, status, templates, busy, run, notices, onSaved }) {
   if (templates.length === 0) return null
   return (
     <Box component="section" aria-label={title} sx={{ display: 'grid', gap: 1.5 }}>
@@ -21,7 +23,12 @@ function Group({ title, status, templates, busy, run }) {
             template={template}
             status={status}
             busy={busy}
-            onSave={(t, changes) => run((s) => s.updateTemplate(t.id, changes))}
+            notice={notices[template.id]}
+            onSave={async (t, changes) => {
+              const outcome = await run((s) => s.updateTemplate(t.id, changes))
+              if (outcome.ok) onSaved(t.id, editSummary(outcome.result))
+              return outcome
+            }}
             onEnd={(t) => run((s) => s.archiveTemplate(t.id))}
             onDelete={(t) => run((s) => s.deleteTemplate(t.id))}
           />
@@ -36,6 +43,9 @@ function Group({ title, status, templates, busy, run }) {
 export default function RecurringTasksPage() {
   usePageMeta('Recurring tasks')
   const { status, data, error, busy, run, refresh } = useRecurringTasks()
+  // What the last save of each task did, kept here so it survives a card moving between groups.
+  const [notices, setNotices] = useState({})
+  const onSaved = (id, text) => setNotices((current) => ({ ...current, [id]: text }))
   const groups = data?.groups
   const count = groups ? groups.active.length + groups.upcoming.length + groups.ended.length : 0
 
@@ -63,9 +73,9 @@ export default function RecurringTasksPage() {
         )}
         {groups && (
           <>
-            <Group title="Active" status="active" templates={groups.active} busy={busy} run={run} />
-            <Group title="Not started yet" status="upcoming" templates={groups.upcoming} busy={busy} run={run} />
-            <Group title="Ended" status="ended" templates={groups.ended} busy={busy} run={run} />
+            <Group title="Active" status="active" templates={groups.active} busy={busy} run={run} notices={notices} onSaved={onSaved} />
+            <Group title="Not started yet" status="upcoming" templates={groups.upcoming} busy={busy} run={run} notices={notices} onSaved={onSaved} />
+            <Group title="Ended" status="ended" templates={groups.ended} busy={busy} run={run} notices={notices} onSaved={onSaved} />
           </>
         )}
       </Container>

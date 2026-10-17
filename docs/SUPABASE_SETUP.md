@@ -71,6 +71,8 @@ The client uses the **PKCE** flow. A password-reset link must be opened in the *
    ```
    The last two are not `VITE_` variables, so they are never bundled. Setting them is your statement that this is a disposable test project.
 
+   **Or let a helper write it, so nothing is typed into a file or sent anywhere:** in your own PowerShell, from the repository root, run `powershell -ExecutionPolicy Bypass -File scriptsset-test-env.ps1`. It asks for the project URL, then the public anon/publishable key (hidden as you type), then for you to type YES. It takes the ref from the URL, refuses a service-role or secret key, never prints the key, and will not overwrite a `.env` you have already filled in unless you add `-Force`. After either route, check the file really changed: `Get-Item .env | Select-Object Length, LastWriteTime` (the length is no longer 940).
+
 ### B. Preflight (local only, contacts nothing)
 ```
 node --env-file=.env scripts/verify-supabase.mjs --preflight

@@ -48,15 +48,39 @@ export function createOccurrenceDraft(template, planDate, day) {
 // that match `planDate`, have no occurrence on it yet, and are not on the day's
 // suppression list. Days older than the 7-date window can never be created (D5).
 // Deterministic: drafts follow the order of `templates`.
+// The templates that belong on `planDate` and are not there yet: they match the date, have no occurrence on it
+// (in any state: a moved or set-aside copy still counts as present, as the database's unique rule does), and are
+// not on the day's suppression list. `day` may be null for a date that has no record yet. This is the single
+// source of truth for both opening a day and the week's view of days not opened yet.
+export function templatesDueOn({ templates, occurrences, day, planDate }) {
+  const present = new Set(occurrences.filter((o) => o.planDate === planDate && o.templateId).map((o) => o.templateId))
+  const suppressed = new Set(day?.suppressedTemplateIds ?? [])
+  return templates.filter((t) => occursOn(t, planDate) && !present.has(t.id) && !suppressed.has(t.id))
+}
+
+// A repeating task that is due on a date but not on it yet, shaped like a task so screens can list it. Shared by the
+// week's projection and My Day's preview, so both say exactly what opening the day would add.
+export const expectedTaskView = (t, planDate) => ({
+  id: `expected:${t.id}:${planDate}`,
+  templateId: t.id,
+  title: t.title,
+  description: t.description ?? null,
+  category: t.category ?? null,
+  isPriority: Boolean(t.isPriority),
+  plannedStart: t.plannedStart ?? null,
+  plannedEnd: t.plannedEnd ?? null,
+  estimatedMinutes: t.estimatedMinutes ?? null,
+  completion: 0,
+  planState: 'active',
+  excludedReason: null,
+  expected: true,
+})
+
 export function occurrencesToCreate({ templates, occurrences, day, planDate }, rawContext) {
   const ctx = resolveContext(rawContext)
   assertEditableDate(planDate, ctx.today, ctx.config)
   if (day.planDate !== planDate) throw new PlannerError(ERR.INVALID_STATE, 'The day plan is for a different date.')
-  const present = new Set(occurrences.filter((o) => o.planDate === planDate && o.templateId).map((o) => o.templateId))
-  const suppressed = new Set(day.suppressedTemplateIds)
-  return templates
-    .filter((t) => occursOn(t, planDate) && !present.has(t.id) && !suppressed.has(t.id))
-    .map((t) => createOccurrenceDraft(t, planDate, day))
+  return templatesDueOn({ templates, occurrences, day, planDate }).map((t) => createOccurrenceDraft(t, planDate, day))
 }
 
 // Record 0, 0.5 or 1. Returns { occurrence, day, changed, restored }.
