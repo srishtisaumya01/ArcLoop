@@ -7,6 +7,12 @@ export const ROUTES = {
   forgotPassword: '/forgot-password',
   updatePassword: '/update-password',
   app: '/app',
+  week: '/app/week',
+  day: '/app/day',
+  reminders: '/app/reminders',
+  recurring: '/app/recurring',
+  progress: '/app/progress',
+  settings: '/app/settings',
   privacy: '/privacy',
   terms: '/terms',
   contact: '/contact',
@@ -20,6 +26,15 @@ export const NAV_LINKS = [
   { label: 'Groups', to: { pathname: ROUTES.home, hash: '#groups' } },
   { label: 'Challenges', to: ROUTES.challenges },
   { label: 'FAQ', to: { pathname: ROUTES.home, hash: '#faq' } },
+]
+
+// Navigation for signed-in users (replaces the public links in the navbar while signed in).
+export const APP_LINKS = [
+  { label: 'My Day', to: ROUTES.day },
+  { label: 'Week', to: ROUTES.week },
+  { label: 'Recurring Tasks', to: ROUTES.recurring },
+  { label: 'Reminders', to: ROUTES.reminders },
+  { label: 'Settings', to: ROUTES.settings },
 ]
 
 export const FOOTER_GROUPS = [

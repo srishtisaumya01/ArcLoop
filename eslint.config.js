@@ -19,7 +19,7 @@ export default defineConfig([
     },
   },
   {
-    files: ['*.config.js', 'tests/**/*.{js,jsx}'],
+    files: ['*.config.js', 'tests/**/*.{js,jsx}', 'e2e/**/*.js'],
     languageOptions: { globals: { ...globals.node, ...globals.browser } },
   },
 ])

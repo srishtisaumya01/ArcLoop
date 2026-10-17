@@ -35,6 +35,20 @@ export async function createDb() {
   return db
 }
 
+// TEST-ONLY: swaps the planner's single clock source (public.planner_now) for one
+// that can be set per test, so date-window rules are deterministic. The production
+// function is `select now()`; every rule that depends on time calls planner_now(),
+// so the rules exercised here are the production rules with a controllable clock.
+export async function useFixedClock(db, iso) {
+  await db.exec(`
+    create or replace function public.planner_now() returns timestamptz language sql stable as $$
+      select coalesce(nullif(current_setting('planner.now', true), '')::timestamptz, now())
+    $$;
+  `)
+  await setClock(db, iso)
+}
+export const setClock = (db, iso) => db.query(`select set_config('planner.now', $1, false)`, [iso])
+
 // Runs `fn` as an API client: role `authenticated` with the given user id (or
 // `anon` when userId is null), the way PostgREST would. Always resets after.
 export async function asUser(db, userId, fn) {
@@ -49,7 +63,9 @@ export async function asUser(db, userId, fn) {
   }
 }
 
-export async function createUser(db, email) {
+export async function createUser(db, email, timeZone = 'UTC') {
   const { rows } = await db.query('insert into auth.users (email) values ($1) returning id', [email])
-  return rows[0].id
+  const id = rows[0].id
+  if (timeZone !== 'UTC') await db.query('update public.profiles set timezone = $1 where id = $2', [timeZone, id])
+  return id
 }

@@ -207,7 +207,7 @@ create table task_occurrences (
   title text not null check (char_length(btrim(title)) between 1 and 120),
   description text, category text, is_priority boolean not null default false,
   planned_start time, planned_end time, estimated_minutes smallint,
-  completion numeric(2,1) not null default 0 check (completion in (0, 0.5, 1)),
+  completion numeric not null default 0 check (completion in (0, 0.5, 1)),   -- NOT numeric(2,1): that would round 0.45 to 0.5 before the check ran
   completed_at timestamptz,
   plan_state text not null default 'active' check (plan_state in ('active','excluded')),
   excluded_reason text check (excluded_reason in ('rescheduled','busy_day','rest_day','removed')),
@@ -438,3 +438,141 @@ All functions are pure: they return new objects, never mutate arguments, and rec
 - Dates are limited to years 1000-9999; `HH:MM` times have no seconds.
 - Zones with more than one offset change within 48 hours of a wall time are not handled specially.
 - The helpers have not been exercised against a hosted Supabase project, and the database side (migration, RLS, `ensure_day_plan`) does not exist yet.
+
+## 15. Planner database migration (written and tested in PGlite; not applied to a real database)
+
+**Status: Implemented as `supabase/migrations/20261017100000_create_planner.sql`, with tests in `tests/db/`. It has been run only in PGlite (Postgres 18.6 compiled to WebAssembly) with stand-ins for Supabase's roles and `auth.uid()`. It has not been applied to a hosted or local Supabase project, and no application code uses it yet.** The sketch in 6.2 was the design; where this migration differs from it, the differences are listed in 15.5.
+
+### 15.1 What it creates
+Forward-only and additive: it creates objects and alters or deletes nothing that exists. `create_profiles` is untouched. Requires PostgreSQL 15 or later (`ON DELETE SET NULL (column)`).
+
+| Object | Purpose |
+| --- | --- |
+| `task_templates` | Reusable definition (once / daily / weekly, free-text category, priority flag, times, estimate, archive flag) |
+| `day_plans` | One row per user per local date: `day_mode`, `baseline_at`, `suppressed_template_ids` (C1) |
+| `task_occurrences` | Self-contained snapshot of a task on one date, `completion` (0, 0.5, 1), plan state and reason, `in_original_plan`, `rescheduled_from_id` |
+| `planner_now()`, `planner_today(user)` | The single clock source and the user's local date from `profiles.timezone` |
+| Triggers | `updated_at`; caps; baseline and original-plan flag; server-set `completed_at` / `excluded_at`; suppression validation and cleanup |
+
+Original and revised plans are **not** stored twice: both come from `in_original_plan` and `plan_state` on the same rows. The planner's snapshot is a computed, frozen read model.
+
+### 15.2 Integrity enforced by the database
+- **Completion** is exactly 0, 0.5 or 1 (column is plain `numeric` so values like 0.45 or 0.95 are rejected instead of being rounded into valid ones). A done task cannot be set aside (`plan_state = 'active' or completion < 1`, C2); a partial one can. `completed_at` and `excluded_at` are set by the server and must match the state.
+- **No cross-user references:** composite foreign keys include `user_id` for the day, the template and the moved-from link, so a row can never point at another user's row even if a policy were wrong.
+- **History survives:** deleting a template clears only `template_id` (`ON DELETE SET NULL (template_id)`); the occurrence keeps its snapshot. Deleting a source occurrence clears only the link. Cascades from the account remove everything.
+- **No duplicates:** one occurrence per template per date (partial unique index).
+- **Server-maintained fields** cannot be written by clients: `in_original_plan` (true only if the day had no baseline when the row was created, D11), `baseline_at` (fixed once, by the first progress, the first set-aside, or a mode change away from Normal; a pre-baseline delete does not stamp it, C1), `completed_at`, `excluded_at`, `created_at`.
+- **Suppression list (C1):** every id must be the same user's template (arrays cannot have foreign keys, so a trigger checks); ids are de-duplicated and removed when the template is deleted.
+- **Local dates:** `plan_date` is a `date`, times have no zone, the IANA name stays in `profiles.timezone`; "today" is computed in that zone.
+- **Provisional abuse caps:** 200 active templates per user, 100 occurrences per day, 200 suppressed ids per day. These numbers are not an approved decision.
+
+### 15.3 Row Level Security and grants
+RLS is enabled on all three tables; `anon` has no privilege; every policy is for `authenticated` and checks `user_id = (select auth.uid())`.
+
+| Table | SELECT | INSERT | UPDATE | DELETE |
+| --- | --- | --- | --- | --- |
+| `task_templates` | own | own | own | own |
+| `day_plans` | own | own, date inside the window | own, date inside the window | none (cascade only) |
+| `task_occurrences` | own | own, date inside the window | own, date inside the window | own, inside the window, `completion = 0`, and not an original-plan task once the baseline exists |
+
+- **Column grants:** clients can write only the user-facing columns. They cannot write `user_id` after insert, `plan_date`, `template_id`, `rescheduled_from_id`, `in_original_plan`, `baseline_at`, `completion`/`plan_state` at insert, or any timestamp set by the server.
+- **7-date window (D5), in the database:** inserts, updates and deletes on days older than today minus 6 (in the user's timezone) are denied; older days stay readable. Progress cannot be recorded for a future date. The database's upper bound for creating a day is a sanity limit of 366 days; the application's own limit (30 days, provisional) is stricter and can change without a migration.
+- **Progress and the original plan cannot be erased by a client:** rows with progress cannot be hard-deleted, nor can original-plan rows after the baseline (they are soft-removed instead). Deleting an account still works because cascades bypass RLS.
+
+### 15.4 What was tested, and what was not
+Run in PGlite as the database owner (constraints, triggers, foreign keys) and as the `authenticated` and `anon` roles with a JWT subject (RLS and grants):
+- `tests/db/planner.schema.test.js` (49): every constraint, trigger, foreign key and delete behaviour above.
+- `tests/db/planner.rls.test.js` (37): own access; no read, insert, update or delete across users; no cross-user relationships; anonymous denied; column grants; the window including the exact midnight boundary and two timezones at one instant; delete protections; an end-to-end move of a partly done task; a policy audit.
+- `tests/db/migrations.hygiene.test.js` (7): static checks (naming, no destructive statements, additive, RLS on every created table, no secrets, `SECURITY DEFINER` functions pin `search_path`).
+- **Mutation check:** 14 deliberate weakenings of the migration (isolation, window, grants, delete protections, foreign keys, completion values, anon access, suppression check, timezone, future-date rule, baseline stamping) were each caught; the migration was restored byte-for-byte. Two real defects were found and fixed by the tests during development (a `once` template with no end date passed its check because `NULL = date` is not false; the baseline could never be stamped because the guard trigger overwrote it).
+- **Not tested:** a real Supabase or local Supabase instance; PostgREST; the hosted Postgres version and default privileges; the Supabase auth service; concurrent writes; performance of the policy functions at scale. The test clock replaces `planner_now()` in the test database only; production uses `now()`.
+
+### 15.5 Differences from the 6.2 sketch, and known limitations
+- **Differences:** composite `(user_id, ...)` keys; `completion` is plain `numeric`; the server sets `completed_at` / `excluded_at`; the window, future-progress rule, caps and suppression validation live in the database; `once` templates require `ends_on = starts_on`.
+- **No server functions yet:** `ensure_day_plan`, `reschedule_occurrence`, `delete_task_template` are not implemented. A day top-up, a reschedule (update source, create target) and a pre-baseline delete plus suppression are several client statements, not one transaction.
+- **Not validated by the database:** that a `rescheduled_from_id` source is actually set aside as `rescheduled`, and that a deleted task's template is added to the suppression list. The planner logic does both.
+- **Explicit "delete history"** (allowed regardless of the window) does not exist; clients cannot delete old days, so it needs a trusted function later.
+- A foreign-key error on a guessed id could reveal that the id exists; ids are random UUIDs.
+- Per-user caps and the 366-day bound are provisional numbers in `planner_max_*()` functions; changing them needs a new migration.
+
+## 16. Planner services layer (implemented; tested with mocks and in PGlite; not run against a real Supabase project; used by the My Day, Week, Recurring Tasks and Progress screens)
+
+**Status: Implemented in `src/services/planner/`. Nothing in the application imports it yet (the bundle is unchanged). It has run only against a fake client, an in-memory mock, and the real migration in PGlite through a test adapter, never against PostgREST or a Supabase project.**
+
+### 16.1 Shape
+`createPlannerService({ getClient, clock })` returns a frozen object of operations; `plannerService` (in `index.js`) is that factory wired to the one shared Supabase client, and every call fails with `NOT_CONFIGURED` when Supabase is not configured. `clock` is injectable so dates are deterministic in tests. Files: `createPlannerService.js` (operations), `errors.js` (error model), `mappers.js` (rows to and from the pure planner's shapes, and the writable-column lists), `index.js`.
+
+### 16.2 Operations
+| Operation | What it does |
+| --- | --- |
+| `getToday()` | Local date and timezone from the profile and the clock |
+| `getDayPlan(date)` | Read-only: day, tasks in display order, progress summary (current and original), access class. Works for read-only history; never writes |
+| `openDay(date)` | Creates the day if needed and tops up occurrences from templates (idempotent, skips the suppression list, one retry on a duplicate-insert race). Days older than the 7-date window are refused |
+| `listTemplates`, `createTemplate`, `createTask(date, input)` | Templates; a custom task for one date is a one-time template plus its occurrence |
+| `updateTemplate`, `archiveTemplate`, `deleteTemplate` | Edits refresh only upcoming, pending, untouched, non-customised days; archive ends the template today and keeps history; delete removes untouched upcoming days and keeps anything with progress |
+| `updateOccurrence` | Edit one day's details (marks it customised) |
+| `setCompletion`, `undoCompletion` | 0, 0.5 or 1; raising progress on a set-aside task restores it |
+| `setAside`, `restore` | Set a task aside (busy or rest reason), or bring it back |
+| `removeOccurrence` | Delete a task following the approved rules (C1) |
+| `rescheduleOccurrence`, `undoReschedule` | Move a task to another date with a link back, or undo the move |
+| `setDayMode` | Normal, Busy or Rest (creates the day if needed) |
+| `getPlanSnapshot`, `listSnapshots` | Frozen history views (listSnapshots is limited to 62 days) |
+| `getWeekSummary` | Monday-to-Sunday metrics for the week containing a date |
+
+### 16.3 Error model
+Every failure is a `PlannerServiceError` with `code`, a calm `message`, `details` and `retryable` (plain JavaScript, no TypeScript).
+
+| Code | Meaning |
+| --- | --- |
+| `VALIDATION` | Bad input, or the date rules (history is read-only, no progress in the future, too far ahead). `details.fields` holds field messages |
+| `AUTH_REQUIRED` | Nobody signed in, or the session is no longer valid |
+| `PERMISSION_DENIED` | The database refused (RLS or privileges) |
+| `NOT_FOUND` | Missing, or not visible to this user. The two are deliberately indistinguishable, so one user cannot probe for another's records |
+| `CONFLICT` | Duplicate or blocked by state (a done task cannot be set aside, already planned on that day, move must be undone first) |
+| `NETWORK` | Could not reach the server; the only retryable code |
+| `NOT_CONFIGURED`, `UNKNOWN` | Supabase not configured; anything else |
+
+Messages never contain SQL, table or column names, hints or credentials. Only the SQLSTATE is kept (`details.dbCode`); the original error is on `cause` for logging only. `details.plannerCode` carries the pure-logic rule that was violated. Multi-step failures add `details.partial`.
+
+### 16.4 Security and integrity design
+- **The database is the authority.** The service reads the signed-in user from the existing Supabase session but never filters by user id: no query it sends has a `user_id` filter (a test records this), so another user's rows are hidden by RLS alone and surface as `NOT_FOUND`. No service-role key is used anywhere.
+- **Input is validated before any write** with the pure planner (template fields, completion values, dates, day modes, ids, the 7-date window, planning limit).
+- **Only writable columns are ever sent.** The writable lists in `mappers.js` are compared by a test with the column-level grants parsed from the migration, so the service cannot write `in_original_plan`, `baseline_at`, `completed_at` or other server-maintained fields.
+- **No false success.** An update or delete that affects no row is an error. Every call is wrapped so any failure becomes a `PlannerServiceError`. After a write that the database stamps (baseline, timestamps) the service reads the values back rather than assuming them.
+- **Dates and time zones** use the profile timezone and the same pure functions as the planner, so the service and the logic cannot disagree about "today".
+- **Duplicates:** the database's unique index prevents two occurrences of one template on one date; `openDay` handles a lost race by re-reading once.
+
+### 16.5 Multi-step operations are not transactions
+There are no server functions yet (see 15.5), so some operations are several statements. Each is ordered so that a failure loses nothing and is reported precisely:
+- **Reschedule:** target created first, source marked second; if the second fails the target is deleted again; if that also fails the error says a copy may remain (`partial: 'target_created'`).
+- **Remove with suppression:** the suppression list is updated first, then the delete; if the delete fails the list is restored.
+- **updateTemplate:** template first, then each upcoming occurrence; a failure reports exactly which were applied (`partial: 'template_updated'`).
+- **createTask:** a failure after the template is created reports `partial: 'template_created'`.
+- **undoReschedule:** copy removed first, then the source restored; a failure after the copy is gone reports `partial: 'target_removed'`.
+A crash or lost connection between statements can still leave one of these half done; server functions with transactions are the proper fix.
+
+### 16.6 Tests and what they do and do not prove
+| Layer | Files | Proves | Does not prove |
+| --- | --- | --- | --- |
+| **Mocked** (fake client, in-memory mock database) | `tests/unit/plannerService/` (errors, mappers, service, hygiene) | Validation before writes, error mapping, ordering, compensation, no false success, payload columns, authentication and configuration failures | RLS, constraints, triggers, the real schema |
+| **Integration in PGlite** (real service code, real migration, real RLS and grants, through a test adapter) | `tests/db/plannerService.integration.test.js` (42) | The service works against the real schema and policies: top-up and duplicates, completion rules and server-set baseline, set-aside, rescheduling and undo, removal rules, day modes, history snapshots unchanged by later edits, weekly summary, other users' data unreachable, unauthenticated use, real database error codes mapping correctly | PostgREST, a real Supabase project, hosted Postgres behaviour, concurrency |
+| **Policies themselves** | `tests/db/planner.rls.test.js` and related | RLS and grants | (not new in this phase) |
+
+A mutation check broke 15 behaviours of the service (backfill allowed, forbidden column sent, zero-row success, missing compensation, user-id filtering, no retry, wrong error mapping, truncation, timezone ignored, and others); all 15 were caught and the files restored byte-for-byte. **Mocked tests do not prove RLS security.**
+
+### 16.7 Interpretations and provisional choices
+1. `createTask` creates a one-time template; there are no template-less tasks through the service.
+2. `archiveTemplate` ends the template today and refuses a template that has not started (delete it instead).
+3. `openDay` loads every template that has started by that date and lets the pure logic decide which apply.
+4. `undoReschedule` with the copy already gone restores the source directly (clearing the set-aside state).
+5. `getDayPlan` reads only; opening a day is an explicit step.
+6. `listSnapshots` is capped at 62 days; reads are paged at 1,000 rows, which assumes PostgREST's default maximum.
+7. `NOT_FOUND` covers both "does not exist" and "not yours".
+
+### 16.8 Known limitations
+- No real Supabase run. The adapter emulates PostgREST's row shapes and error codes; real behaviour, including the `maybeSingle`, `.is(null)`, `.range` and `.delete().select()` semantics and the maximum rows setting, is unverified.
+- Not transactional (16.5).
+- Each call reads the profile for the timezone (one extra query); there is no caching.
+- A new account's profile timezone is `UTC` until onboarding sets it, so "today" will follow UTC until then. Onboarding must collect it before My Day is built.
+- Creating the same template twice is allowed; only one occurrence per template per day is.
+- Template edits do not remove occurrences on dates the edited template no longer matches (reported in `noLongerMatching`).

@@ -146,3 +146,157 @@ On the owner's explicit request (GitHub quick-start commands), the project was c
 - Deviations from the pasted commands, deliberately: the `echo "# ArcLoop" >> README.md` line was skipped (it would have appended a duplicate heading to an existing README), and the index was refreshed with `git add -A` first so the commit matched the tested working tree. This replaced the stale staged copy of `src/utils/planner/timeZones.js` described above. `git add README.md` alone would have committed the stale copy.
 - Checked before committing: git identity already set to srishtisaumya01; no secret-shaped strings in the 127 files; `node_modules`, `dist` and any `.env` excluded.
 - Result: commit `8518149` "first commit" (127 files) on `main`, pushed to https://github.com/srishtisaumya01/ArcLoop.git; the remote head matches the local commit. The documentation updates made after this commit are uncommitted.
+
+## Planner database migration + RLS tests
+No UI, React component, onboarding, authentication or dependency change. No commit or push made. The existing migration `20261017000000_create_profiles.sql` is unchanged (confirmed with `git diff`).
+
+### Inspection
+Branch `srishti` (tracking `origin/srishti`), working tree clean at the start; the planner logic was already committed (17 tracked files). The only existing migration was `create_profiles`; no planner tables existed, so there was no existing constraint to relax: the final form of the completion constraint was created directly. The database test harness is PGlite (Postgres 18.6); no Docker, `psql` or Supabase CLI is available, so nothing could run on a real or local Supabase instance.
+
+### Design and consistency check
+Designed against spec sections 6, 8, 11a, 11b and 14 before writing SQL. No conflict with the approved specification or the C1 / C2 rulings. Additions beyond the sketch (listed in spec 15.5): composite `(user_id, ...)` keys, server-set timestamps and baseline, DB-side 7-date window and future-progress rule, provisional caps, a 366-day sanity bound, column-level grants, and no server functions (deferred).
+
+### Built
+`supabase/migrations/20261017100000_create_planner.sql` (forward-only, additive; PostgreSQL 15+): three tables, seven helper functions, six trigger functions (two of them `SECURITY DEFINER`), 11 RLS policies, column-level grants, all constraints and indexes. Spec section 15 records it.
+
+### Defects found by the tests and fixed in the migration
+1. A `once` template with no `ends_on` passed its CHECK (`NULL = date` is not false): now `IS NOT DISTINCT FROM`.
+2. `completion numeric(2,1)` would have rounded 0.45 to 0.5 and 0.95 to 1.0 before the check ran: now plain `numeric`.
+3. Negative completion got a `completed_at`, and an unknown `plan_state` got an `excluded_at`, so the right constraint did not report: both triggers now set those fields only for valid states.
+4. The baseline could never be stamped: the `day_plans` guard overwrote it on every update, cancelling the legitimate stamp. Now a set baseline is immutable but a missing one can be filled in by server code.
+Three further failures were mistakes in my tests (a schema-prefix filter, a stale row filter, and an over-broad regex).
+
+### Verification actually run
+- Database tests, all in PGlite (not real Supabase): `planner.schema` 49, `planner.rls` 37, `migrations.hygiene` 7, plus the existing `profiles.rls` 19 and `planner.timezones` 17: all pass.
+- **Mutation check on the migration:** 14 deliberate weakenings (read policy open, insert policy open, window removed, grant on `in_original_plan`, delete of progress, delete of original-plan rows, cross-user template key, cascade on template delete, extra completion value, anon grant, suppression check off, timezone ignored, future progress allowed, baseline never stamped): 14 of 14 caught. The file was restored byte-for-byte (`cmp`).
+- `npm run lint`: pass. `npm test` (complete suite): **27 files, 487 tests, all pass** (was 24 files, 394). Existing planner unit tests unchanged and passing. `npm run build`: pass, bundle unchanged (299.09 kB).
+
+### Not verified
+Anything on a real Supabase project (see spec 15.4 and KNOWN_ISSUES). The migration was **not applied to any database** other than throwaway in-memory PGlite instances created by the tests.
+
+## Planner services layer (src/services/planner/)
+No React component, hook, page, onboarding, authentication, migration or RLS change (verified: no change under `src/components`, `pages`, `hooks`, `context`, `app`, `theme`, `utils`, `constants`; the planner migration is identical to what was staged before this phase). No dependency added. No commit or push made.
+
+### Inspection and blocker check
+Branch `srishti`, no commits since the previous phase (a `COMMIT_EDITMSG` template was open in the IDE; it was empty, nothing was committed). The planner migration had been applied and verified only in PGlite (93 tests plus a 14-case mutation check, no unresolved RLS failures). That is the only test database available (no Docker, `psql` or Supabase CLI), so it was treated as not blocking, with the limitation stated everywhere: it is not a real Supabase project. Every requested operation was checked against the actual schema and column grants; none needed a migration.
+
+### Built
+`src/services/planner/` (about 750 lines): `createPlannerService` (factory with an injectable client and clock; 21 operations), `errors` (`PlannerServiceError`, 8 codes, database wording never shown), `mappers` (rows to domain, writable-column lists), `index` (wired to the shared client). Documented in spec section 16.
+
+### Test support added
+`tests/support/`: `queryBuilder` (supabase-js-shaped builder), `fakeClient` and `memoryDb` (MOCKS), and `pgliteSupabase` (an adapter that runs the service's queries as SQL in PGlite under the `authenticated` / `anon` roles, so the real migration's RLS, grants, triggers and constraints apply). The adapter is not PostgREST and not Supabase.
+
+### Verification actually run
+- `npm run lint`: pass.
+- `npm test` (complete suite): **32 files, 710 tests, all pass** (was 27 files, 487). New: `errors` and `mappers` 44, `service.mocked` 130, `hygiene` 7 (static), `plannerService.integration` 42 (PGlite). Time about 107 s.
+- `npm run build`: pass; bundle unchanged (299.09 kB, same hash) because nothing imports the services yet.
+- **Mutation check on the service:** 15 deliberate breakages (backfill allowed, forbidden column sent, zero-row update treated as success, suppression not restored, user-id filtering added, no duplicate retry, no clean-up after a failed reschedule, permission error mislabelled, silent truncation, no-op completion still written, timezone ignored, delete removing progress, archiving an unstarted template, archived templates listed, validation skipped): 15 of 15 caught. Sources restored byte-for-byte (`cmp`).
+
+### What the tests found
+No defect in the service itself. Every initial failure was a mistake in test code or fixtures: the fake client mistook an empty answer for a missing profile; a wrong boundary expectation (03-05 is still editable on 03-11) that also left the test clock moved, fixed with an `afterEach` reset; expectations that forgot a daily template recreates a second task, that deleting a template clears `templateId` on history (by design), and that a `BEFORE` trigger (future-date progress) runs before a CHECK; and a lint error for a useless assignment.
+
+### Not verified
+Anything on a real Supabase project or PostgREST (spec 16.8, KNOWN_ISSUES). Multi-step operations are not transactional (spec 16.5).
+
+## Integration and end-to-end verification (audit of the connected system)
+
+### Audit finding that changes the plan
+The brief assumed a My Day UI existed. **It does not.** There is no planner page, route, hook or component; `/app` is still the placeholder account page; nothing outside `src/services/planner` and `src/utils/planner` imports the planner. The docs already said so (tracker: "My Day: Spec only"). So no UI-to-database flow could be verified, and nothing in a browser was tested: UI loading states, forms and navigation cannot be exercised until the UI is built. Playwright and Chromium are installed, but there are no e2e specs and nothing to point them at. No UI was built (that would be a new feature).
+
+### What was verified (as a connected system, in PGlite, not on a real Supabase project)
+New `tests/db/plannerSystem.integration.test.js` (21 tests) runs the real pure logic, the real service and the real migration together and checks them against oracles written independently in the test file:
+- Data written in one session is exactly what a brand-new session reads (refresh persistence); recurring templates produce exactly the right tasks on every date from the window start to the future (weekly, daily, once, not-yet-started, ended).
+- "Today" and the 7-date window computed by the service agree with the database at 33 zone/instant pairs around local midnights, including daylight-saving edges and Havana's missing midnight; changing the profile timezone moves "today" and the window and rewrites no stored history.
+- User switching and session expiry on one client leak nothing; two users with identical data never bleed into each other.
+- Editing a task, and editing, archiving or deleting a template, never change recorded completion, timestamps, the original-plan flag or baselines; moving and undoing a move restores a task exactly.
+- No error message, detail or serialised form contains SQL, table names, other users' ids or credentials.
+- A seeded randomised run (3 seeds x 45 operations over 14 operation types, with deliberate edge probes) checks after every step: completion values, no duplicate occurrences, original-plan flags and baselines never change, progress never disappears or changes without an operation, read-only history never changes, another user's data never changes, and that the service's summaries and the weekly summary equal independent recomputations from raw rows. It also treats any database refusal, or a write that hits zero rows, as a disagreement between the logic and the database.
+
+### Bug found and fixed
+`PlannerServiceError.cause` was an enumerable property, so serialising an error (logging, telemetry, a UI dump) would have emitted the raw database error. It is now non-enumerable (still readable as `error.cause`). Zero-row and refused-delete failures also carry `details.reason` so a disagreement can be diagnosed. All other initial failures were mistakes in the new test file.
+
+### Verification actually run
+`npm run lint`: pass. `npm test`: **33 files, 731 tests, all pass**. `npm run build`: pass (bundle unchanged, 299.09 kB). `git diff --check`: clean. Mutation check: on the service layer 15 of 15 broken behaviours were caught; for the system-level file, 8 deliberate faults gave 5 caught on the first pass. Three were missed by the randomised run (reschedule to a read-only day, rest days in the weekly average, the 99% cap), and each of those IS caught by the planner unit tests (verified). The run was then strengthened with deterministic probes, but the re-check of those three against the system file was interrupted and **not completed**, so the stronger probes are unverified against those faults.
+
+### Incident
+An interrupted mutation run left one planted fault in `src/utils/planner/occurrences.js`. It was noticed because lint and four tests failed, confirmed to be exactly that one line, and restored from the committed version before anything was committed. No committed code contained it.
+
+### Not verified
+Real Supabase or PostgREST behaviour; any browser or UI flow (no UI); concurrency; onboarding (a new profile's timezone is UTC until it is set).
+
+### Readiness
+**Not ready for a manual acceptance test.** The logic, services and database are verified as a connected system in PGlite, but there is nothing for a person to use: the My Day screen and hooks still need to be built, and onboarding should come first so "today" is correct for a new user.
+
+
+## Weekly Overview
+Added `/app/week` (page, `useWeekOverview`, `src/components/planner/*`). `summarizeWeek` was extended (per-day task lists, remaining, upcoming workload, `isCurrentWeek`) so the UI does no recalculation. Hygiene test now allows only `hooks/useWeekOverview.js` to import the planner service entry point. New tests: `tests/unit/planner/weeklyOverview.test.js`, `tests/unit/weeklyOverviewPage.test.jsx`. Not committed.
+
+My Day added at `/app/day` (`MyDayPage`, `useDayPlan`, `TaskRow`, `AddTaskForm`). Today and the editable past are opened through `openDay`; future days and read-only history are only read so browsing creates nothing. Tests: `tests/db/myDay.integration.test.js` (UI + hook + real service + PGlite). The hygiene test now allows `useDayPlan.js` and `useWeekOverview.js`. Not committed.
+
+My Day task management: repeating tasks (createTemplate from the day), edit for one day (updateOccurrence), remove with confirmation (removeOccurrence, C1 rules), stop repeating (archiveTemplate). Shared fields in TaskFields/taskForm. 4 more integration tests in tests/db/myDay.integration.test.js. Not committed.
+
+## Reminders
+Migration `20261018000000_create_reminders.sql` (`reminder_preferences`, `task_reminders`), pure rules in `src/utils/planner/reminders.js`, `src/services/reminders/`, browser wrapper in `src/services/notifications/`, scheduler hook `useReminderScheduler` mounted lazily for signed-in users in `RequireAuth`, settings page `/app/reminders`, My Day "Remind me". Duplicate prevention: the database records delivery (`last_notified_on`, `notified_at`) with a conditional update, so only one tab/session claims each reminder. The test adapter's table whitelist and the schema test's table list were extended. Not committed.
+
+## Profile and timezone
+No migration: `profiles` already had `timezone`/`display_name`, own-row RLS, column grants and a timezone trigger. Extended `profileService` (partial `updateMyProfile`, `getMyTimezone`), added `utils/profile.js`, `/app/profile` and a lazy `TimezonePrompt` in `RequireAuth`. Planner views and the reminder scheduler refresh on a profile-changed event. Bug caught before shipping: an early version of the prompt sent a display name with the timezone and would have cleared an existing name; updates are now partial and a test pins it. Not committed.
+
+## Moving tasks between days
+My Day now uses the existing `rescheduleOccurrence` / `undoReschedule` service operations (Move form, Undo move). `readPlan` gained a read-only `moves` map (movedTo / movedFrom dates) built from the existing `rescheduled_from_id` link, so no schema change. 5 integration tests against the real service in PGlite, including week/My Day agreement and no duplicate for repeating tasks. Not committed.
+
+## Settings
+Replaced the standalone profile page with `/app/settings` (`SettingsPage` + `ProfileSection`, `PrivacySection`, shared `useSectionSave`). One profile row is loaded once and every section saves through the existing partial `updateMyProfile`, so there is a single source of truth; reminders and password stay on their own pages and are linked, not copied. `validateProfileInput` gained the two visibility fields. Weekday label helpers moved to `weekFormat.js` and are shared with the reminder page. Not committed.
+
+## App navigation
+The navbar now shows My Day, Week, Reminders and Settings (APP_LINKS) instead of the public links while signed in, on desktop and in the mobile menu, with the current page marked (aria-current). Public links are unchanged for signed-out visitors. Settings and the other app pages were previously reachable only from buttons on /app. tests/unit/navbar.test.jsx. Not committed.
+
+## Recurring tasks
+`/app/recurring` lists repeating templates (one-off tasks excluded) by status via `groupRecurringTemplates`/`templateStatus`, with edit (existing `updateTemplate`), end (`archiveTemplate`) and delete-before-start (`deleteTemplate`). Repeat fields were extracted from `AddTaskForm` into `RepeatFields` and are shared. Service fix: `updateTemplate` now reports validation as `details.fields` with a friendly message like `createTemplate`/`updateOccurrence`, so the form can show field errors. Navbar: five app links; labels no longer wrap between 900 and 1200px (checked in headless Chromium). Not committed.
+
+## Progress
+Added `/app/progress`: recent weeks reuse `getWeekSummary`; repeating-task consistency is the new pure `summarizeHabits` (`utils/planner/habits.js`) behind a new service operation `getHabitProgress` that reuses `fetchRange` and `listTemplates`. No schema change: a habit is a recurring template and a check-in is an occurrence (spec 15). The purity and hygiene guards caught the word "window" in two messages and the page wording test caught an early description that mentioned streaks; both were reworded. Corrected stale README/spec/tracker statements that said no UI used the planner. Not committed.
+
+## Missed-day recovery notes
+Approved copy lives in `src/constants/recoveryCopy.js`. Rules are pure (`utils/planner/recovery.js`: `recoveryStatus`, `isMissedPlannedDay`, `missedDaysInWeek`) and reuse `summarizeDay`/the weekly entries, so "missed" means a past, recorded, non-rest day with active tasks and zero progress. New read-only service operation `getRecoveryStatus` (reuses `fetchRange`); the weekly note needs no request because it reads the week summary already loaded. `GentleNote` and `useDismissible` are shared by both screens. No schema change. Not committed.
+
+## Chromium visual QA (mocked auth and data)
+Week (with a day selected, an earlier week), Progress, My Day (welcome-back note, dismissal, Move form), the mobile menu, and the loading, empty and error states were inspected in headless Chromium at 1440px and 390px against the real dev server, with a fake session and stubbed local REST responses (NOT Supabase) and the browser clock pinned to 10 March 2026. Checked: horizontal scroll, off-screen and clipped elements, console errors, failed requests, container widths. Fixed: today's date line wrapped and misaligned its card (now a separate badge); text buttons (Dismiss, See recent weeks, Remind me) were indented off the content edge; the Progress current-week chip pushed View week onto its own line on phones. Regression assertions added to the weekly and progress tests. The QA script itself is a scratch tool and is not part of the repository.
+
+## Core journey verification
+Added `tests/db/journey.integration.test.js`: one test drives the real routes and pages through sign-in, planning, editing, completing, moving, setting aside, Week, Progress, recurring-task editing, and a return two days later, with the app clock and the database clock advanced together. It found one real gap: a future day created by moving a task to it showed no way to bring in its repeating tasks ("Start this day" only appears when the day does not exist). Fix: an "Add my repeating tasks" action on existing future days (reuses the idempotent day-opening operation), with a focused regression test. Real Supabase verification was again not possible (no .env, credentials or CLI). Not committed.
+
+## Real-Supabase verification: preparation only
+No `.env`, environment variables, Supabase CLI or `psql` were available, so no remote check was run. Prepared and tested offline: `supabase/verification/schema_checks.sql` (133 checks; passes on a database built from the migrations and detects 10 injected faults), `tests/support/serviceJourney.js` (23 steps, validated in PGlite including a deliberately broken isolation rule), `scripts/verify-supabase.mjs` with `scripts/lib/verificationGuards.js` (refuses unless the test project ref is declared and confirmed; refuses placeholders, local and custom URLs, and service-role or secret keys; never prints keys). Writing the schema check surfaced two wrong expectations of mine (a column that lives on another table; `user_id` must be insertable but not updatable), both fixed. Setup steps: docs/SUPABASE_SETUP.md section 6. Not committed.
+
+## Supabase verification: unblocking pass
+Added `--preflight` to scripts/verify-supabase.mjs (local only: Node version, variable names with set/missing/placeholder status, the safety guards; never values; no network), a guard that refuses privileged values in `VITE_` variables, and a rewritten, exact checklist in docs/SUPABASE_SETUP.md section 6 (PowerShell-first; SQL Editor route so the CLI is optional). The expected output is measured from the real files (schema check: 133 rows = 129 PASS, 4 REVIEW, 0 FAIL; runner: 27 lines) and guarded by tests that fail if the guide drifts from the SQL or the journey. Still no `.env`, credentials or CLI in this environment, so nothing was run against a hosted project. Not committed.
+
+## Local credential helper
+The real `.env` stayed byte-identical to `.env.example` across many checks (values were not being saved to C:ArcLoop.env). Added scripts/set-test-env.ps1: an interactive helper that writes the four verification variables locally with a hidden key prompt, a ref derived from the URL, a YES confirmation, refusal of service-role/secret keys and non-hosted URLs, no BOM, and no overwrite of a filled-in file without -Force. Tested here only with fake values on temporary files (the repo preflight accepted its output; the real .env was not touched). Not committed.
+
+## Busy and Rest days: guided set-aside
+My Day now uses the existing, tested `proposeSetAside` rule: choosing Busy or Rest shows a panel (`DayModePanel`, wording in `constants/dayModeCopy.js` from the spec) listing the open tasks the planner proposes, with "Set these aside" (one explicit `setAside` per task, sequential) or "Keep them all" (dismissal per day and mode via `useDismissible`). Nothing is changed until the person chooses; priority tasks are kept on a Busy day; done tasks are never proposed; the original-plan figure stays visible. Found while testing: the My Day integration tests never cleared localStorage, so a dismissal leaked between tests; fixed in the test setup. Not committed.
+
+## Task editing: description, category, end time
+The shared `TaskFields`/`taskForm` now carry description, category and end time (validation stays the planner's: lengths, time order, "an end time needs a start time"). Used by the add form, My Day's per-day edit (`updateOccurrence`, this day only) and Recurring Tasks (`updateTemplate`: untouched upcoming days follow, history and hand-edited days do not). Rows, cards and the week's day detail show the time range, category and description; the weekly task view carries `plannedEnd`. Integration tests added in the My Day and Recurring files.
+
+## Committed Playwright suite
+`playwright.config.js`, `e2e/support/stubApi.js` (in-memory PostgREST-style stub ported from the scratch QA harness, now with inserts, updates, deletes, the two unique rules and the two server-set timestamps), `e2e/support/fixtures.js` (pinned clock, stored session, automatic stub), `e2e/signed-in.spec.js` (15 specs, desktop and mobile). The first run found two harness defects: the stub fixture was not automatic, so tests that never named it hit a dead port; and "Done: X" locators also matched "Not done: X". Both fixed. Not committed.
+
+## Repeating tasks: start and end dates
+The Recurring Tasks edit form now has "Starts on" and "Ends on (optional)". No service or schema change: `updateTemplate` already wrote both dates and `planTemplateEdit` already reports days that no longer match. Found while testing: a date change that moves a card to another group re-mounted it and lost its "Saved…" summary; the notice now lives on the page keyed by task id. Semantics and the one undecided case are recorded in KNOWN_ISSUES.
+
+## Browser suite: Reminders and Settings
+`e2e/reminders-settings.spec.js` (14 specs x 2 projects): reminder settings, weekday validation, a task reminder set in My Day and removed on the Reminders page, real in-app delivery of a due daily reminder (claimed in the stub database first, not repeated after a reload), a not-yet-due reminder staying silent, notification permission handling for the browser's real state, Settings profile/privacy/links, the timezone prompt with a device timezone (`timezoneId`), and error/loading states. The stub's error and slow modes now cover reminder and full-profile reads. Not committed.
+
+## Week "Coming up" undercount
+Root cause: `summarizeWeek` only saw day records and their occurrences, and `getWeekSummary` fetched no templates, so a later day that had not been opened read as nothing planned. Fix: the top-up predicate was extracted from `occurrencesToCreate` into `templatesDueOn` (match the date, not already present in any state, not suppressed) and is now the single rule for both opening a day and projecting days after today in the weekly summary; the week service reads the user's templates (read-only, same query as opening a day) when the week has days after today. Expected tasks appear in a day's task list flagged `expected: true`. Tests: 7 pure cases (daily, weekday schedules, start/end dates, ended, duplicates in any state, suppression, rest day, past weeks), 2 mocked-service cases (templates read, no writes, no read for past weeks), 1 PGlite case (no records created, count stable after opening a day and after a removal), journey and browser assertions updated (the journey's figure rose from 1 to 6 for the right reason). Not committed.
+
+## Week projection: today included
+`summarizeWeek` now projects repeating tasks onto today while it has no record (previously only days after today), so a fresh day reads "not started yet" with its expected tasks instead of "no plan recorded". A day with a record is always shown from that record. New `tests/db/weekProjection.integration.test.js` (6 cases through the real service in PGlite): unopened today creates nothing; an opened today is authoritative; a template edit leaves history alone, refreshes opened untouched days (existing behaviour) and projects unopened days from the current template; moved and set-aside copies are present and never re-added; a future rest day is projected and an ended task is not after today; the profile timezone decides which day is today (Auckland vs New York at the same instant). Pure tests gained the today cases and the inclusive-end-date case. Eight earlier expectations written for the days-after-today rule were updated for the right reason. Not committed.
+
+## My Day preview of repeating tasks, and Week totals meaning
+`expectedTaskView` now lives beside `templatesDueOn` and is used by both the Week projection and a new `expected` field on every day plan from the service (`fetchExpected`: same template read and rule as `openDay`; empty for dates that cannot be opened). My Day lists it under "Start this day" (unopened day) and shows "Add my repeating tasks" only when a future day is missing something, with the list. Opened today and the editable past keep the spec's lazy top-up on open (D10), so no explicit action is needed there. Week totals: an unopened today's expected tasks count as remaining (card label "Not started yet"), and "Coming up" means after today only. Tests: 2 mocked-service cases (preview equals the action's result; template created after the record; never for history), 4 My Day integration cases (unopened day preview and no duplicates; no repeating tasks; opened future day offers the action only for later templates; today is topped up on open), the pure label case, and the Week totals expectations rewritten for the remaining-versus-coming-up meaning. Not committed.
+
+## Frontend release preparation
+Checked in a real Chromium against the stubbed API: every signed-in screen (My Day, Week, Progress, Recurring tasks, Reminders, Settings) and every public screen (home, challenges, log in, sign up, forgot password, privacy, terms, contact, not found) at 390x844, 768x1024 and 1440x900: no horizontal overflow, one h1 and one main landmark per page, no unnamed buttons or links, no console errors or page errors, visible 3px keyboard focus, nothing animating under reduced motion. Two real findings fixed: page subtitles were rendered as h6 (MUI's default for subtitle1), skipping heading levels, so the theme now maps subtitle1/2 to paragraphs; and opening a not-yet-loaded page while offline showed React Router's developer error screen, so page routes now sit under `RouteError` ("This page didn't load", offline wording when the browser reports it, retry, back to home; the navigation stays). New `e2e/release-checks.spec.js` covers both. Playwright now runs two workers (`playwright.config.js`): eight parallel workers made timing-sensitive specs fail randomly, each passing alone. Production bundle scanned for key-shaped strings: the only match is supabase-js's own `sb_secret_` prefix check. Results: eslint clean, 960 Vitest tests, build OK, 74 Playwright tests. Not committed; hosted Supabase, deployment and non-Chromium browsers remain unverified.

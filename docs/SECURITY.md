@@ -29,6 +29,28 @@
 - **Database rules:** `tests/db/profiles.rls.test.js` runs the real migration in PGlite (Postgres compiled to WebAssembly) with stand-ins for Supabase's `anon`/`authenticated` roles, `auth.users` and `auth.uid()`, and checks the table above (19 tests). It uses a stand-in, **not Supabase**. Real behaviour, including PostgREST and default privileges on a hosted project, must be re-checked per `docs/SUPABASE_SETUP.md` step 5.
 - **Client behaviour:** unit tests with mocked services, plus a scripted Chromium run against a local mock of the Supabase auth/REST endpoints (see DEVELOPMENT_LOG). The mock is not Supabase.
 
+## Reminder tables (`reminder_preferences`, `task_reminders`)
+
+Migration `20261018000000_create_reminders.sql`. RLS on both, `authenticated` only, own rows only; `anon` has no privilege. A task reminder is attached to the owner's occurrence through a composite foreign key that includes `user_id`. Clients cannot write `user_id`, the copied `plan_date`, or timestamps other than the delivery marker. Tested in PGlite only.
+
+## Planner tables (`task_templates`, `day_plans`, `task_occurrences`)
+
+Migration `20261017100000_create_planner.sql`. Full description and test scope: `docs/DAILY_PLANNING_SPEC.md` section 15.
+
+- RLS on all three tables; `anon` has no privilege; every policy is `authenticated`-only and checks `user_id = (select auth.uid())`. No cross-user policy exists, so task titles, descriptions and schedules are never readable by anyone but their owner.
+- Composite foreign keys include `user_id`, so no row can reference another user's day, template or moved-from task, independent of RLS.
+- Column-level grants: clients cannot write `user_id` after insert, the server-maintained fields (`in_original_plan`, `baseline_at`, `completed_at`, `excluded_at`), or the immutable keys.
+- Days older than today minus 6 (user's timezone) are read-only in the database. Rows with progress, original-plan rows after the baseline, and day plans cannot be hard-deleted by a client. Account deletion still cascades.
+- `SECURITY DEFINER` is used only by two trigger functions, both pinned to an empty `search_path` and acting only on the row's own day; no trigger function is executable by clients.
+- Verified in PGlite (Postgres) with stand-in roles, 93 tests plus a 14-case mutation check. **Not verified on a real Supabase project.**
+
+## Planner services (`src/services/planner/`)
+
+- Authorisation is the database's (RLS). The service reads the user from the session but sends no `user_id` filter on any query (a test records this), so another user's rows are simply invisible and come back as `NOT_FOUND`. No service-role key exists in the client.
+- Inputs are validated before any write; only columns the database grants to clients are ever written (checked against the migration's grants by a test).
+- Failures become `PlannerServiceError` with calm messages; SQL, table names, hints and credentials are never shown. A write that affected no row is an error, never a success.
+- Verified with 130 mocked tests, 42 integration tests in PGlite (real migration and RLS), and a 15-case mutation check. **Mocked tests do not prove RLS, and nothing was run on a real Supabase project.**
+
 ## Not yet covered
 - No security review of a deployed instance, no penetration testing, no rate limiting beyond Supabase's defaults, no MFA, no CAPTCHA, no Content-Security-Policy headers (add at the hosting layer before launch), no audit logging.
 - Session tokens in localStorage are readable by any XSS. The app has no known XSS sinks (React escapes output; no `dangerouslySetInnerHTML`), but a CSP is recommended.
