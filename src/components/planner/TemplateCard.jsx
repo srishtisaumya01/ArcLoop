@@ -1,11 +1,10 @@
 import { useState } from 'react'
-import { Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Typography } from '@mui/material'
+import { Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, TextField, Typography } from '@mui/material'
 import { colors, radii } from '../../theme/tokens.js'
 import RepeatFields from './RepeatFields.jsx'
 import TaskFields from './TaskFields.jsx'
-import { editSummary } from './templateSummary.js'
 import { taskToValues, toTaskInput } from './taskForm.js'
-import { formatDay, formatMinutes, weekdaysSummary } from './weekFormat.js'
+import { formatDay, formatMinutes, timeRange, weekdaysSummary } from './weekFormat.js'
 
 const STATUS = {
   active: { label: 'Active', color: 'success' },
@@ -23,25 +22,27 @@ function dateText(t, status) {
 
 // One repeating task: what it is, whether it is running, and (for running or not-yet-started ones)
 // edit and end/delete. Ended tasks are read-only: their history stays in the days they appeared on.
-export default function TemplateCard({ template, status, busy, onSave, onEnd, onDelete }) {
+// `notice` (what the last save did) is owned by the page: a date change can move the card to another group, which
+// re-mounts it, and the notice must survive that.
+export default function TemplateCard({ template, status, busy, notice, onSave, onEnd, onDelete }) {
   const [editing, setEditing] = useState(false)
   const [values, setValues] = useState(null)
   const [repeat, setRepeat] = useState(template.recurrence)
   const [weekdays, setWeekdays] = useState(template.weekdays ?? [])
+  const [dates, setDates] = useState({ startsOn: template.startsOn, endsOn: template.endsOn ?? '' })
   const [errors, setErrors] = useState({})
   const [message, setMessage] = useState('')
-  const [notice, setNotice] = useState('')
   const [confirming, setConfirming] = useState(false)
   const chip = STATUS[status]
-  const meta = [scheduleText(template), template.plannedStart, template.estimatedMinutes ? formatMinutes(template.estimatedMinutes) : null].filter(Boolean).join(' · ')
+  const meta = [scheduleText(template), timeRange(template), template.estimatedMinutes ? formatMinutes(template.estimatedMinutes) : null, template.category].filter(Boolean).join(' · ')
 
   const startEdit = () => {
     setValues(taskToValues(template))
     setRepeat(template.recurrence)
     setWeekdays(template.weekdays ?? [])
+    setDates({ startsOn: template.startsOn, endsOn: template.endsOn ?? '' })
     setErrors({})
     setMessage('')
-    setNotice('')
     setEditing(true)
   }
 
@@ -49,14 +50,10 @@ export default function TemplateCard({ template, status, busy, onSave, onEnd, on
     e.preventDefault()
     setErrors({})
     setMessage('')
-    const input = toTaskInput(values)
-    // An end time only makes sense with a start time, so clearing the start clears the end too.
-    const changes = { ...input, plannedEnd: input.plannedStart ? template.plannedEnd : null, recurrence: repeat, weekdays: repeat === 'weekly' ? weekdays : null }
-    const { ok, result, error } = await onSave(template, changes)
-    if (ok) {
-      setEditing(false)
-      setNotice(editSummary(result))
-    } else if (error?.details?.fields) setErrors(error.details.fields)
+    const changes = { ...toTaskInput(values), recurrence: repeat, weekdays: repeat === 'weekly' ? weekdays : null, startsOn: dates.startsOn, endsOn: dates.endsOn || null }
+    const { ok, error } = await onSave(template, changes)
+    if (ok) setEditing(false)
+    else if (error?.details?.fields) setErrors(error.details.fields)
     else setMessage(error?.message ?? 'That didn’t save. Please try again.')
   }
 
@@ -77,14 +74,18 @@ export default function TemplateCard({ template, status, busy, onSave, onEnd, on
       </Box>
       <Typography variant="body2" color="text.secondary">{meta}</Typography>
       <Typography variant="body2" color="text.secondary">{dateText(template, status)}</Typography>
+      {template.description && <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{template.description}</Typography>}
 
       {editing ? (
         <Box component="form" onSubmit={save} noValidate aria-label={`Edit ${template.title}`} sx={{ display: 'grid', gap: 2 }}>
           <TaskFields idPrefix={`tpl-${template.id}`} values={values} errors={errors} onChange={setValues} />
           <RepeatFields repeat={repeat} weekdays={weekdays} onRepeat={setRepeat} onWeekdays={setWeekdays} errors={errors} />
-          {errors.plannedEnd && <Typography variant="body2" color="error">{errors.plannedEnd}</Typography>}
+          <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' } }}>
+            <TextField id={`tpl-${template.id}-starts`} label="Starts on" type="date" value={dates.startsOn} onChange={(e) => setDates({ ...dates, startsOn: e.target.value })} error={Boolean(errors.startsOn)} helperText={errors.startsOn} slotProps={{ inputLabel: { shrink: true } }} required />
+            <TextField id={`tpl-${template.id}-ends`} label="Ends on (optional)" type="date" value={dates.endsOn} onChange={(e) => setDates({ ...dates, endsOn: e.target.value })} error={Boolean(errors.endsOn)} helperText={errors.endsOn ?? 'Inclusive. Leave empty to keep going.'} slotProps={{ inputLabel: { shrink: true } }} />
+          </Box>
           <Typography variant="body2" color="text.secondary">
-            Saved changes apply to today and the days ahead that you haven’t touched. Past days, and days with progress or your own edits, stay as they were.
+            Saved changes apply to today and the days ahead that you haven’t touched. Past days, days with progress or your own edits, and days already planned outside new dates stay as they were.
           </Typography>
           {message && <Typography role="alert" color="error">{message}</Typography>}
           <Box sx={{ display: 'flex', gap: 1 }}>

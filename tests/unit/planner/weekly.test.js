@@ -80,9 +80,10 @@ describe('day kinds: never counting an unopened day as zero', () => {
     expect(w.plannedDays).toBe(1) // Thursday's plan-ahead is not counted
   })
 
-  it('days without a record are "no_record" and never enter the average', () => {
+  it('days without a record are "no_record" and never enter the average (today, not over yet, is "upcoming")', () => {
     const w = summarizeWeek({ days: [rec(MON, [1])] }, SUNDAY_EVENING)
-    expect(w.days.filter((d) => d.kind === 'no_record')).toHaveLength(6)
+    expect(w.days.filter((d) => d.kind === 'no_record')).toHaveLength(5) // Tuesday to Saturday
+    expect(w.days[6]).toMatchObject({ date: '2026-03-15', kind: 'upcoming', plannedCount: 0 }) // Sunday is today and not opened
     expect(w.averagePercent).toBe(100)
   })
 

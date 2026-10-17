@@ -5,7 +5,7 @@ import { describeDay, formatDay, weekdayShort, weekdayName } from './weekFormat.
 // One day of the week. A button, so keyboard and screen-reader users can select it; the state is
 // always written out in words.
 export default function DayCard({ entry, isToday, selected, onSelect }) {
-  const { label, detail, showProgress } = describeDay(entry)
+  const { label, detail, showProgress } = describeDay(entry, { isToday })
   return (
     <Box
       component="button"

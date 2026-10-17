@@ -24,6 +24,9 @@ export function formatRange(start, end) {
   return `${left} to ${formatDay(end)} ${b.year}`
 }
 
+// '07:30', '07:30 to 08:00', or '' when no start time is set.
+export const timeRange = (task) => (task.plannedStart ? (task.plannedEnd ? `${task.plannedStart} to ${task.plannedEnd}` : task.plannedStart) : '')
+
 export function formatMinutes(minutes) {
   const h = Math.floor(minutes / 60)
   const m = minutes % 60
@@ -35,12 +38,13 @@ const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`
 
 // One plain-language description per day, so an empty day, a rest day and a day with unfinished
 // tasks are always told apart by words (never by colour alone). Calm wording, no judgement.
-export function describeDay(entry) {
+export function describeDay(entry, { isToday = false } = {}) {
   if (entry.kind === 'no_record') return { label: 'No plan recorded', detail: 'Nothing was planned on this day.', showProgress: false }
   if (entry.kind === 'upcoming') {
     if (entry.isRestDay) return { label: 'Rest day planned', detail: entry.plannedCount ? `${plural(entry.plannedCount, 'task')} kept in the plan` : 'Rest is part of the plan.', showProgress: false }
     if (entry.plannedCount === 0) return { label: 'Nothing planned yet', detail: entry.setAsideCount ? `${entry.setAsideCount} set aside` : 'No tasks yet.', showProgress: false }
-    return { label: 'Planned', detail: `${plural(entry.plannedCount, 'task')} planned`, showProgress: false }
+    // An unopened today is not over and nothing is recorded yet; it reads like an opened day with no progress.
+    return { label: isToday ? 'Not started yet' : 'Planned', detail: `${plural(entry.plannedCount, 'task')} planned`, showProgress: false }
   }
   if (entry.kind === 'rest') {
     return { label: 'Rest day', detail: entry.count > 0 ? `${entry.done} of ${plural(entry.count, 'task')} done` : 'Rest is part of the plan.', showProgress: entry.count > 0 }

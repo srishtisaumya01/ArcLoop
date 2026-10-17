@@ -11,6 +11,7 @@ import { useDayPlan } from '../../hooks/useDayPlan.js'
 import { useDayReminders } from '../../hooks/useDayReminders.js'
 import { useDismissible } from '../../hooks/useDismissible.js'
 import { useRecoveryStatus } from '../../hooks/useRecoveryStatus.js'
+import DayModePanel from '../../components/planner/DayModePanel.jsx'
 import GentleNote from '../../components/planner/GentleNote.jsx'
 import { WELCOME_BACK } from '../../constants/recoveryCopy.js'
 import { usePageMeta } from '../../hooks/usePageMeta.js'
@@ -28,6 +29,21 @@ const ACCESS_NOTE = {
   read_only_past: 'This day is past the editing window, so it is shown as a record only.',
   future: 'This day has not arrived yet. You can plan it; progress can be recorded once it begins.',
   beyond_plan_ahead: 'This day is further ahead than the planner holds.',
+}
+
+// The repeating tasks a day does not hold yet, exactly as opening it would add them.
+function ExpectedTasks({ tasks }) {
+  return (
+    <Box component="ul" aria-label="Repeating tasks to add" sx={{ m: 0, pl: 3, textAlign: 'left', color: colors.textSecondary }}>
+      {tasks.map((t) => (
+        <li key={t.id}>
+          {t.title}
+          {t.isPriority ? ' (priority)' : ''}
+          {t.plannedStart ? ` · ${t.plannedStart}` : ''}
+        </li>
+      ))}
+    </Box>
+  )
 }
 
 // My Day: one day's plan from the planner service. Today by default, or ?date=YYYY-MM-DD.
@@ -133,10 +149,21 @@ export default function MyDayPage() {
               </ToggleButtonGroup>
             </Box>
 
+            {mode !== 'normal' && plan.exists && (
+              <DayModePanel planDate={target} mode={mode} occurrences={plan.occurrences} busy={busy} canEdit={canEdit}
+                onApply={(ids, reason) => perform(async (s) => { for (const id of ids) await s.setAside(id, reason) })} />
+            )}
+
             <Box component="section" aria-label="Tasks">
               {!plan.exists && canEdit && (
-                <StatePanel icon={CalendarCheck} title="Nothing planned for this day yet" text="Start this day to bring in your recurring tasks, or add a task below."
-                  action={<Button variant="contained" disabled={busy} onClick={() => perform(async () => {}, { open: true })}>Start this day</Button>} />
+                <StatePanel icon={CalendarCheck} title="Nothing planned for this day yet"
+                  text={plan.expected.length > 0 ? 'Starting this day adds the repeating tasks listed below, or add a task of your own.' : 'No repeating tasks fall on this day. Start it anyway, or add a task below.'}
+                  action={
+                    <Box sx={{ display: 'grid', gap: 1.5, justifyItems: 'center' }}>
+                      {plan.expected.length > 0 && <ExpectedTasks tasks={plan.expected} />}
+                      <Button variant="contained" disabled={busy} onClick={() => perform(async () => {}, { open: true })}>Start this day</Button>
+                    </Box>
+                  } />
               )}
               {!plan.exists && !canEdit && <StatePanel icon={CalendarCheck} title="No plan was recorded" text="Nothing was planned on this day." />}
               {plan.exists && active.length === 0 && setAside.length === 0 && (
@@ -169,12 +196,17 @@ export default function MyDayPage() {
                   </Box>
                 </Box>
               )}
-              {/* A future day can already exist (for example, a task was moved to it) without its repeating tasks:
-                  those are added when the day arrives. This lets someone plan ahead; opening a day is idempotent. */}
-              {plan.exists && access === 'future' && (
-                <Box sx={{ mt: 2 }}>
-                  <Button size="small" variant="outlined" disabled={busy} onClick={() => perform(async () => {}, { open: true })}>Add my repeating tasks</Button>
-                  <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>Repeating tasks are added on the day itself. Add them now to plan ahead.</Typography>
+              {/* A future day can already exist (for example, a task was moved to it) without its repeating tasks, which are
+                  added when the day arrives or by this explicit action. Today and the editable past are topped up whenever
+                  My Day opens them (lazy materialisation, spec D10), so nothing is ever missing there. The list is the exact
+                  set the action adds: both come from the same rule. */}
+              {plan.exists && access === 'future' && plan.expected.length > 0 && (
+                <Box sx={{ mt: 2, display: 'grid', gap: 1 }}>
+                  <Typography variant="body2" color="text.secondary">Repeating tasks for this day that aren’t on it yet. They are added when the day arrives, or now if you prefer.</Typography>
+                  <ExpectedTasks tasks={plan.expected} />
+                  <Box>
+                    <Button size="small" variant="outlined" disabled={busy} onClick={() => perform(async () => {}, { open: true })}>Add my repeating tasks</Button>
+                  </Box>
                 </Box>
               )}
             </Box>

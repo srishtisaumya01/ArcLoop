@@ -43,6 +43,8 @@ const theme = createTheme({
     overline: typeScale.eyebrow,
   },
   components: {
+    // Subtitles are sentences, not headings: MUI would otherwise render subtitle1/2 as <h6>, skipping heading levels.
+    MuiTypography: { defaultProps: { variantMapping: { subtitle1: 'p', subtitle2: 'p' } } },
     MuiCssBaseline: {
       styleOverrides: {
         body: { color: colors.textPrimary, WebkitFontSmoothing: 'antialiased' },

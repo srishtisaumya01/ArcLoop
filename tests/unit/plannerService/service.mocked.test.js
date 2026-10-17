@@ -322,12 +322,60 @@ describe('reads', () => {
     expect(await service.getRecoveryStatus()).toEqual({ returning: false, missedDates: [], lastPlannedDate: null })
   })
 
+  it('getDayPlan previews exactly what opening the day would add, from the same rule and read as openDay', async () => {
+    const templateId = uuid()
+    const { client, service } = setup({ templates: [tplRow({ id: templateId, title: 'Walk', planned_start: '07:00:00' }), tplRow({ title: 'Later', starts_on: '2026-04-01' })] })
+    const unopened = await service.getDayPlan('2026-03-12')
+    expect(unopened.exists).toBe(false)
+    expect(unopened.expected).toEqual([expect.objectContaining({ templateId, title: 'Walk', plannedStart: '07:00', expected: true })])
+    expect(client.calls.every((c) => c.op === 'select')).toBe(true) // a preview creates nothing
+    const opened = await service.openDay('2026-03-12')
+    expect(opened.occurrences.map((o) => o.title)).toEqual(['Walk']) // the action adds the same task
+    expect(opened.expected).toEqual([]) // and nothing is left to add
+  })
+
+  it('getDayPlan lists a template created after the day record as expected on that day, and never for read-only history', async () => {
+    const templateId = uuid()
+    const { client, service } = setup({
+      templates: [tplRow({ id: templateId, title: 'New habit' })],
+      days: [dayRow({ plan_date: '2026-03-12' }), dayRow({ plan_date: '2026-03-01' })],
+      occurrences: [occRow({ plan_date: '2026-03-01', template_id: templateId, title: 'Old', completion: 1 })],
+    })
+    expect((await service.getDayPlan('2026-03-12')).expected.map((t) => t.title)).toEqual(['New habit'])
+    const history = await service.getDayPlan('2026-03-01')
+    expect(history.access).toBe('read_only_past')
+    expect(history.expected).toEqual([]) // history cannot be topped up
+    expect(client.calls.filter((c) => c.table === 'task_templates')).toHaveLength(1) // not even read for history
+  })
+
   it('getHabitProgress rejects a period outside 7 to 90 whole days without reading anything', async () => {
     const { client, service } = setup()
     for (const days of [0, 6, 91, 7.5, '30']) {
       expect((await rejection(service.getHabitProgress({ days }))).code).toBe(SERVICE_ERROR.VALIDATION)
     }
     expect(client.calls.filter((c) => c.table === 'task_occurrences')).toEqual([])
+  })
+
+  it('getWeekSummary reads the repeating tasks (no writes) so unopened future days show what they will hold', async () => {
+    const templateId = uuid()
+    const { client, service } = setup({
+      templates: [tplRow({ id: templateId, title: 'Walk', estimated_minutes: 30 }), tplRow({ title: 'Later', starts_on: '2026-04-01' })],
+      days: [dayRow({ plan_date: '2026-03-11' })],
+      occurrences: [occRow({ template_id: templateId, plan_date: '2026-03-11', title: 'Walk', estimated_minutes: 30 })], // already on Wednesday
+    })
+    const week = await service.getWeekSummary()
+    expect(week.days.filter((d) => d.kind === 'upcoming').map((d) => d.plannedCount)).toEqual([1, 1, 1, 1, 1, 1]) // today (unopened) expects it; Wed has it for real; Thu..Sun expect it
+    expect(week.upcomingTasks).toBe(5) // after today
+    expect(week.upcomingEstimatedMinutes).toBe(150)
+    expect(week.tasksRemaining).toBe(1) // today's, not started
+    expect(client.calls.some((c) => c.table === 'task_templates' && c.filters.some((f) => f.column === 'starts_on' && f.op === 'lte' && f.value === '2026-03-15'))).toBe(true)
+    expect(client.calls.every((c) => c.op === 'select')).toBe(true)
+  })
+
+  it('getWeekSummary does not read templates for a week that is entirely in the past', async () => {
+    const { client, service } = setup({ templates: [tplRow({ title: 'Walk' })] })
+    await service.getWeekSummary({ weekOf: '2026-03-02' })
+    expect(client.calls.some((c) => c.table === 'task_templates')).toBe(false)
   })
 
   it('an empty week has no average and is not eligible', async () => {

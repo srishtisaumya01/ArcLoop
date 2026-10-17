@@ -5,7 +5,7 @@ import TaskReminderControl from '../reminders/TaskReminderControl.jsx'
 import MoveTaskForm from './MoveTaskForm.jsx'
 import TaskFields from './TaskFields.jsx'
 import { taskToValues, toTaskInput } from './taskForm.js'
-import { EXCLUDED_LABEL, formatDay, formatMinutes, weekdayName } from './weekFormat.js'
+import { EXCLUDED_LABEL, formatDay, formatMinutes, timeRange, weekdayName } from './weekFormat.js'
 
 const STATES = [
   { value: 0, label: 'Not done' },
@@ -23,7 +23,7 @@ export default function TaskRow({ task, canRecord, canEdit, busy, onCompletion, 
   const [confirming, setConfirming] = useState(false)
   const [moving, setMoving] = useState(false)
   const excluded = task.planState === 'excluded'
-  const meta = [task.plannedStart, task.estimatedMinutes ? formatMinutes(task.estimatedMinutes) : null, task.category].filter(Boolean).join(' · ')
+  const meta = [timeRange(task), task.estimatedMinutes ? formatMinutes(task.estimatedMinutes) : null, task.category].filter(Boolean).join(' · ')
   const repeats = Boolean(task.templateId) && !excluded
 
   const startEdit = () => {
@@ -67,6 +67,7 @@ export default function TaskRow({ task, canRecord, canEdit, busy, onCompletion, 
         </Typography>
         {(meta || repeats) && <Typography variant="body2" color="text.secondary">{[meta, repeats ? 'repeats' : null].filter(Boolean).join(' · ')}</Typography>}
       </Box>
+      {task.description && <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{task.description}</Typography>}
       {!excluded && move?.movedFrom && (
         <Typography variant="body2" color="text.secondary">Moved from {weekdayName(move.movedFrom)} {formatDay(move.movedFrom)}</Typography>
       )}

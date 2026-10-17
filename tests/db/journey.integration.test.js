@@ -125,7 +125,7 @@ describe('the core journey', () => {
     const summary = await screen.findByLabelText('Week summary')
     expect(within(summary).getByText('Tasks completed').nextSibling.textContent).toBe('1')
     expect(within(summary).getByText('Tasks remaining').nextSibling.textContent).toBe('1') // the partly done one
-    expect(within(summary).getByText('Coming up').nextSibling.textContent).toBe('1') // Email Sam, moved to Wednesday
+    expect(within(summary).getByText('Coming up').nextSibling.textContent).toBe('6') // Email Sam (moved to Wednesday) + the daily Stretch expected on each of the five remaining days
     expect(noRegion('After missed days')).toBeNull() // progress was made today
     await user.click(screen.getByRole('button', { name: /Tuesday 10 Mar, today/ }))
     const detail = await screen.findByLabelText('Tuesday 10 Mar plan')

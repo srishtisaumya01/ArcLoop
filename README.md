@@ -22,7 +22,15 @@ npm run dev
 | `npm run build` | Production build into `dist/` |
 | `npm run preview` | Serve the production build |
 | `npm run lint` | ESLint |
-| `npm test` | Vitest unit/component tests |
+| `npm test` | Vitest: unit, component and PGlite database tests (use `npx vitest run --maxWorkers=4` on low memory) |
+| `npm run test:e2e` | Playwright in Chromium (desktop 1440 and mobile 390) against the real dev server with an in-memory stand-in for Supabase. Needs `npx playwright install chromium` once. Proves the UI, not a hosted project |
+
+### Known limitations
+
+- There is no offline mode. If the connection drops, pages that are not loaded yet show a calm "This page didn't load" message with a retry; data screens show their error state with retry. Nothing is cached for offline use.
+- Reminders are delivered only while Arcloop is open in a browser tab.
+- Only Chromium has been run for browser tests. See `docs/KNOWN_ISSUES.md` for the full list.
+- Hosted Supabase checks (migrations, schema check, service journey) are documented in `docs/SUPABASE_SETUP.md` and have not been run against a real project.
 
 ## Design system
 

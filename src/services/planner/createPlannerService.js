@@ -21,6 +21,8 @@ import {
   sortOccurrencesForDisplay,
   summarizeDay,
   summarizeHabits,
+  templatesDueOn,
+  expectedTaskView,
   RECOVERY_LOOKBACK_DAYS,
   recoveryStatus,
   summarizeWeek,
@@ -146,17 +148,27 @@ export function createPlannerService({ getClient, clock = () => Date.now() }) {
     return moves
   }
 
+  // The repeating tasks that opening (or topping up) `planDate` would add: the same rule and the same template read
+  // as openDay, so a preview and the action always agree. Empty for dates that cannot be opened.
+  async function fetchExpected(client, planDate, day, occurrences, access) {
+    if (!['today', 'editable_past', 'future'].includes(access)) return []
+    const rows = await fetchAll((a, b) => client.from(T.templates).select(TEMPLATE_COLUMNS).lte('starts_on', planDate).order('created_at').order('id').range(a, b))
+    return templatesDueOn({ templates: rows.map(templateFromRow), occurrences, day, planDate }).map((t) => expectedTaskView(t, planDate))
+  }
+
   async function readPlan(client, planDate, { today, config }) {
     const day = await fetchDay(client, planDate)
     const occurrences = sortOccurrencesForDisplay(day ? await fetchOccurrencesOn(client, planDate) : [])
+    const access = classifyDate(planDate, today, config) // 'read_only_past' | 'editable_past' | 'today' | 'future' | 'beyond_plan_ahead'
     return {
       planDate,
       exists: day !== null,
       day,
       occurrences,
       moves: await fetchMoves(client, occurrences),
+      expected: await fetchExpected(client, planDate, day, occurrences, access),
       summary: day ? summarizeDay({ day, occurrences }) : null,
-      access: classifyDate(planDate, today, config), // 'read_only_past' | 'editable_past' | 'today' | 'future' | 'beyond_plan_ahead'
+      access,
     }
   }
 
@@ -541,7 +553,11 @@ export function createPlannerService({ getClient, clock = () => Date.now() }) {
       const { client, ctx, today, config } = await session()
       const dates = weekDates(weekOf ?? today, config.weekStartsOn)
       const { days, occurrences } = await fetchRange(client, dates[0], dates[6])
-      return summarizeWeek({ weekOf, days: days.map((day) => ({ day, occurrences: occurrences.filter((o) => o.planDate === day.planDate) })) }, ctx)
+      // Days after today show what they will hold, so the repeating tasks are needed too (same read as opening a day).
+      const templates = compareDates(dates[6], today) > 0
+        ? (await fetchAll((a, b) => client.from(T.templates).select(TEMPLATE_COLUMNS).lte('starts_on', dates[6]).order('created_at').order('id').range(a, b))).map(templateFromRow)
+        : []
+      return summarizeWeek({ weekOf, templates, days: days.map((day) => ({ day, occurrences: occurrences.filter((o) => o.planDate === day.planDate) })) }, ctx)
     },
   }
 
