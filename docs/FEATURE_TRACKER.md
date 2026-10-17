@@ -16,7 +16,7 @@ Legend: Done = built and verified as described. UI only = layout exists, no real
 | Public | Privacy / Terms | Draft | Not legally reviewed; sections marked for update |
 | Public | Contact / support | UI only | No support email configured; form does not send |
 | Public | Route-level code splitting | Done | See DEVELOPMENT_LOG |
-| Backend | Planner tables (`task_templates`, `day_plans`, `task_occurrences`) | Spec only | Proposed schema in spec section 6; replaces the earlier `habits`/`habit_checkins` idea |
+| Backend | Planner tables (`task_templates`, `day_plans`, `task_occurrences`) | Migration written and tested in PGlite; **not applied to a real database** | `20261017100000_create_planner.sql`; spec section 15. Replaces the earlier `habits`/`habit_checkins` idea. No app code uses it yet |
 | Backend | Challenge and group tables | Not started | Phase 5 |
 | Auth | Account deletion (needs a trusted Edge Function) | Not started | |
 | App | Onboarding (display name, timezone, interests, privacy), dashboard | Not started | |
@@ -28,7 +28,9 @@ Legend: Done = built and verified as described. UI only = layout exists, no real
 | Planner | Sleep, meals, exercise, hydration as ordinary user-defined tasks (no medical advice, no calorie mechanics) | Spec only | Spec section 3F |
 | Planner | History: past-day review, recovery after missed days, weekly summary (no streak counter) | Logic implemented (weekly metrics, snapshots, 7-date edit window); screens and queries spec only | DP-18..DP-20. Days with progress this week; Monday start |
 | Planner | Timezone handling (profile timezone, local dates, DST) | Logic implemented; cross-checked against PostgreSQL (PGlite) for 8 zones | Gap resolves forward, overlap to the later instant. Hosted Supabase not tested |
-| Planner | Owner-only RLS for planner tables | Spec only | Spec section 8; PGlite tests planned |
+| Planner | Owner-only RLS, column grants, 7-date window and delete protections for planner tables | Implemented; 93 PGlite tests + mutation check; **not verified on real Supabase** | Spec sections 8 and 15; `docs/SECURITY.md` |
+| Planner | Services layer (`src/services/planner/`): day plans, tasks, templates, completion, set-aside and restore, rescheduling, removal, day modes, snapshots, weekly summary | Implemented; 130 mocked tests + 42 PGlite integration tests + 15-case mutation check; **not run against real Supabase; no UI uses it** | Spec section 16. Not transactional (no server functions) |
+| Planner | Service error model (`PlannerServiceError`, 8 codes, no database wording leaked) | Implemented, unit-tested | Spec 16.3 |
 | Planner | Challenge / community integration (aggregates only, optional links) | Not started | Spec section 9; deliberately later |
 | App | Onboarding (timezone is a prerequisite for the planner) | Not started | See phase plan step 4 |
 | App | Real challenge membership, progress, leaderboard | Not started | Phase 5 |

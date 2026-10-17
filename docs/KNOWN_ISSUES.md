@@ -1,6 +1,25 @@
 # Known issues and incomplete work
 
-## Daily Planning & Progress Engine (pure logic implemented; no UI or database)
+## Planner services layer (tested with mocks and in PGlite; no UI)
+- **Not run against a real Supabase project or PostgREST.** The PGlite adapter (`tests/support/pgliteSupabase.js`) emulates PostgREST row shapes and error codes. Unverified for real: `maybeSingle`, `.is(col, null)`, `.range` and `.delete().select()` behaviour, the project's maximum-rows setting (reads are paged at 1,000, assuming the default), and the SQLSTATE codes in real responses. Mocked tests do not prove RLS; the integration tests do so only inside PGlite.
+- **Not transactional.** Reschedule, remove-with-suppression, template edits, `createTask` and `undoReschedule` are several statements. They are ordered and compensated so a failure loses nothing, and errors say exactly what was done (`details.partial`), but a crash between statements can leave one half done. Server functions are the fix (also listed under the migration).
+- **A new account's timezone is `UTC`** until onboarding sets it, so "today" follows UTC until then. Onboarding must collect it before My Day.
+- **One profile read per call** for the timezone; no caching.
+- **Nothing uses the services yet** (bundle unchanged). Hooks and the My Day screen are the next phase.
+- **Creating an identical template twice is allowed**; only one occurrence per template per day is.
+- `NOT_FOUND` deliberately covers both "missing" and "not yours"; a UI cannot tell them apart.
+- The full suite now takes about 107 seconds (`tests/db` is most of it).
+
+## Planner database migration (written and tested in PGlite only)
+- **Not applied to any real database.** `20261017100000_create_planner.sql` has only run in PGlite with stand-in Supabase roles. PostgREST, hosted Postgres defaults, the Supabase auth service, concurrency and policy performance at scale are untested. Follow `docs/SUPABASE_SETUP.md` before relying on it. It requires PostgreSQL 15+.
+- **No server functions yet** (`ensure_day_plan`, `reschedule_occurrence`, `delete_task_template`): day top-up, reschedule and delete-plus-suppress are several client statements, not one transaction. The database does not check that a `rescheduled_from_id` source is set aside as `rescheduled`, or that a deleted task's template was suppressed; the planner logic does.
+- **Explicit "delete history"** does not exist; clients cannot delete old days or rows with progress.
+- **Provisional numbers in SQL:** per-user caps (200 templates, 100 occurrences per day, 200 suppressed ids) and the 366-day sanity bound. Changing them needs a new migration. The 7-date window is approved (D5).
+- **Test clock:** the database tests replace `planner_now()` with a settable clock in the test database only; production uses `now()`.
+- **Information leak (minor):** a foreign-key error on a guessed id can reveal that the id exists somewhere; ids are random UUIDs.
+- **Test cost:** `tests/db` now takes about 60 seconds of the full suite.
+
+## Daily Planning & Progress Engine (pure logic implemented; no UI)
 - **What exists:** pure, unit-tested logic in `src/utils/planner/` (spec section 14). **What does not:** any planner screen, service, migration, RLS policy or persistence. The proposed schema in `docs/DAILY_PLANNING_SPEC.md` is untested and unapplied; it now includes `suppressed_template_ids` and a relaxed `completion < 1` check (rulings C1, C2).
 - **Provisional or interpreted (need product approval, spec 14.4):** 30-day plan-ahead limit; a pre-baseline delete does not fix the baseline; raising completion on a set-aside task restores it; weekly counts only include dates up to today; any Rest-mode day is excluded from averages; the average uses unrounded daily percentages; a partial task uses its full estimate in workload; a done task cannot be set aside, moved or removed.
 - **Open for the service layer:** occurrences on dates a template edit no longer matches are reported (`noLongerMatching`) but not removed; a reschedule chain must be undone from the last move back.

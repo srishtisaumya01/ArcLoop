@@ -19,11 +19,17 @@ src/
   pages/          public/, auth/, challenges/  (one file per route)
   services/       supabaseClient (only place the client is created), authService, profileService,
                   challengeService (still demo data)
+  services/planner/  createPlannerService (factory: all planner operations, injectable client + clock),
+                     errors (PlannerServiceError, SERVICE_ERROR), mappers (rows <-> domain, writable columns),
+                     index (wired to the shared client). Not used by any UI yet
   theme/          tokens.js (single source of design values), theme.js (MUI theme)
   utils/          validation, challengeFilters
-tests/unit/       Vitest + Testing Library
-supabase/         migrations/ (SQL, applied in filename order); functions/ (empty)
-tests/db/         SQL/RLS tests run in PGlite (harness.js stubs Supabase roles/auth.uid)
+tests/unit/       Vitest + Testing Library; planner/ (pure logic), plannerService/ (MOCKED service tests)
+tests/support/    test helpers: queryBuilder, fakeClient, memoryDb (mocks), pgliteSupabase (adapter that runs
+                  service queries as SQL in PGlite under the real RLS; not PostgREST)
+supabase/         migrations/ (SQL, applied in filename order): create_profiles, create_planner; functions/ (empty)
+tests/db/         SQL/RLS tests run in PGlite (harness.js stubs Supabase roles/auth.uid and can fix the clock);
+                  profiles.rls, planner.schema, planner.rls, migrations.hygiene, planner.timezones; plannerSeed.js helpers
 docs/             this folder
 ```
 

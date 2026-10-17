@@ -21,7 +21,11 @@ Migrations live in `supabase/migrations/` and must be applied in filename order.
 - **Supabase CLI:** `supabase login`, `supabase link --project-ref <ref>`, `supabase db push`.
 - **Or the SQL editor:** paste `supabase/migrations/20261017000000_create_profiles.sql` and run it.
 
-The migration creates `public.profiles`, its triggers, RLS policies and grants, and the sign-up trigger on `auth.users`.
+Two migrations exist; apply both, in order:
+1. `20261017000000_create_profiles.sql` creates `public.profiles`, its triggers, RLS policies and grants, and the sign-up trigger on `auth.users`.
+2. `20261017100000_create_planner.sql` creates `task_templates`, `day_plans` and `task_occurrences` with their constraints, triggers, RLS policies and grants. **Requires PostgreSQL 15 or later** (check Project Settings -> Infrastructure). It is additive and does not touch existing data.
+
+Neither migration has been applied to a real Supabase project yet; both have only been run in PGlite. After applying the planner migration, check (SQL editor): `select tablename, rowsecurity from pg_tables where schemaname = 'public';` shows `true` for all four tables, and `select count(*) from pg_policies where schemaname = 'public' and tablename in ('task_templates','day_plans','task_occurrences');` returns 11. Then, with two test users, confirm each can read only their own rows and that an update to a task dated 7 or more days ago affects zero rows.
 
 ## 4. Auth settings (Dashboard -> Authentication)
 | Setting | Value | Why |

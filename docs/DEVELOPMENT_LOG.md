@@ -146,3 +146,54 @@ On the owner's explicit request (GitHub quick-start commands), the project was c
 - Deviations from the pasted commands, deliberately: the `echo "# ArcLoop" >> README.md` line was skipped (it would have appended a duplicate heading to an existing README), and the index was refreshed with `git add -A` first so the commit matched the tested working tree. This replaced the stale staged copy of `src/utils/planner/timeZones.js` described above. `git add README.md` alone would have committed the stale copy.
 - Checked before committing: git identity already set to srishtisaumya01; no secret-shaped strings in the 127 files; `node_modules`, `dist` and any `.env` excluded.
 - Result: commit `8518149` "first commit" (127 files) on `main`, pushed to https://github.com/srishtisaumya01/ArcLoop.git; the remote head matches the local commit. The documentation updates made after this commit are uncommitted.
+
+## Planner database migration + RLS tests
+No UI, React component, onboarding, authentication or dependency change. No commit or push made. The existing migration `20261017000000_create_profiles.sql` is unchanged (confirmed with `git diff`).
+
+### Inspection
+Branch `srishti` (tracking `origin/srishti`), working tree clean at the start; the planner logic was already committed (17 tracked files). The only existing migration was `create_profiles`; no planner tables existed, so there was no existing constraint to relax: the final form of the completion constraint was created directly. The database test harness is PGlite (Postgres 18.6); no Docker, `psql` or Supabase CLI is available, so nothing could run on a real or local Supabase instance.
+
+### Design and consistency check
+Designed against spec sections 6, 8, 11a, 11b and 14 before writing SQL. No conflict with the approved specification or the C1 / C2 rulings. Additions beyond the sketch (listed in spec 15.5): composite `(user_id, ...)` keys, server-set timestamps and baseline, DB-side 7-date window and future-progress rule, provisional caps, a 366-day sanity bound, column-level grants, and no server functions (deferred).
+
+### Built
+`supabase/migrations/20261017100000_create_planner.sql` (forward-only, additive; PostgreSQL 15+): three tables, seven helper functions, six trigger functions (two of them `SECURITY DEFINER`), 11 RLS policies, column-level grants, all constraints and indexes. Spec section 15 records it.
+
+### Defects found by the tests and fixed in the migration
+1. A `once` template with no `ends_on` passed its CHECK (`NULL = date` is not false): now `IS NOT DISTINCT FROM`.
+2. `completion numeric(2,1)` would have rounded 0.45 to 0.5 and 0.95 to 1.0 before the check ran: now plain `numeric`.
+3. Negative completion got a `completed_at`, and an unknown `plan_state` got an `excluded_at`, so the right constraint did not report: both triggers now set those fields only for valid states.
+4. The baseline could never be stamped: the `day_plans` guard overwrote it on every update, cancelling the legitimate stamp. Now a set baseline is immutable but a missing one can be filled in by server code.
+Three further failures were mistakes in my tests (a schema-prefix filter, a stale row filter, and an over-broad regex).
+
+### Verification actually run
+- Database tests, all in PGlite (not real Supabase): `planner.schema` 49, `planner.rls` 37, `migrations.hygiene` 7, plus the existing `profiles.rls` 19 and `planner.timezones` 17: all pass.
+- **Mutation check on the migration:** 14 deliberate weakenings (read policy open, insert policy open, window removed, grant on `in_original_plan`, delete of progress, delete of original-plan rows, cross-user template key, cascade on template delete, extra completion value, anon grant, suppression check off, timezone ignored, future progress allowed, baseline never stamped): 14 of 14 caught. The file was restored byte-for-byte (`cmp`).
+- `npm run lint`: pass. `npm test` (complete suite): **27 files, 487 tests, all pass** (was 24 files, 394). Existing planner unit tests unchanged and passing. `npm run build`: pass, bundle unchanged (299.09 kB).
+
+### Not verified
+Anything on a real Supabase project (see spec 15.4 and KNOWN_ISSUES). The migration was **not applied to any database** other than throwaway in-memory PGlite instances created by the tests.
+
+## Planner services layer (src/services/planner/)
+No React component, hook, page, onboarding, authentication, migration or RLS change (verified: no change under `src/components`, `pages`, `hooks`, `context`, `app`, `theme`, `utils`, `constants`; the planner migration is identical to what was staged before this phase). No dependency added. No commit or push made.
+
+### Inspection and blocker check
+Branch `srishti`, no commits since the previous phase (a `COMMIT_EDITMSG` template was open in the IDE; it was empty, nothing was committed). The planner migration had been applied and verified only in PGlite (93 tests plus a 14-case mutation check, no unresolved RLS failures). That is the only test database available (no Docker, `psql` or Supabase CLI), so it was treated as not blocking, with the limitation stated everywhere: it is not a real Supabase project. Every requested operation was checked against the actual schema and column grants; none needed a migration.
+
+### Built
+`src/services/planner/` (about 750 lines): `createPlannerService` (factory with an injectable client and clock; 21 operations), `errors` (`PlannerServiceError`, 8 codes, database wording never shown), `mappers` (rows to domain, writable-column lists), `index` (wired to the shared client). Documented in spec section 16.
+
+### Test support added
+`tests/support/`: `queryBuilder` (supabase-js-shaped builder), `fakeClient` and `memoryDb` (MOCKS), and `pgliteSupabase` (an adapter that runs the service's queries as SQL in PGlite under the `authenticated` / `anon` roles, so the real migration's RLS, grants, triggers and constraints apply). The adapter is not PostgREST and not Supabase.
+
+### Verification actually run
+- `npm run lint`: pass.
+- `npm test` (complete suite): **32 files, 710 tests, all pass** (was 27 files, 487). New: `errors` and `mappers` 44, `service.mocked` 130, `hygiene` 7 (static), `plannerService.integration` 42 (PGlite). Time about 107 s.
+- `npm run build`: pass; bundle unchanged (299.09 kB, same hash) because nothing imports the services yet.
+- **Mutation check on the service:** 15 deliberate breakages (backfill allowed, forbidden column sent, zero-row update treated as success, suppression not restored, user-id filtering added, no duplicate retry, no clean-up after a failed reschedule, permission error mislabelled, silent truncation, no-op completion still written, timezone ignored, delete removing progress, archiving an unstarted template, archived templates listed, validation skipped): 15 of 15 caught. Sources restored byte-for-byte (`cmp`).
+
+### What the tests found
+No defect in the service itself. Every initial failure was a mistake in test code or fixtures: the fake client mistook an empty answer for a missing profile; a wrong boundary expectation (03-05 is still editable on 03-11) that also left the test clock moved, fixed with an `afterEach` reset; expectations that forgot a daily template recreates a second task, that deleting a template clears `templateId` on history (by design), and that a `BEFORE` trigger (future-date progress) runs before a CHECK; and a lint error for a useless assignment.
+
+### Not verified
+Anything on a real Supabase project or PostgREST (spec 16.8, KNOWN_ISSUES). Multi-step operations are not transactional (spec 16.5).
