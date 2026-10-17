@@ -31,7 +31,7 @@ export default function TaskReminderControl({ task, reminder, remindersOn, busy,
   if (!editing) {
     return (
       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center' }}>
-        <Button size="small" disabled={busy} onClick={open} aria-label={reminder ? `Change reminder for ${task.title}` : `Set a reminder for ${task.title}`}>
+        <Button size="small" disabled={busy} onClick={open} sx={{ ml: -1.25 }} aria-label={reminder ? `Change reminder for ${task.title}` : `Set a reminder for ${task.title}`}>
           {reminder ? `Reminder at ${reminder.remindTime}` : 'Remind me'}
         </Button>
         {reminder && !remindersOn && (

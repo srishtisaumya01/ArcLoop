@@ -11,6 +11,7 @@ export const ROUTES = {
   day: '/app/day',
   reminders: '/app/reminders',
   recurring: '/app/recurring',
+  progress: '/app/progress',
   settings: '/app/settings',
   privacy: '/privacy',
   terms: '/terms',

@@ -603,7 +603,7 @@ describe('unauthenticated use', () => {
       getToday: [], getDayPlan: [TODAY], openDay: [TODAY], listTemplates: [], createTemplate: [daily('x')], createTask: [TODAY, { title: 'x' }],
       updateTemplate: [], archiveTemplate: [], deleteTemplate: [], updateOccurrence: [], setCompletion: [], undoCompletion: [], setAside: [], restore: [],
       removeOccurrence: [], rescheduleOccurrence: [], undoReschedule: [], setDayMode: [TODAY, 'busy'], getPlanSnapshot: [TODAY],
-      listSnapshots: [{ from: '2026-03-01', to: TODAY }], getWeekSummary: [{}],
+      listSnapshots: [{ from: '2026-03-01', to: TODAY }], getWeekSummary: [{}], getHabitProgress: [{}], getRecoveryStatus: [],
     }
     expect(Object.keys(calls).sort()).toEqual(Object.keys(service).sort())
     const id = '11111111-1111-4111-8111-111111111111'

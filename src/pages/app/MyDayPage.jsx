@@ -9,6 +9,10 @@ import AddTaskForm from '../../components/planner/AddTaskForm.jsx'
 import { formatDay, weekdayName } from '../../components/planner/weekFormat.js'
 import { useDayPlan } from '../../hooks/useDayPlan.js'
 import { useDayReminders } from '../../hooks/useDayReminders.js'
+import { useDismissible } from '../../hooks/useDismissible.js'
+import { useRecoveryStatus } from '../../hooks/useRecoveryStatus.js'
+import GentleNote from '../../components/planner/GentleNote.jsx'
+import { WELCOME_BACK } from '../../constants/recoveryCopy.js'
 import { usePageMeta } from '../../hooks/usePageMeta.js'
 import { ROUTES } from '../../constants/navigation.js'
 import { PLANNER_CONFIG, addDays, diffDays, isValidDate, startOfWeek } from '../../utils/planner/index.js'
@@ -53,6 +57,9 @@ export default function MyDayPage() {
   const target = plan?.planDate
   const canRemind = (access === 'today' || access === 'future') && Boolean(plan?.exists)
   const reminders = useDayReminders(target, plan, canRemind)
+  // Shown only on today, only when the last planned day had no progress, and only until dismissed.
+  const returning = useRecoveryStatus(plan, access === 'today')
+  const [welcomeDismissed, dismissWelcome] = useDismissible(`welcomeBack:${plan?.today ?? 'none'}`)
   const active = plan?.occurrences.filter((o) => o.planState === 'active') ?? []
   const setAside = plan?.occurrences.filter((o) => o.planState === 'excluded') ?? []
   const summary = plan?.summary
@@ -95,6 +102,7 @@ export default function MyDayPage() {
             )}
             {ACCESS_NOTE[access] && <Typography color="text.secondary">{ACCESS_NOTE[access]}</Typography>}
             {actionError && <Typography role="alert" color="error">{actionError}</Typography>}
+            {returning && !welcomeDismissed && <GentleNote label="Welcome back" {...WELCOME_BACK} onDismiss={dismissWelcome} />}
 
             {summary && (
               <Box component="section" aria-label="Day progress" sx={{ display: 'grid', gap: 1 }}>
@@ -159,6 +167,14 @@ export default function MyDayPage() {
                       <TaskRow key={task.id} task={task} canRecord={false} canEdit={canEdit} busy={busy} move={plan.moves?.[task.id]} onRestore={(t) => perform((s) => s.restore(t.id))} onUndoMove={(t) => perform((s) => s.undoReschedule(t.id))} />
                     ))}
                   </Box>
+                </Box>
+              )}
+              {/* A future day can already exist (for example, a task was moved to it) without its repeating tasks:
+                  those are added when the day arrives. This lets someone plan ahead; opening a day is idempotent. */}
+              {plan.exists && access === 'future' && (
+                <Box sx={{ mt: 2 }}>
+                  <Button size="small" variant="outlined" disabled={busy} onClick={() => perform(async () => {}, { open: true })}>Add my repeating tasks</Button>
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>Repeating tasks are added on the day itself. Add them now to plan ahead.</Typography>
                 </Box>
               )}
             </Box>

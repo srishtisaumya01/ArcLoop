@@ -1,4 +1,5 @@
 import {
+  addDays,
   assertEditableDate,
   buildPlanSnapshot,
   classifyDate,
@@ -19,6 +20,9 @@ import {
   setDayMode as setDayModeLogic,
   sortOccurrencesForDisplay,
   summarizeDay,
+  summarizeHabits,
+  RECOVERY_LOOKBACK_DAYS,
+  recoveryStatus,
   summarizeWeek,
   validateTemplateInput,
   weekDates,
@@ -511,6 +515,24 @@ export function createPlannerService({ getClient, clock = () => Date.now() }) {
       const { client } = await session()
       const { days, occurrences } = await fetchRange(client, from, to)
       return days.map((day) => buildPlanSnapshot({ day, occurrences: occurrences.filter((o) => o.planDate === day.planDate) }))
+    },
+
+    // Whether to show the gentle "welcome back" note: the person's most recent planned day before today
+    // had no progress and nothing is done yet today. Read-only; it never changes or creates anything.
+    async getRecoveryStatus() {
+      const { client, today } = await session()
+      const { days, occurrences } = await fetchRange(client, addDays(today, -(RECOVERY_LOOKBACK_DAYS - 1)), today)
+      const records = days.map((day) => ({ day, occurrences: occurrences.filter((o) => o.planDate === day.planDate) }))
+      return recoveryStatus({ records, today })
+    },
+
+    // How each repeating task went over the last `days` days up to today (default 28; 7 to 90).
+    async getHabitProgress({ days = 28 } = {}) {
+      if (!Number.isInteger(days) || days < 7 || days > 90) throw fail(SERVICE_ERROR.VALIDATION, 'Choose a period of 7 to 90 days.')
+      const { client, today } = await session()
+      const from = addDays(today, -(days - 1))
+      const [templates, range] = await Promise.all([ops.listTemplates({ includeArchived: true }), fetchRange(client, from, today)])
+      return { from, to: today, days, habits: summarizeHabits({ templates, days: range.days, occurrences: range.occurrences, from, to: today }) }
     },
 
     // Monday-to-Sunday metrics for the week containing `weekOf` (default: today).

@@ -47,6 +47,9 @@ export default function AppHomePage() {
               <Button component={RouterLink} to={ROUTES.reminders} variant="outlined" color="primary" size="small" sx={{ ml: 1.5 }}>
                 Reminders
               </Button>
+              <Button component={RouterLink} to={ROUTES.progress} variant="outlined" color="primary" size="small" sx={{ ml: 1.5 }}>
+                Progress
+              </Button>
             </CardContent>
           </Card>
 

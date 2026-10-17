@@ -14,7 +14,7 @@ export default function DayCard({ entry, isToday, selected, onSelect }) {
       aria-pressed={selected}
       aria-label={`${weekdayName(entry.date)} ${formatDay(entry.date)}${isToday ? ', today' : ''}: ${label}. ${detail}`}
       sx={{
-        font: 'inherit', textAlign: 'left', cursor: 'pointer', p: 1.5, minHeight: 120,
+        position: 'relative', font: 'inherit', textAlign: 'left', cursor: 'pointer', p: 1.5, minHeight: 120,
         borderRadius: `${radii.md}px`, bgcolor: selected ? colors.bgAlt : colors.surface,
         border: `2px solid ${selected ? colors.blue600 : colors.border}`,
         display: 'flex', flexDirection: 'column', gap: 0.5,
@@ -22,8 +22,14 @@ export default function DayCard({ entry, isToday, selected, onSelect }) {
       }}
     >
       <Typography variant="overline" component="span" sx={{ color: isToday ? colors.blue600 : 'text.secondary' }} aria-hidden="true">
-        {weekdayShort(entry.date)} {formatDay(entry.date)}{isToday ? ' · Today' : ''}
+        {weekdayShort(entry.date)} {formatDay(entry.date)}
       </Typography>
+      {/* A badge on the card's edge, so marking today never makes the date line wrap and misalign the card. */}
+      {isToday && (
+        <Box component="span" aria-hidden="true" sx={{ position: 'absolute', top: -11, right: 10, px: 1, py: '1px', borderRadius: '10px', bgcolor: colors.navy900, color: '#fff', fontSize: '0.6875rem', fontWeight: 700, lineHeight: 1.6 }}>
+          Today
+        </Box>
+      )}
       <Typography component="span" sx={{ fontWeight: 600 }} aria-hidden="true">{label}</Typography>
       <Typography component="span" variant="body2" color="text.secondary" aria-hidden="true">{detail}</Typography>
       {showProgress && (

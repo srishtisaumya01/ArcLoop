@@ -2,6 +2,7 @@
 import { describe, expect, it } from 'vitest'
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
+import { spawnSync } from 'node:child_process'
 
 const root = process.cwd()
 
@@ -49,7 +50,16 @@ describe('secrets hygiene', () => {
     expect(ignore).toContain('!.env.example')
   })
 
-  it('does not ship a committed .env file', () => {
-    expect(readdirSync(root).filter((f) => /^\.env(\..+)?$/.test(f) && f !== '.env.example')).toEqual([])
+  it('does not ship a committed .env file (a local, git-ignored one is expected and fine)', () => {
+    const present = readdirSync(root).filter((f) => /^\.env(\..+)?$/.test(f) && f !== '.env.example')
+    const tracked = spawnSync('git', ['ls-files', '--', '.env', '.env.*'], { cwd: root, encoding: 'utf8' })
+    if (tracked.status !== 0) {
+      // Not a git checkout (for example a plain archive): there must be no .env file at all.
+      expect(present).toEqual([])
+      return
+    }
+    expect(tracked.stdout.split(/\r?\n/).filter((f) => f && f !== '.env.example')).toEqual([])
+    // Whatever is present locally must be ignored by git, so it can never be staged by accident.
+    for (const file of present) expect(spawnSync('git', ['check-ignore', '-q', file], { cwd: root }).status, `${file} must be git-ignored`).toBe(0)
   })
 })
