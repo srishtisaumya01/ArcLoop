@@ -61,6 +61,11 @@
 - Vitest first-import of lazy routes is slow, so tests use a 5 s async timeout and 20 s test timeout (`tests/setup.js`, `vite.config.js`).
 - Git: a single commit ("first commit", 127 files) is on `main` and pushed to `origin` (github.com/srishtisaumya01/ArcLoop). Later documentation edits are uncommitted.
 
+## Recurring tasks
+- **There is no pause or resume.** The planner has no paused state (a repeating task is running or ended), and an ended task cannot be restarted; create a new one. Adding pause would need a data-model decision.
+- Ending a task ends it after today. Days you already opened keep their copy (remove them in My Day). Editing a schedule leaves already-planned days that no longer match in place and says so.
+- Only title, start time, estimate, priority and schedule are editable here; description, category, end time and start/end dates are not.
+
 ## Profile and timezone
 - The timezone suggestion appears only while the profile is on the UTC default and the device reports a different zone. A person who really is on UTC is never prompted; a person who dismisses it ("Not now", remembered per user in this browser only) keeps UTC until they change it on the profile page, so their "today" follows UTC until then.
 - The browser may report a zone by an older name; a small list maps six common ones to the modern name (e.g. Asia/Calcutta to Asia/Kolkata). Other legacy names are listed as the browser gives them.

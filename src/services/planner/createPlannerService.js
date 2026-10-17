@@ -22,8 +22,10 @@ import {
   summarizeWeek,
   validateTemplateInput,
   weekDates,
+  ERR,
   EXCLUDED_REASONS,
   PLAN_STATES,
+  PlannerError,
   RECURRENCE,
 } from '../../utils/planner/index.js'
 import { PlannerServiceError, SERVICE_ERROR, toServiceError } from './errors.js'
@@ -295,7 +297,14 @@ export function createPlannerService({ getClient, clock = () => Date.now() }) {
       const template = await fetchTemplate(client, templateId)
       const rows = await fetchAll((a, b) =>
         client.from(T.occurrences).select(OCCURRENCE_COLUMNS).eq('template_id', templateId).gte('plan_date', today).order('plan_date').order('id').range(a, b))
-      const plan = planTemplateEdit({ template, changes: changes ?? {}, occurrences: rows.map(occurrenceFromRow) }, ctx)
+      let plan
+      try {
+        plan = planTemplateEdit({ template, changes: changes ?? {}, occurrences: rows.map(occurrenceFromRow) }, ctx)
+      } catch (error) {
+        // Same shape as createTemplate / updateOccurrence: a friendly message plus per-field messages.
+        if (error instanceof PlannerError && error.code === ERR.INVALID_TEMPLATE) throw fail(SERVICE_ERROR.VALIDATION, 'Please check the highlighted details.', { fields: error.details?.errors ?? {} })
+        throw error
+      }
       const updated = check(await client.from(T.templates).update(templateUpdateRow(plan.template)).eq('id', templateId).select(TEMPLATE_COLUMNS))
       if (!updated || updated.length !== 1) throw fail(SERVICE_ERROR.NOT_FOUND, 'That task could not be updated.', { reason: 'no_rows_affected' })
       const applied = []

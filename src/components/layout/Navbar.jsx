@@ -11,8 +11,9 @@ const navLinkSx = {
   color: colors.textSecondary,
   fontWeight: 600,
   fontSize: '0.9375rem',
-  px: 1.5,
+  px: { md: 1, lg: 1.5 }, // tighter between 900px and 1200px so five links fit on one line
   py: 1,
+  whiteSpace: 'nowrap',
   borderRadius: 2,
   textDecoration: 'none',
   '&:hover': { color: colors.navy900, bgcolor: colors.bgAlt },
@@ -57,7 +58,7 @@ export default function Navbar() {
             <Logo />
           </Box>
 
-          <Box component="nav" aria-label={signedIn ? 'App' : 'Primary'} sx={{ display: { xs: 'none', md: 'flex' }, gap: 0.5, ml: 4 }}>
+          <Box component="nav" aria-label={signedIn ? 'App' : 'Primary'} sx={{ display: { xs: 'none', md: 'flex' }, gap: 0.5, ml: { md: 1, lg: 4 } }}>
             {links.map((l) => (
               <Box key={l.label} component={linkComponent} to={l.to} sx={navLinkSx}>
                 {l.label}
@@ -70,10 +71,10 @@ export default function Navbar() {
           <Box sx={{ display: { xs: 'none', md: 'flex' }, gap: 1, alignItems: 'center' }}>
             {signedIn && (
               <>
-                <Button color="primary" size="small" onClick={handleLogout}>
+                <Button color="primary" size="small" onClick={handleLogout} sx={{ whiteSpace: 'nowrap' }}>
                   Log out
                 </Button>
-                <Button component={RouterLink} to={ROUTES.app} variant="contained" color="primary" size="small">
+                <Button component={RouterLink} to={ROUTES.app} variant="contained" color="primary" size="small" sx={{ whiteSpace: 'nowrap' }}>
                   Open app
                 </Button>
               </>
@@ -116,7 +117,7 @@ export default function Navbar() {
         </Box>
         <Box component="nav" aria-label="Mobile" sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
           {links.map((l) => (
-            <Box key={l.label} component={linkComponent} to={l.to} onClick={close} sx={{ ...navLinkSx, fontSize: '1.0625rem', py: 1.5 }}>
+            <Box key={l.label} component={linkComponent} to={l.to} onClick={close} sx={{ ...navLinkSx, fontSize: '1.0625rem', px: 1.5, py: 1.5 }}>
               {l.label}
             </Box>
           ))}
