@@ -9,3 +9,11 @@ coverage
 playwright-report
 test-results
 .DS_Store
+
+# Django backend
+backend/.venv
+backend/db.sqlite3
+backend/db.sqlite3-journal
+backend/.env
+__pycache__
+*.pyc

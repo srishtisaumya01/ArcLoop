@@ -1,6 +1,6 @@
 import { Alert, Box, Container, Typography } from '@mui/material'
 import { LogoMark } from '../ui/Logo.jsx'
-import { isSupabaseConfigured } from '../../services/supabaseClient.js'
+import { isBackendConfigured } from '../../services/backend.js'
 import { colors, contentWidths, gradients, radii, shadows } from '../../theme/tokens.js'
 
 // Two-column auth shell: brand panel (md+) and the form card.
@@ -22,14 +22,15 @@ export default function AuthLayout({ title, subtitle, children, footer }) {
           </Box>
 
           <Box sx={{ p: { xs: 3, sm: 5, md: 6 } }}>
-            {!isSupabaseConfigured && (
+            {!isBackendConfigured && (
               <Alert severity="warning" variant="outlined" sx={{ mb: 3 }}>
                 Accounts are not available right now.
                 {import.meta.env.DEV && (
                   <>
                     {' '}
-                    Developer note: Supabase is not configured. Copy <code>.env.example</code> to <code>.env</code> and set
-                    the project URL and anon key (see <code>docs/SUPABASE_SETUP.md</code>), then restart the dev server.
+                    Developer note: the backend is not configured. Copy <code>.env.example</code> to <code>.env</code> and set either
+                    <code>VITE_BACKEND=django</code> with <code>VITE_API_BASE_URL</code> (see the README), or the Supabase project URL
+                    and anon key (see <code>docs/SUPABASE_SETUP.md</code>), then restart the dev server.
                   </>
                 )}
               </Alert>

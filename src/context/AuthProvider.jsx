@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { AuthContext } from './authContext.js'
 import { getSession, onAuthStateChange, signOut } from '../services/authService.js'
-import { isSupabaseConfigured } from '../services/supabaseClient.js'
+import { isBackendConfigured } from '../services/backend.js'
 
 const initialState = {
-  status: isSupabaseConfigured ? 'loading' : 'unconfigured',
+  status: isBackendConfigured ? 'loading' : 'unconfigured',
   session: null,
 }
 
@@ -16,7 +16,7 @@ export default function AuthProvider({ children }) {
   const [state, setState] = useState(initialState)
 
   useEffect(() => {
-    if (!isSupabaseConfigured) return undefined
+    if (!isBackendConfigured) return undefined
     let active = true
 
     // getSession() waits for client initialisation, including exchanging a

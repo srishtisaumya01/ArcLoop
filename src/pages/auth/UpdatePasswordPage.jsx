@@ -1,4 +1,4 @@
-import { Link as RouterLink } from 'react-router-dom'
+import { Link as RouterLink, useSearchParams } from 'react-router-dom'
 import { Box, Button, Link, Typography } from '@mui/material'
 import { CircleCheck } from 'lucide-react'
 import AuthLayout from '../../components/auth/AuthLayout.jsx'
@@ -11,26 +11,36 @@ import { useAuth } from '../../hooks/useAuth.js'
 import { useForm } from '../../hooks/useForm.js'
 import { usePageMeta } from '../../hooks/usePageMeta.js'
 import { updatePassword } from '../../services/authService.js'
+import { isDjango } from '../../services/backend.js'
 import { ROUTES } from '../../constants/navigation.js'
 import { PASSWORD_MIN_LENGTH, validateNewPassword } from '../../utils/validation.js'
 import { colors } from '../../theme/tokens.js'
 
-const validate = ({ password, confirm }) => ({
+// useAsyncSubmit passes one value, so the password and its options travel together.
+const changePassword = ({ password, options }) => (options ? updatePassword(password, options) : updatePassword(password))
+
+const validate = ({ password, confirm, currentPassword, needsCurrent }) => ({
+  currentPassword: needsCurrent && !currentPassword ? 'Enter your current password.' : undefined,
   password: validateNewPassword(password),
   confirm: !confirm ? 'Re-enter your new password.' : confirm !== password ? 'The passwords do not match.' : undefined,
 })
 
-// Landing page for the password-reset email link. The Supabase client turns the
-// link into a session; without one the link is invalid or expired.
+// Landing page for the password-reset email link, and the "change password" page for signed-in users.
+// Supabase: its client turns the link into a session; without one the link is invalid or expired.
+// Django: the link carries `uid` and `token`, which are sent with the new password; a signed-in user
+// without a link must give their current password instead.
 export default function UpdatePasswordPage() {
   usePageMeta('Choose a new password')
   const { status: authStatus } = useAuth()
-  const { status, error, submit } = useAsyncSubmit(updatePassword)
-  const { values, errors, onChange, onBlur, handleSubmit } = useForm({ initialValues: { password: '', confirm: '' }, validate })
+  const [params] = useSearchParams()
+  const reset = isDjango && params.get('uid') && params.get('token') ? { uid: params.get('uid'), token: params.get('token') } : null
+  const needsCurrent = isDjango && !reset
+  const { status, error, submit } = useAsyncSubmit(changePassword)
+  const { values, errors, onChange, onBlur, handleSubmit } = useForm({ initialValues: { password: '', confirm: '', currentPassword: '' }, validate: (v) => validate({ ...v, needsCurrent }) })
 
   if (authStatus === 'loading') return <PageLoader />
 
-  if (authStatus !== 'authenticated') {
+  if (authStatus !== 'authenticated' && !reset) {
     return (
       <AuthLayout title="This link has expired">
         <Typography color="text.secondary" sx={{ mb: 3 }}>
@@ -52,9 +62,9 @@ export default function UpdatePasswordPage() {
             <CircleCheck size={48} aria-hidden="true" />
           </Box>
           <Typography color="text.secondary" sx={{ mb: 3 }}>
-            Your password has been changed. You are logged in on this device.
+            {reset ? 'Your password has been changed. Log in with it to continue.' : 'Your password has been changed. You are logged in on this device.'}
           </Typography>
-          <Button component={RouterLink} to={ROUTES.app} variant="contained" color="primary" size="large">
+          <Button component={RouterLink} to={reset ? ROUTES.login : ROUTES.app} variant="contained" color="primary" size="large">
             Continue
           </Button>
         </Box>
@@ -72,7 +82,10 @@ export default function UpdatePasswordPage() {
         </Typography>
       }
     >
-      <Box component="form" noValidate onSubmit={handleSubmit(({ password }) => submit(password))} sx={{ display: 'grid', gap: 2.5 }}>
+      <Box component="form" noValidate onSubmit={handleSubmit(({ password, currentPassword }) => submit({ password, options: isDjango ? { reset, currentPassword } : undefined }))} sx={{ display: 'grid', gap: 2.5 }}>
+        {needsCurrent && (
+          <PasswordField name="currentPassword" label="Current password" value={values.currentPassword} onChange={onChange} onBlur={onBlur} error={errors.currentPassword} autoComplete="current-password" />
+        )}
         <PasswordField label="New password" value={values.password} onChange={onChange} onBlur={onBlur} error={errors.password} autoComplete="new-password" helperText={`At least ${PASSWORD_MIN_LENGTH} characters.`} />
         <PasswordField name="confirm" label="Confirm new password" value={values.confirm} onChange={onChange} onBlur={onBlur} error={errors.confirm} autoComplete="new-password" />
         <FormError message={error} />
