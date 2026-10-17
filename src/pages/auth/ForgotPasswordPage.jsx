@@ -9,7 +9,7 @@ import { useAsyncSubmit } from '../../hooks/useAsyncSubmit.js'
 import { useForm } from '../../hooks/useForm.js'
 import { usePageMeta } from '../../hooks/usePageMeta.js'
 import { requestPasswordReset } from '../../services/authService.js'
-import { isSupabaseConfigured } from '../../services/supabaseClient.js'
+import { isBackendConfigured } from '../../services/backend.js'
 import { ROUTES } from '../../constants/navigation.js'
 import { validateEmail } from '../../utils/validation.js'
 
@@ -42,7 +42,7 @@ export default function ForgotPasswordPage() {
       <Box component="form" noValidate onSubmit={handleSubmit(({ email }) => submit(email))} sx={{ display: 'grid', gap: 2.5 }}>
         <TextInput name="email" label="Email" type="email" autoComplete="email" value={values.email} onChange={onChange} onBlur={onBlur} error={errors.email} />
         <FormError message={error} />
-        <SubmitButton loading={status === 'loading'} loadingLabel="Sending…" disabled={!isSupabaseConfigured}>
+        <SubmitButton loading={status === 'loading'} loadingLabel="Sending…" disabled={!isBackendConfigured}>
           Send reset link
         </SubmitButton>
       </Box>

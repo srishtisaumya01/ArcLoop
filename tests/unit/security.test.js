@@ -24,12 +24,12 @@ describe('secrets hygiene', () => {
     expect(offenders).toEqual([])
   })
 
-  it('only reads VITE_SUPABASE_* environment variables from the browser bundle', () => {
+  it('only reads the documented VITE_ environment variables from the browser bundle', () => {
     const used = new Set()
     for (const f of sourceFiles) {
-      for (const m of readFileSync(f, 'utf8').matchAll(/import\.meta\.env\.([A-Z0-9_]+)/g)) used.add(m[1])
+      for (const m of readFileSync(f, 'utf8').matchAll(/import\.meta\.env\??\.([A-Z0-9_]+)/g)) used.add(m[1])
     }
-    const allowed = new Set(['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY', 'DEV'])
+    const allowed = new Set(['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY', 'VITE_BACKEND', 'VITE_API_BASE_URL', 'DEV'])
     expect([...used].filter((v) => !allowed.has(v))).toEqual([])
   })
 

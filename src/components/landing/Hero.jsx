@@ -2,7 +2,7 @@ import { Link as RouterLink } from 'react-router-dom'
 import { Box, Button, Container, Typography } from '@mui/material'
 import { ArrowRight } from 'lucide-react'
 import ProductPreview from './ProductPreview.jsx'
-import { isSupabaseConfigured } from '../../services/supabaseClient.js'
+import { isBackendConfigured } from '../../services/backend.js'
 import { ROUTES } from '../../constants/navigation.js'
 import { colors, contentWidths, gradients } from '../../theme/tokens.js'
 
@@ -51,7 +51,7 @@ export default function Hero() {
               </Button>
             </Box>
             <Typography variant="body2" sx={{ mt: 3, color: 'text.secondary' }}>
-              {isSupabaseConfigured ? 'Early build: expect rough edges while we add features.' : 'Early build: sign-up is not open yet.'}
+              {isBackendConfigured ? 'Early build: expect rough edges while we add features.' : 'Early build: sign-up is not open yet.'}
             </Typography>
           </Box>
           <ProductPreview />

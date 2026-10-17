@@ -9,7 +9,7 @@ import { useAsyncSubmit } from '../../hooks/useAsyncSubmit.js'
 import { useForm } from '../../hooks/useForm.js'
 import { usePageMeta } from '../../hooks/usePageMeta.js'
 import { signIn } from '../../services/authService.js'
-import { isSupabaseConfigured } from '../../services/supabaseClient.js'
+import { isBackendConfigured } from '../../services/backend.js'
 import { ROUTES } from '../../constants/navigation.js'
 import { validateEmail, validateRequired } from '../../utils/validation.js'
 
@@ -41,7 +41,7 @@ export default function LoginPage() {
           <Link component={RouterLink} to={ROUTES.forgotPassword} variant="body2" sx={{ display: 'inline-block', py: 1.25 }}>Forgot your password?</Link>
         </Box>
         <FormError message={error} />
-        <SubmitButton loading={status === 'loading' || status === 'success'} loadingLabel="Logging in…" disabled={!isSupabaseConfigured}>
+        <SubmitButton loading={status === 'loading' || status === 'success'} loadingLabel="Logging in…" disabled={!isBackendConfigured}>
           Log in
         </SubmitButton>
       </Box>

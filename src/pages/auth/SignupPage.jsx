@@ -10,7 +10,7 @@ import { useAsyncSubmit } from '../../hooks/useAsyncSubmit.js'
 import { useForm } from '../../hooks/useForm.js'
 import { usePageMeta } from '../../hooks/usePageMeta.js'
 import { signUp } from '../../services/authService.js'
-import { isSupabaseConfigured } from '../../services/supabaseClient.js'
+import { isBackendConfigured } from '../../services/backend.js'
 import { ROUTES } from '../../constants/navigation.js'
 import { PASSWORD_MIN_LENGTH, validateEmail, validateNewPassword } from '../../utils/validation.js'
 
@@ -71,7 +71,7 @@ export default function SignupPage() {
           {errors.agree && <FormHelperText id="field-agree-help">{errors.agree}</FormHelperText>}
         </FormControl>
         <FormError message={error} />
-        <SubmitButton loading={status === 'loading'} loadingLabel="Creating account…" disabled={!isSupabaseConfigured}>
+        <SubmitButton loading={status === 'loading'} loadingLabel="Creating account…" disabled={!isBackendConfigured}>
           Create account
         </SubmitButton>
       </Box>
