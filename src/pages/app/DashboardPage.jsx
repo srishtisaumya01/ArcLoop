@@ -1,6 +1,7 @@
 import { Link as RouterLink } from 'react-router-dom'
 import { Box, Button, Container, Skeleton } from '@mui/material'
 import { CalendarCheck, CalendarRange, CircleCheck, ListTodo, RefreshCw, TrendingUp, TriangleAlert } from 'lucide-react'
+import UserMenu from '../../components/app/UserMenu.jsx'
 import GreetingBand from '../../components/dashboard/GreetingBand.jsx'
 import TodayRing from '../../components/dashboard/TodayRing.jsx'
 import KpiTiles from '../../components/dashboard/KpiTiles.jsx'
@@ -62,6 +63,7 @@ export default function DashboardPage() {
         name={first}
         dateLabel={dateLabel}
         message={todayMessage(t, ready ? 'success' : status, today, brandNew)}
+        account={<UserMenu onDark />}
         ring={<TodayRing percent={today?.percent ?? 0} label={t('Today')} />}
       >
         <Button component={RouterLink} to={ROUTES.day} variant="contained" size="large" startIcon={<CalendarCheck size={18} aria-hidden="true" />} sx={onBrandButtons.solid}>

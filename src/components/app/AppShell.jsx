@@ -71,9 +71,6 @@ export default function AppShell() {
                 </IconButton>
               </Box>
             </Box>
-            <Box sx={{ display: { xs: 'none', md: 'flex' }, position: 'sticky', top: 0, zIndex: 1100, justifyContent: 'flex-end', alignItems: 'center', px: 4, py: 1, bgcolor: colors.bg, borderBottom: `1px solid ${colors.border}` }}>
-              <UserMenu />
-            </Box>
 
             <Box component="main" id="main" tabIndex={-1} sx={{ flex: 1, position: 'relative', outline: 'none', minWidth: 0 }}>
               <Suspense fallback={null}>
