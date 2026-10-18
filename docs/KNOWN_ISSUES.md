@@ -84,8 +84,8 @@ Backend: Django + SQLite (migrated from Supabase; see `docs/DJANGO_MIGRATION.md`
 - Goals with targets are not built: the spec calls them a separate later concept and there is no approved data model.
 
 ## Minimum Day
-- The limit of **3 tasks** is provisional (product decision pending). It is kept equal on the client and the server by a test.
-- Saving a minimum is one request per task (at most six): not atomic. A failure midway leaves a valid minimum, never more than three, and the person can choose again.
+- **Product decision still needed: the limit of 3 tasks is provisional and has not been confirmed.** Do not treat it as final. It is kept equal on the client and the server by a test, so changing it means changing `PLANNER_CONFIG.limits.minimumTasks` and `MAX_MINIMUM_TASKS` together.
+- Saving a minimum is one request per task (at most six): not atomic. A failure midway leaves a valid minimum, never more than three; the person is told it was only partly saved, sees what is saved, and can choose again safely (nothing is created, so nothing duplicates). Tested with a server that fails the second write.
 - Putting a set-aside task back, or undoing a move, does not re-choose it for the minimum; a moved task's copy is never flagged. This is deliberate (nothing is chosen on the person's behalf).
 - The Week and Progress screens, reminders and the calendar export do not know about the minimum.
 - Not tested: Firefox and Safari, real phones, a screen reader (the markup uses a labelled region, a fieldset-style group of checkboxes, `role="status"` for the message and `aria-live` for the count).

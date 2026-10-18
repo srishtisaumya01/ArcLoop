@@ -984,3 +984,50 @@ describe('setMinimum (Minimum Day)', () => {
     expect(plan.occurrences.find((o) => o.id === A).isMinimum).toBe(true)
   })
 })
+
+
+describe('setMinimum when a save fails part-way', () => {
+  const A = '11111111-1111-4111-8111-1111111111a1'
+  const B = '11111111-1111-4111-8111-1111111111b2'
+  const C = '11111111-1111-4111-8111-1111111111c3'
+  const rows = () => [occRow({ id: A, is_minimum: true }), occRow({ id: B }), occRow({ id: C })]
+  // A server that refuses the Nth write (1-based) to the occurrences table, then behaves normally.
+  const failing = (mem, nth) => {
+    let writes = 0
+    return (state) => {
+      if (state.table === 'task_occurrences' && state.op === 'update' && (writes += 1) === nth) return { error: { code: '57P01', message: 'connection lost' } }
+      return mem.handler(state)
+    }
+  }
+  const flagged = (mem) => mem.tables.task_occurrences.filter((o) => o.is_minimum).map((o) => o.id).sort()
+
+  it('says plainly that the minimum is only partly saved, and nothing else changed', async () => {
+    const mem = createMemoryDb({ occurrences: rows(), days: [dayRow()] })
+    const service = serviceFor(createFakeClient({ handler: failing(mem, 2) }))
+    const e = await rejection(service.setMinimum(TODAY, [B, C])) // clears A (ok), sets B (fails)
+    expect(e).toMatchObject({ details: { partial: 'minimum_partly_saved' } })
+    expect(e.message).toMatch(/only partly saved.*choose again.*No tasks were changed/)
+    expect(flagged(mem)).toEqual([]) // A was cleared, B and C were not set: a valid minimum, never over the limit
+    expect(mem.tables.task_occurrences).toHaveLength(3) // nothing created or removed
+  })
+
+  it('choosing again finishes the job without creating or duplicating anything', async () => {
+    const mem = createMemoryDb({ occurrences: rows(), days: [dayRow()] })
+    let service = serviceFor(createFakeClient({ handler: failing(mem, 2) }))
+    await rejection(service.setMinimum(TODAY, [B, C]))
+    service = serviceFor(createFakeClient({ handler: mem.handler })) // the connection is back
+    const result = await service.setMinimum(TODAY, [B, C])
+    expect(flagged(mem)).toEqual([B, C].sort())
+    expect(result).toMatchObject({ count: 2, status: 'open' })
+    expect(mem.tables.task_occurrences).toHaveLength(3)
+    await service.setMinimum(TODAY, [B, C]) // and doing it a third time changes nothing
+    expect(flagged(mem)).toEqual([B, C].sort())
+  })
+
+  it('a failure before anything was written passes the original error through and changes nothing', async () => {
+    const mem = createMemoryDb({ occurrences: rows(), days: [dayRow()] })
+    const e = await rejection(serviceFor(createFakeClient({ handler: failing(mem, 1) })).setMinimum(TODAY, [B]))
+    expect(e.details?.partial).toBeUndefined()
+    expect(flagged(mem)).toEqual([A])
+  })
+})

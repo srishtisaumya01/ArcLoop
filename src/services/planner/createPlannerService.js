@@ -520,7 +520,8 @@ export function createPlannerService({ getClient, clock = () => Date.now() }) {
     // Minimum Day: make the day's minimum exactly `ids` (1 to 3 active tasks on that day; an empty list clears it). Only a label
     // on tasks that already exist: completion, plan state, the baseline and every other task are left alone. Flags are
     // cleared before new ones are set, so the day never holds more than the limit part-way. One request per task (at most
-    // six); a failure midway leaves a valid minimum the person can fix by choosing again.
+    // six). A failure midway leaves a valid minimum (never over the limit) and says so (details.partial); choosing
+    // again is safe and creates nothing.
     async setMinimum(planDate, ids) {
       parseDate(planDate)
       const { client, ctx } = await session()
@@ -528,8 +529,25 @@ export function createPlannerService({ getClient, clock = () => Date.now() }) {
       if (!day) throw fail(SERVICE_ERROR.NOT_FOUND, 'Start this day before choosing your minimum.')
       const occurrences = await fetchOccurrencesOn(client, planDate)
       const { clear, set } = planMinimum({ planDate, occurrences, ids }, ctx)
-      for (const id of clear) await writeOccurrence(client, id, occurrenceMinimumRow(false))
-      for (const id of set) await writeOccurrence(client, id, occurrenceMinimumRow(true))
+      let written = 0
+      try {
+        for (const id of clear) {
+          await writeOccurrence(client, id, occurrenceMinimumRow(false))
+          written += 1
+        }
+        for (const id of set) {
+          await writeOccurrence(client, id, occurrenceMinimumRow(true))
+          written += 1
+        }
+      } catch (error) {
+        if (written === 0) throw error // nothing changed: the error already says why
+        // Part of the choice is saved. Choosing again is safe: it is worked out from what the day holds now, and it only sets
+        // a label, so no task is ever created or duplicated.
+        throw new PlannerServiceError(error.code ?? SERVICE_ERROR.UNKNOWN, 'Your minimum was only partly saved. The list shows what is saved; choose again to finish it. No tasks were changed.', {
+          details: { ...error.details, partial: 'minimum_partly_saved' },
+          cause: error,
+        })
+      }
       return summarizeMinimum(await fetchOccurrencesOn(client, planDate))
     },
 
