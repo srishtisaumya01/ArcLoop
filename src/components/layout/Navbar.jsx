@@ -1,13 +1,13 @@
 import { useState } from 'react'
-import { Link as RouterLink, NavLink, useNavigate } from 'react-router-dom'
+import { Link as RouterLink } from 'react-router-dom'
 import { AppBar, Box, Button, Container, Drawer, IconButton, Toolbar } from '@mui/material'
-import { Mail, Menu, X } from 'lucide-react'
+import { LayoutDashboard, Mail, Menu, X } from 'lucide-react'
 import Logo from '../ui/Logo.jsx'
 import LanguageToggle from './LanguageToggle.jsx'
 import ThemeToggle from './ThemeToggle.jsx'
 import { useAuth } from '../../hooks/useAuth.js'
 import { useI18n } from '../../hooks/useI18n.js'
-import { APP_LINKS, NAV_LINKS, ROUTES } from '../../constants/navigation.js'
+import { NAV_LINKS, ROUTES } from '../../constants/navigation.js'
 import { colors, contentWidths, navFontFamily, navGap, navHeight, shadows } from '../../theme/tokens.js'
 
 const navLinkSx = {
@@ -30,24 +30,10 @@ const navButtonSx = { whiteSpace: 'nowrap', fontFamily: navFontFamily, fontWeigh
 export default function Navbar() {
   const [open, setOpen] = useState(false)
   const close = () => setOpen(false)
-  const { status, signOut } = useAuth()
+  const { status } = useAuth()
   const { t } = useI18n()
-  const navigate = useNavigate()
   const signedIn = status === 'authenticated'
   const checking = status === 'loading' // avoid flashing the signed-out buttons at signed-in users
-  // Signed-in users get the app's own navigation; NavLink marks the current page with aria-current.
-  const links = signedIn ? APP_LINKS : NAV_LINKS
-  const linkComponent = signedIn ? NavLink : RouterLink
-
-  const handleLogout = async () => {
-    close()
-    try {
-      await signOut()
-    } catch {
-      // The local session is cleared even if the server call fails.
-    }
-    navigate(ROUTES.home)
-  }
 
   return (
     <AppBar position="sticky" color="transparent" elevation={0} sx={{ py: `${navGap}px`, boxShadow: 'none', pointerEvents: 'none' }}>
@@ -68,10 +54,10 @@ export default function Navbar() {
             <Logo size={46} />
           </Box>
 
-          <Box component="nav" aria-label={signedIn ? 'App' : 'Primary'} sx={{ display: { xs: 'none', nav: 'flex' }, gap: 0.5, ml: 2 }}>
-            {links.map((l) => (
-              <Box key={l.label} component={linkComponent} to={l.to} sx={navLinkSx}>
-                {signedIn ? l.label : t(l.label)}
+          <Box component="nav" aria-label="Primary" sx={{ display: { xs: 'none', nav: 'flex' }, gap: 0.5, ml: 2 }}>
+            {NAV_LINKS.map((l) => (
+              <Box key={l.label} component={RouterLink} to={l.to} sx={navLinkSx}>
+                {t(l.label)}
               </Box>
             ))}
           </Box>
@@ -80,14 +66,9 @@ export default function Navbar() {
 
           <Box sx={{ display: { xs: 'none', nav: 'flex' }, flexShrink: 0, gap: 1, alignItems: 'center' }}>
             {signedIn && (
-              <>
-                <Button color="primary" size="small" onClick={handleLogout} sx={navButtonSx}>
-                  {t('Log out')}
-                </Button>
-                <Button component={RouterLink} to={ROUTES.app} variant="contained" color="primary" size="small" sx={navButtonSx}>
-                  {t('Open app')}
-                </Button>
-              </>
+              <Button component={RouterLink} to={ROUTES.app} variant="contained" color="primary" size="small" startIcon={<LayoutDashboard size={16} aria-hidden="true" />} sx={navButtonSx}>
+                {t('Dashboard')}
+              </Button>
             )}
             {!signedIn && !checking && (
               <>
@@ -129,9 +110,9 @@ export default function Navbar() {
           </IconButton>
         </Box>
         <Box component="nav" aria-label="Mobile" sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-          {links.map((l) => (
-            <Box key={l.label} component={linkComponent} to={l.to} onClick={close} sx={{ ...navLinkSx, fontSize: '1.0625rem', px: 1.5, py: 1.5 }}>
-              {signedIn ? l.label : t(l.label)}
+          {NAV_LINKS.map((l) => (
+            <Box key={l.label} component={RouterLink} to={l.to} onClick={close} sx={{ ...navLinkSx, fontSize: '1.0625rem', px: 1.5, py: 1.5 }}>
+              {t(l.label)}
             </Box>
           ))}
         </Box>
@@ -141,14 +122,9 @@ export default function Navbar() {
         </Box>
         <Box sx={{ mt: 'auto', display: 'flex', flexDirection: 'column', gap: 1.5, pt: 4 }}>
           {signedIn && (
-            <>
-              <Button component={RouterLink} to={ROUTES.app} onClick={close} variant="contained" color="primary" size="large">
-                {t('Open app')}
-              </Button>
-              <Button onClick={handleLogout} variant="outlined" color="primary" size="large">
-                {t('Log out')}
-              </Button>
-            </>
+            <Button component={RouterLink} to={ROUTES.app} onClick={close} variant="contained" color="primary" size="large">
+              {t('Dashboard')}
+            </Button>
           )}
           {!signedIn && !checking && (
             <>

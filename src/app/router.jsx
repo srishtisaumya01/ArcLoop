@@ -1,5 +1,6 @@
 import { createBrowserRouter } from 'react-router-dom'
 import AppLayout from '../components/layout/AppLayout.jsx'
+import AppShell from '../components/app/AppShell.jsx'
 import PageLoader from '../components/common/PageLoader.jsx'
 import RouteError from '../components/common/RouteError.jsx'
 import { GuestOnly, RequireAuth } from '../components/auth/RouteGuards.jsx'
@@ -40,19 +41,32 @@ export const routes = [
               { path: ROUTES.forgotPassword, ...lazyPage(() => import('../pages/auth/ForgotPasswordPage.jsx')) },
             ],
           },
-          {
-            element: <RequireAuth />,
-            children: [
-              { path: ROUTES.app, ...lazyPage(() => import('../pages/app/AppHomePage.jsx')) },
-              { path: ROUTES.day, ...lazyPage(() => import('../pages/app/MyDayPage.jsx')) },
-              { path: ROUTES.settings, ...lazyPage(() => import('../pages/app/SettingsPage.jsx')) },
-              { path: ROUTES.progress, ...lazyPage(() => import('../pages/app/ProgressPage.jsx')) },
-              { path: ROUTES.recurring, ...lazyPage(() => import('../pages/app/RecurringTasksPage.jsx')) },
-              { path: ROUTES.reminders, ...lazyPage(() => import('../pages/app/ReminderSettingsPage.jsx')) },
-              { path: ROUTES.week, ...lazyPage(() => import('../pages/app/WeeklyOverviewPage.jsx')) },
-            ],
-          },
           { path: '*', element: <NotFoundPage /> },
+        ],
+      },
+    ],
+  },
+  {
+    // The signed-in app: its own layout (sidebar instead of the public navbar and footer).
+    element: <RequireAuth />,
+    HydrateFallback: PageLoader,
+    errorElement: <RouteError />,
+    children: [
+      {
+        element: <AppShell />,
+        errorElement: <RouteError />,
+        children: [
+          { path: ROUTES.app, ...lazyPage(() => import('../pages/app/DashboardPage.jsx')) },
+          { path: ROUTES.day, ...lazyPage(() => import('../pages/app/MyDayPage.jsx')) },
+          { path: ROUTES.attendance, ...lazyPage(() => import('../pages/app/AttendancePage.jsx')) },
+          { path: ROUTES.appChallenges, ...lazyPage(() => import('../pages/app/ChallengesHubPage.jsx')) },
+          { path: `${ROUTES.appChallenges}/:slug`, ...lazyPage(() => import('../pages/app/AppChallengePage.jsx')) },
+          { path: ROUTES.profile, ...lazyPage(() => import('../pages/app/ProfilePage.jsx')) },
+          { path: ROUTES.settings, ...lazyPage(() => import('../pages/app/SettingsPage.jsx')) },
+          { path: ROUTES.progress, ...lazyPage(() => import('../pages/app/ProgressPage.jsx')) },
+          { path: ROUTES.recurring, ...lazyPage(() => import('../pages/app/RecurringTasksPage.jsx')) },
+          { path: ROUTES.reminders, ...lazyPage(() => import('../pages/app/ReminderSettingsPage.jsx')) },
+          { path: ROUTES.week, ...lazyPage(() => import('../pages/app/WeeklyOverviewPage.jsx')) },
         ],
       },
     ],
@@ -60,3 +74,5 @@ export const routes = [
 ]
 
 export const router = createBrowserRouter(routes)
+
+

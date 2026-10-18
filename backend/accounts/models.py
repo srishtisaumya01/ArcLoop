@@ -1,4 +1,6 @@
 import hashlib
+from datetime import time
+import re
 import secrets
 from datetime import timedelta
 from functools import lru_cache
@@ -22,7 +24,14 @@ class Profile(models.Model):
     VISIBILITY = [('private', 'private'), ('public', 'public')]
 
     user = models.OneToOneField(settings.AUTH_USER_MODEL, primary_key=True, on_delete=models.CASCADE, related_name='profile')
+    # The sign-in name. Always stored lower-case, so "Ada" and "ada" are the same person.
+    username = models.CharField(max_length=30, unique=True, null=True, blank=True)
     display_name = models.CharField(max_length=60, null=True, blank=True)
+    # The person's working hours: check-in opens at the start, and the end is when they plan to check out.
+    shift_start = models.TimeField(default=time(9, 0))
+    shift_end = models.TimeField(default=time(18, 0))
+    # When the picture last changed (the picture itself is in ProfileAvatar, so ordinary profile reads never load its bytes).
+    avatar_updated_at = models.DateTimeField(null=True, blank=True)
     timezone = models.CharField(max_length=64, default='UTC')
     interests = models.JSONField(default=list)
     profile_visibility = models.CharField(max_length=10, choices=VISIBILITY, default='private')
@@ -37,10 +46,36 @@ class Profile(models.Model):
         ]
 
 
+class ProfileAvatar(models.Model):
+    """The profile picture: one small image per person, kept in the database (the host's disk is not permanent). It lives in
+    its own table so that reading a profile never drags the image along. Served by /profile/avatar/."""
+
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, primary_key=True, on_delete=models.CASCADE, related_name='avatar_image')
+    data = models.BinaryField()
+    content_type = models.CharField(max_length=20)
+
+
+USERNAME_PATTERN = re.compile(r'^[a-z0-9_.]{3,30}$')
+
+
+def free_username(seed):
+    """A valid, unused username derived from `seed` (an email or a name): used when nobody chose one."""
+    base = re.sub(r'[^a-z0-9_.]', '', seed.split('@')[0].lower())[:24] or 'user'
+    base = base.ljust(3, '0')
+    candidate, n = base, 1
+    while Profile.objects.filter(username=candidate).exists():
+        n += 1
+        candidate = f'{base[:26]}{n}'
+    return candidate
+
+
 @receiver(post_save, sender=settings.AUTH_USER_MODEL)
 def create_profile(sender, instance, created, **kwargs):
     if created:
-        Profile.objects.get_or_create(user=instance)
+        profile, made = Profile.objects.get_or_create(user=instance)
+        if made and not profile.username:
+            profile.username = free_username(instance.email or instance.username)
+            profile.save(update_fields=['username'])
 
 
 def hash_token(raw):
@@ -55,6 +90,15 @@ class AuthToken(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     last_used_at = models.DateTimeField(null=True, blank=True)
     expires_at = models.DateTimeField()
+
+    MAX_PER_USER = 5  # logins kept per person (devices); the oldest beyond this are dropped
+
+    @classmethod
+    def prune(cls, user):
+        """Deletes this person's expired logins and any beyond the newest few (room for the one about to be issued)."""
+        cls.objects.filter(user=user, expires_at__lte=timezone.now()).delete()
+        keep = list(cls.objects.filter(user=user).order_by('-created_at').values_list('pk', flat=True)[: cls.MAX_PER_USER - 1])
+        cls.objects.filter(user=user).exclude(pk__in=keep).delete()
 
     @classmethod
     def issue(cls, user):

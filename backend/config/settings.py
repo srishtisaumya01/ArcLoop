@@ -60,6 +60,8 @@ INSTALLED_APPS = [
     'accounts',
     'planner',
     'reminders',
+    'challenges',
+    'checkins',
 ]
 
 MIDDLEWARE = [

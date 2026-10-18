@@ -21,3 +21,13 @@ export function validateNewPassword(value) {
 export function validateRequired(value, message) {
   return (value ?? '').trim() ? undefined : message
 }
+
+// A username: 3 to 30 letters, numbers, dots or underscores (the server stores it in lower case).
+export const USERNAME_PATTERN = /^[A-Za-z0-9_.]{3,30}$/
+
+export function validateUsername(value) {
+  const v = (value ?? '').trim()
+  if (!v) return 'Choose a username.'
+  if (!USERNAME_PATTERN.test(v)) return 'Use 3 to 30 letters, numbers, dots or underscores.'
+  return undefined
+}

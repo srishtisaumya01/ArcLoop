@@ -4,13 +4,13 @@ import { LANGUAGES } from '../../i18n/languages.js'
 import { colors, navFontFamily } from '../../theme/tokens.js'
 
 // Both languages are always shown, each in its own script, with the current one highlighted: "English | हिन्दी".
-export default function LanguageToggle({ sx, fullWidth = false }) {
+export default function LanguageToggle({ sx, fullWidth = false, onDark = false }) {
   const { lang, setLang, t } = useI18n()
   return (
     <Box
       role="group"
       aria-label={t('Language')}
-      sx={{ display: fullWidth ? 'flex' : 'inline-flex', p: '3px', gap: '2px', borderRadius: '999px', border: `1px solid ${colors.border}`, bgcolor: colors.bg, ...sx }}
+      sx={{ display: fullWidth ? 'flex' : 'inline-flex', p: '3px', gap: '2px', borderRadius: '999px', border: `1px solid ${onDark ? 'rgba(255, 255, 255, 0.35)' : colors.border}`, bgcolor: onDark ? 'rgba(255, 255, 255, 0.08)' : colors.bg, ...sx }}
     >
       {LANGUAGES.map((l) => {
         const selected = l.code === lang
@@ -29,10 +29,10 @@ export default function LanguageToggle({ sx, fullWidth = false }) {
               fontWeight: 600,
               fontSize: '0.875rem',
               whiteSpace: 'nowrap',
-              color: selected ? colors.onInk : colors.textSecondary,
-              bgcolor: selected ? colors.ink : 'transparent',
+              color: onDark ? (selected ? colors.navy900 : 'rgba(255, 255, 255, 0.86)') : selected ? colors.onInk : colors.textSecondary,
+              bgcolor: selected ? (onDark ? '#FFFFFF' : colors.ink) : 'transparent',
               transition: 'background-color 160ms ease, color 160ms ease',
-              '&:hover': { color: selected ? colors.onInk : colors.textPrimary },
+              '&:hover': { color: onDark ? (selected ? colors.navy900 : '#FFFFFF') : selected ? colors.onInk : colors.textPrimary },
             }}
           >
             {l.label}

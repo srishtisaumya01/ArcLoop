@@ -15,7 +15,8 @@ export class AuthServiceError extends Error {
 }
 
 const MESSAGES = {
-  invalid_credentials: 'Email or password is incorrect.',
+  invalid_credentials: 'Username or password is incorrect.',
+  username_taken: 'That username is taken. Try another.',
   rate_limited: 'Too many attempts. Please wait a moment and try again.',
   weak_password: 'That password is too easy to guess. Try a longer or less common one.',
   email_taken: 'An account may already exist for that email. Try logging in or resetting your password.',
@@ -28,6 +29,7 @@ function toServiceError(error, fallback) {
   if (error instanceof ApiError) {
     if (error.status === 0) return new AuthServiceError('network', 'We could not reach the server. Check your connection and try again.')
     if (error.code === 'not_configured') return new AuthServiceError('not_configured', 'Authentication is not available right now.')
+    if (error.fields?.username) return new AuthServiceError(error.code === 'username_taken' ? 'username_taken' : 'invalid_username', error.fields.username)
     if (error.fields?.current_password) return new AuthServiceError('invalid_credentials', 'Your current password is incorrect.')
     if (error.code === 'validation_error' && error.fields?.password) return new AuthServiceError('weak_password', MESSAGES.weak_password)
     if (MESSAGES[error.code]) return new AuthServiceError(error.code, MESSAGES[error.code])
@@ -42,18 +44,18 @@ const sessionOf = () => api.getSession() // { user } or null
 const SESSION_TRANSPORT = 'cookie'
 
 // Resolves { needsConfirmation }. The API signs a new account in, so this is always false.
-export async function signUp({ email, password }) {
+export async function signUp({ username, email, password }) {
   try {
-    api.setSession(await api.post('/auth/register/', { email: email.trim(), password, transport: SESSION_TRANSPORT }))
+    api.setSession(await api.post('/auth/register/', { username: username.trim(), email: email.trim(), password, transport: SESSION_TRANSPORT }))
   } catch (error) {
     throw toServiceError(error, 'We could not create your account. Please try again.')
   }
   return { needsConfirmation: false }
 }
 
-export async function signIn({ email, password }) {
+export async function signIn({ username, password }) {
   try {
-    api.setSession(await api.post('/auth/login/', { email: email.trim(), password, transport: SESSION_TRANSPORT }))
+    api.setSession(await api.post('/auth/login/', { username: username.trim(), password, transport: SESSION_TRANSPORT }))
   } catch (error) {
     throw toServiceError(error, 'We could not log you in. Please try again.')
   }
@@ -88,6 +90,18 @@ export async function updatePassword(password, { reset, currentPassword } = {}) 
     else await api.post('/auth/password/change/', { current_password: currentPassword ?? '', password })
   } catch (error) {
     throw toServiceError(error, 'We could not update your password. Please try again.')
+  }
+}
+
+// Changes the sign-in email. The server needs the password again. Updates who the app thinks is signed in.
+export async function changeEmail({ email, password }) {
+  try {
+    const user = await api.post('/auth/email/change/', { email: email.trim(), password })
+    api.setSession({ user })
+  } catch (error) {
+    if (error instanceof ApiError && error.fields?.password) throw new AuthServiceError('invalid_credentials', 'Your password is incorrect.')
+    if (error instanceof ApiError && error.fields?.email) throw new AuthServiceError('email_taken', 'That email is already used by another account.')
+    throw toServiceError(error, 'We could not change your email. Please try again.')
   }
 }
 
