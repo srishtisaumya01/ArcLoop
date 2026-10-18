@@ -62,7 +62,7 @@ export default function DashboardPage() {
         {/* On wide screens the quote sits at the very right edge of the page, level with the buttons. */}
         <QuoteCard now={now} sx={{ display: { xs: 'none', lg: 'block' }, position: 'absolute', top: 40, right: 32, width: 440, flex: 'none', ml: 0, zIndex: 1 }} />
       <Container sx={{ maxWidth: `${contentWidths.page}px !important`, py: { xs: 3, md: 5 }, display: 'grid', gap: 3 }}>
-        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'stretch' }}>
+        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'stretch', minHeight: { lg: 124 } }}>
           <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', alignItems: 'flex-start' }}>
         <Button component={RouterLink} to={ROUTES.day} variant="contained" color="primary" startIcon={<CalendarCheck size={18} aria-hidden="true" />}>
           {t('Open My Day')}
