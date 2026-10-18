@@ -1,9 +1,9 @@
-# Render Blueprint: the static app and the Django API on Render, data in Neon Postgres.
-# The app proxies /api/* to the API so the browser sees one origin; the HttpOnly session cookie needs that.
-# If Render gives either service a different hostname than below, update every URL that names it.
+# Render Blueprint for the Django API (https://arcloop.onrender.com); data in Neon Postgres.
+# The app is on Vercel (https://arc-loop.vercel.app) and proxies /api/* here (vercel.json), so the browser sees one
+# origin; the HttpOnly session cookie needs that. If either hostname changes, update every URL that names it.
 services:
   - type: web
-    name: arcloop-api
+    name: arcloop
     runtime: python
     region: singapore  # same region as the Neon database (ap-southeast-1)
     plan: free
@@ -23,24 +23,8 @@ services:
       - key: DJANGO_BEHIND_PROXY
         value: "true"
       - key: DJANGO_ALLOWED_HOSTS
-        value: arcloop-api.onrender.com,arcloop.onrender.com
+        value: arcloop.onrender.com,arc-loop.vercel.app
       - key: FRONTEND_URL
-        value: https://arcloop.onrender.com
+        value: https://arc-loop.vercel.app
       - key: DJANGO_CSRF_TRUSTED_ORIGINS
-        value: https://arcloop.onrender.com
-
-  - type: web
-    name: arcloop
-    runtime: static
-    buildCommand: npm ci && npm run build
-    staticPublishPath: dist
-    envVars:
-      - key: NODE_VERSION
-        value: "22"
-    routes:
-      - type: rewrite
-        source: /api/*
-        destination: https://arcloop-api.onrender.com/api/*
-      - type: rewrite
-        source: /*
-        destination: /index.html
+        value: https://arc-loop.vercel.app
