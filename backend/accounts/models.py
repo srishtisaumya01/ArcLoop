@@ -1,4 +1,5 @@
 import hashlib
+import re
 import secrets
 from datetime import timedelta
 from functools import lru_cache
@@ -22,7 +23,13 @@ class Profile(models.Model):
     VISIBILITY = [('private', 'private'), ('public', 'public')]
 
     user = models.OneToOneField(settings.AUTH_USER_MODEL, primary_key=True, on_delete=models.CASCADE, related_name='profile')
+    # The sign-in name. Always stored lower-case, so "Ada" and "ada" are the same person.
+    username = models.CharField(max_length=30, unique=True, null=True, blank=True)
     display_name = models.CharField(max_length=60, null=True, blank=True)
+    # A small profile picture, kept in the database (the host's disk is not permanent). Served by /profile/avatar/.
+    avatar = models.BinaryField(null=True, blank=True, editable=False)
+    avatar_type = models.CharField(max_length=20, blank=True, default='')
+    avatar_updated_at = models.DateTimeField(null=True, blank=True)
     timezone = models.CharField(max_length=64, default='UTC')
     interests = models.JSONField(default=list)
     profile_visibility = models.CharField(max_length=10, choices=VISIBILITY, default='private')
@@ -37,10 +44,27 @@ class Profile(models.Model):
         ]
 
 
+USERNAME_PATTERN = re.compile(r'^[a-z0-9_.]{3,30}$')
+
+
+def free_username(seed):
+    """A valid, unused username derived from `seed` (an email or a name): used when nobody chose one."""
+    base = re.sub(r'[^a-z0-9_.]', '', seed.split('@')[0].lower())[:24] or 'user'
+    base = base.ljust(3, '0')
+    candidate, n = base, 1
+    while Profile.objects.filter(username=candidate).exists():
+        n += 1
+        candidate = f'{base[:26]}{n}'
+    return candidate
+
+
 @receiver(post_save, sender=settings.AUTH_USER_MODEL)
 def create_profile(sender, instance, created, **kwargs):
     if created:
-        Profile.objects.get_or_create(user=instance)
+        profile, made = Profile.objects.get_or_create(user=instance)
+        if made and not profile.username:
+            profile.username = free_username(instance.email or instance.username)
+            profile.save(update_fields=['username'])
 
 
 def hash_token(raw):

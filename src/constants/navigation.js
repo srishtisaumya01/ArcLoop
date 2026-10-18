@@ -16,6 +16,7 @@ export const ROUTES = {
   recurring: '/app/recurring',
   progress: '/app/progress',
   settings: '/app/settings',
+  profile: '/app/profile',
   privacy: '/privacy',
   terms: '/terms',
   contact: '/contact',
@@ -31,13 +32,21 @@ export const NAV_LINKS = [
   { label: 'FAQ', to: ROUTES.faq },
 ]
 
-// Navigation for signed-in users (replaces the public links in the navbar while signed in).
-export const APP_LINKS = [
-  { label: 'My Day', to: ROUTES.day },
-  { label: 'Week', to: ROUTES.week },
-  { label: 'Recurring Tasks', to: ROUTES.recurring },
-  { label: 'Reminders', to: ROUTES.reminders },
-  { label: 'Settings', to: ROUTES.settings },
+// The signed-in sidebar. `icon` names an icon in components/app/Sidebar.jsx; `end` matches only the exact path.
+export const APP_NAV = [
+  { label: 'Dashboard', to: ROUTES.app, icon: 'dashboard', end: true },
+  { label: 'My Day', to: ROUTES.day, icon: 'day' },
+  { label: 'Week', to: ROUTES.week, icon: 'week' },
+  { label: 'Progress', to: ROUTES.progress, icon: 'progress' },
+  { label: 'Recurring Tasks', to: ROUTES.recurring, icon: 'recurring' },
+  { label: 'Reminders', to: ROUTES.reminders, icon: 'reminders' },
+  { label: 'Settings', to: ROUTES.settings, icon: 'settings' },
+]
+
+// Public pages worth a shortcut from the sidebar.
+export const EXPLORE_NAV = [
+  { label: 'Challenges', to: ROUTES.challenges, icon: 'challenges' },
+  { label: 'Participants', to: ROUTES.participants, icon: 'participants' },
 ]
 
 export const FOOTER_GROUPS = [

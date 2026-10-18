@@ -19,7 +19,7 @@ vi.mock('../../src/services/authService.js', () => ({
   updatePassword: vi.fn(),
   onAuthStateChange: () => () => {},
 }))
-vi.mock('../../src/services/profileService.js', () => ({ getMyProfile: vi.fn() }))
+vi.mock('../../src/services/profileService.js', () => ({ getMyProfile: vi.fn().mockResolvedValue(null) }))
 vi.mock('../../src/services/planner/index.js', () => ({ plannerService: { getWeekSummary: h.getWeekSummary } }))
 
 const rec = (planDate, occs, dayMode = 'normal') => ({ day: makeDay({ planDate, dayMode }), occurrences: occs.map((o) => makeOcc({ planDate, ...o })) })

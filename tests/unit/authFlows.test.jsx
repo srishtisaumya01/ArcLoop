@@ -3,6 +3,9 @@ import { act, cleanup, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderAt } from './renderRoute.jsx'
 
+// The dashboard is headed by a greeting for the time of day ("Good morning, Ada"), so tests match the pattern.
+const DASHBOARD_GREETING = /^Good (morning|afternoon|evening), /
+
 // The backend counts as configured here, but every network-facing service is mocked.
 // These tests check the app's behaviour around the services (states, guards,
 // redirects), not the server.
@@ -29,6 +32,15 @@ vi.mock('../../src/services/authService.js', () => ({
   onAuthStateChange: (cb) => {
     h.authCallback = cb
     return h.unsubscribe
+  },
+}))
+// The dashboard behind /app reads the planner; an empty plan is enough for these tests.
+vi.mock('../../src/services/planner/index.js', () => ({
+  plannerService: {
+    getToday: async () => ({ today: '2026-10-18' }),
+    getWeekSummary: async ({ weekOf }) => ({ weekOf, days: [], tasksRemaining: 0, daysWithProgress: 0, averagePercent: 0, eligible: false }),
+    getHabitProgress: async () => ({ habits: [] }),
+    getDayPlan: async () => ({ tasks: [] }),
   },
 }))
 vi.mock('../../src/services/profileService.js', () => ({ getMyProfile: h.getMyProfile }))
@@ -70,8 +82,8 @@ describe('Login', () => {
     // The provider, not the form, decides the user is signed in.
     expect(screen.queryByRole('heading', { name: /welcome to arcloop/i })).not.toBeInTheDocument()
     await act(async () => h.authCallback('SIGNED_IN', session))
-    expect(await screen.findByRole('heading', { level: 1, name: 'Welcome to Arcloop' })).toBeInTheDocument()
-    expect(screen.getByText('me@example.com')).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { level: 1, name: DASHBOARD_GREETING })).toBeInTheDocument()
+    expect(screen.getAllByText('me@example.com').length).toBeGreaterThan(0)
   })
 
   it('shows the error from a failed login and stays on the page', async () => {
@@ -116,7 +128,7 @@ describe('Login', () => {
     await fillLogin(user)
     await user.click(screen.getByRole('button', { name: 'Log in' }))
     await act(async () => h.authCallback('SIGNED_IN', session))
-    expect(await screen.findByRole('heading', { level: 1, name: 'Welcome to Arcloop' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { level: 1, name: DASHBOARD_GREETING })).toBeInTheDocument()
     expect(router.state.location.pathname).toBe('/app')
   })
 })
@@ -236,29 +248,29 @@ describe('Session handling and route protection', () => {
   it('restores an existing session on load and allows /app', async () => {
     h.getSession.mockResolvedValue(session)
     renderAt('/app')
-    expect(await screen.findByRole('heading', { level: 1, name: 'Welcome to Arcloop' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { level: 1, name: DASHBOARD_GREETING })).toBeInTheDocument()
   })
 
   it('shows a loader (not the login page) while the session is being restored', async () => {
     const pending = deferred()
     h.getSession.mockReturnValue(pending.promise)
     renderAt('/app')
-    expect(await screen.findByRole('status', { name: 'Loading page' })).toBeInTheDocument()
+    expect(await screen.findByRole('status', { name: 'Loading page' })).toBeTruthy()
     expect(screen.queryByRole('heading', { name: 'Welcome back' })).not.toBeInTheDocument()
     await act(async () => pending.resolve(session))
-    expect(await screen.findByRole('heading', { level: 1, name: 'Welcome to Arcloop' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { level: 1, name: DASHBOARD_GREETING })).toBeInTheDocument()
   })
 
   it('redirects signed-in users away from the login page', async () => {
     h.getSession.mockResolvedValue(session)
     renderAt('/login')
-    expect(await screen.findByRole('heading', { level: 1, name: 'Welcome to Arcloop' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { level: 1, name: DASHBOARD_GREETING })).toBeInTheDocument()
   })
 
   it('reacts to the session ending elsewhere (sign-out or expiry)', async () => {
     h.getSession.mockResolvedValue(session)
     renderAt('/app')
-    await screen.findByRole('heading', { level: 1, name: 'Welcome to Arcloop' })
+    await screen.findByRole('heading', { level: 1, name: DASHBOARD_GREETING })
     await act(async () => h.authCallback('SIGNED_OUT', null))
     expect(await screen.findByRole('heading', { level: 1, name: 'Welcome back' })).toBeInTheDocument()
   })
@@ -282,7 +294,7 @@ describe('Session handling and route protection', () => {
     h.getSession.mockResolvedValue(session)
     h.signOut.mockResolvedValue(undefined)
     const { router } = renderAt('/app')
-    await screen.findByRole('heading', { level: 1, name: 'Welcome to Arcloop' })
+    await screen.findByRole('heading', { level: 1, name: DASHBOARD_GREETING })
     await user.click(screen.getAllByRole('button', { name: 'Log out' })[0])
     expect(h.signOut).toHaveBeenCalledTimes(1)
     expect(router.state.location.pathname).toBe('/')
@@ -293,7 +305,7 @@ describe('Session handling and route protection', () => {
     h.getSession.mockResolvedValue(session)
     h.getMyProfile.mockRejectedValueOnce(new Error('rls'))
     renderAt('/app')
-    expect(await screen.findByRole('alert')).toHaveTextContent(/couldn’t load your profile/i)
+    expect(await screen.findByText(/couldn’t load your profile/i)).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: /try again/i }))
     expect(await screen.findByText('Not set yet')).toBeInTheDocument()
   })

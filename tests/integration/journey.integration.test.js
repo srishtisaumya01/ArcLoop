@@ -69,7 +69,7 @@ describe('the core journey', () => {
     const user = setupUser()
     const session = { user: { id: userId, email: 'asha@example.com' } }
 
-    // 1. Signed out, the app asks for sign-in; signing in lands on the account page.
+    // 1. Signed out, the app asks for sign-in; signing in lands on the dashboard.
     const first = renderAt('/app')
     expect(await screen.findByRole('heading', { level: 1, name: 'Welcome back' })).toBeTruthy()
     await user.type(screen.getByLabelText('Email'), 'asha@example.com')
@@ -77,7 +77,7 @@ describe('the core journey', () => {
     await user.click(screen.getByRole('button', { name: 'Log in' }))
     holder.session = session
     await act(async () => holder.authCallback('SIGNED_IN', session))
-    expect(await screen.findByRole('heading', { level: 1, name: 'Welcome to Arcloop' })).toBeTruthy()
+    expect(await screen.findByRole('heading', { level: 1, name: /^Good (morning|afternoon|evening)/ })).toBeTruthy()
 
     // 2. Create and edit a plan in My Day.
     await user.click(nav('My Day'))
