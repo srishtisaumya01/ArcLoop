@@ -3,12 +3,19 @@ import { apiAs, signUpViaForm, uniqueEmail } from './support/helpers.js'
 
 // One complete planner journey and the privacy boundary, through the real UI and the real API.
 
+// Quick add takes a title only; a category is set afterwards in Edit.
 async function addTask(page, title, category) {
   const add = page.getByRole('form', { name: 'Add a task' })
   await add.getByLabel(/^Task/).fill(title)
-  if (category) await add.getByLabel(/Category/).fill(category)
   await add.getByRole('button', { name: 'Add task' }).click()
-  await expect(page.getByRole('button', { name: `Done: ${title}`, exact: true })).toBeVisible()
+  await expect(page.getByRole('checkbox', { name: `Done: ${title}`, exact: true })).toBeVisible()
+  if (category) {
+    await page.getByRole('button', { name: `Edit ${title}` }).click()
+    const edit = page.getByRole('form', { name: `Edit ${title}` })
+    await edit.getByLabel(/Category/).fill(category)
+    await edit.getByRole('button', { name: 'Save changes' }).click()
+    await expect(edit).toHaveCount(0)
+  }
 }
 
 test('plan a day, complete a task, reload, and see it in the week and progress screens', async ({ page }) => {
@@ -17,14 +24,14 @@ test('plan a day, complete a task, reload, and see it in the week and progress s
   await addTask(page, 'Morning walk', 'Health')
   await addTask(page, 'Read twenty minutes')
 
-  await page.getByRole('button', { name: 'Done: Morning walk', exact: true }).click()
-  await expect(page.getByRole('button', { name: 'Not done: Morning walk', exact: true })).toBeVisible()
+  await page.getByRole('checkbox', { name: 'Done: Morning walk', exact: true }).click()
+  await expect(page.getByRole('checkbox', { name: 'Done: Morning walk', exact: true })).toBeChecked()
   await expect(page.getByText('50%', { exact: false }).first()).toBeVisible()
 
   // Persisted by the server: a fresh page load shows the same state.
   await page.reload()
-  await expect(page.getByRole('button', { name: 'Not done: Morning walk', exact: true })).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Done: Read twenty minutes', exact: true })).toBeVisible()
+  await expect(page.getByRole('checkbox', { name: 'Done: Morning walk', exact: true })).toBeChecked()
+  await expect(page.getByRole('checkbox', { name: 'Done: Read twenty minutes', exact: true })).not.toBeChecked()
 
   await page.goto('/app/week')
   await expect(page.getByRole('heading', { level: 1, name: 'Your week' })).toBeVisible()
@@ -35,16 +42,19 @@ test('plan a day, complete a task, reload, and see it in the week and progress s
 
 test('a repeating task is created, listed, edited and ended', async ({ page }) => {
   await signUpViaForm(page, uniqueEmail('recur'))
+  // Repeating tasks are made on the Recurring tasks page; My Day's quick add has no repeat options.
   await page.goto('/app/day')
-  const add = page.getByRole('form', { name: 'Add a task' })
-  await add.getByLabel(/^Task/).fill('Stretch')
-  await add.getByLabel('Repeats').click()
-  await page.getByRole('option', { name: 'Every day' }).click()
-  await add.getByRole('button', { name: 'Add task' }).click()
-  await expect(page.getByRole('button', { name: 'Done: Stretch', exact: true })).toBeVisible()
-
+  await expect(page.getByRole('form', { name: 'Add a task' }).getByLabel('Repeats')).toHaveCount(0)
   await page.goto('/app/recurring')
   await expect(page.getByRole('heading', { level: 1, name: 'Recurring tasks' })).toBeVisible()
+  await expect(page.getByText('No recurring tasks yet')).toBeVisible()
+  const add = page.getByRole('form', { name: 'New recurring task' })
+  await add.getByLabel(/^Task/).fill('Stretch') // repeats every day by default
+  await add.getByRole('button', { name: 'Add recurring task' }).click()
+  await expect(page.getByRole('region', { name: 'Active' })).toContainText('Stretch')
+  await page.goto('/app/day')
+  await expect(page.getByRole('checkbox', { name: 'Done: Stretch', exact: true })).toBeVisible() // it comes back on My Day
+  await page.goto('/app/recurring')
   await expect(page.getByRole('region', { name: 'Active' })).toContainText('Stretch')
   await page.getByRole('button', { name: 'End Stretch' }).click()
   await page.getByRole('button', { name: 'End this task' }).click()
@@ -54,7 +64,7 @@ test('a repeating task is created, listed, edited and ended', async ({ page }) =
   await page.reload()
   await expect(page.getByRole('region', { name: 'Ended' })).toContainText('Stretch')
   await page.goto('/app/day')
-  await expect(page.getByRole('button', { name: 'Done: Stretch', exact: true })).toBeVisible()
+  await expect(page.getByRole('checkbox', { name: 'Done: Stretch', exact: true })).toBeVisible()
 })
 
 test('settings and reminders are saved by the server and survive a reload', async ({ page }) => {
@@ -104,7 +114,7 @@ test('one user can never read or change another user’s planner data', async ({
 
   // Nothing happened to the owner's data.
   await a.reload()
-  await expect(a.getByRole('button', { name: 'Done: Private diary entry', exact: true })).toBeVisible()
+  await expect(a.getByRole('checkbox', { name: 'Done: Private diary entry', exact: true })).toBeVisible()
   const stillThere = await apiA.get(`/task-occurrences/?id=${id}`)
   expect(stillThere.body.results[0].completion).toBe(0)
 })

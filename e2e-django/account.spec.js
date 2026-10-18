@@ -11,7 +11,7 @@ test('deleting an account needs the password and DELETE, removes everything, and
   const add = other.getByRole('form', { name: 'Add a task' })
   await add.getByLabel(/^Task/).fill('Bystander task')
   await add.getByRole('button', { name: 'Add task' }).click()
-  await expect(other.getByRole('button', { name: 'Done: Bystander task', exact: true })).toBeVisible()
+  await expect(other.getByRole('checkbox', { name: 'Done: Bystander task', exact: true })).toBeVisible()
 
   const email = uniqueEmail('doomed')
   await signUpViaForm(page, email)
@@ -19,7 +19,7 @@ test('deleting an account needs the password and DELETE, removes everything, and
   const form = page.getByRole('form', { name: 'Add a task' })
   await form.getByLabel(/^Task/).fill('Soon gone')
   await form.getByRole('button', { name: 'Add task' }).click()
-  await expect(page.getByRole('button', { name: 'Done: Soon gone', exact: true })).toBeVisible()
+  await expect(page.getByRole('checkbox', { name: 'Done: Soon gone', exact: true })).toBeVisible()
   // A copy of this session's cookies, as someone who had stolen them would hold: it must be useless once the account is gone.
   const stolen = await browser.newContext({ baseURL, storageState: await context.storageState() })
 
@@ -57,5 +57,5 @@ test('deleting an account needs the password and DELETE, removes everything, and
 
   // Another user's data is untouched.
   await other.reload()
-  await expect(other.getByRole('button', { name: 'Done: Bystander task', exact: true })).toBeVisible()
+  await expect(other.getByRole('checkbox', { name: 'Done: Bystander task', exact: true })).toBeVisible()
 })

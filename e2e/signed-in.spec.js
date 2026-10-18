@@ -41,9 +41,15 @@ test.describe('My Day', () => {
 
   test('completing and partly completing tasks updates progress, is saved, and survives a reload', async ({ page, api }) => {
     await page.goto('/app/day')
-    await page.getByRole('button', { name: 'Done: Morning walk', exact: true }).click()
+    await page.getByRole('checkbox', { name: 'Done: Morning walk', exact: true }).click()
+    await expect(page.getByRole('checkbox', { name: 'Done: Morning walk', exact: true })).toBeChecked()
     await expect(page.getByText('25% of today’s plan')).toBeVisible()
-    await page.getByRole('button', { name: 'Partly: Read for twenty minutes', exact: true }).click()
+    // Partly done is chosen in Edit, and shows as a dash on the row.
+    await page.getByRole('button', { name: 'Edit Read for twenty minutes' }).click()
+    const edit = page.getByRole('form', { name: 'Edit Read for twenty minutes' })
+    await edit.getByRole('button', { name: 'Partly' }).click()
+    await edit.getByRole('button', { name: 'Save changes' }).click()
+    await expect(page.getByRole('checkbox', { name: 'Done: Read for twenty minutes', exact: true })).toHaveAttribute('data-indeterminate', 'true')
     await expect(page.getByText('38% of today’s plan')).toBeVisible()
     await expect(page.getByText(/1 of 4 done, 1 partly done/)).toBeVisible()
     expect(api.find('task_occurrences', (o) => o.title === 'Morning walk' && o.plan_date === TODAY)).toMatchObject({ completion: 1 })
@@ -86,7 +92,19 @@ test.describe('My Day', () => {
     expect(api.rows('task_occurrences').filter((o) => o.plan_date === TODAY && o.plan_state === 'excluded')).toHaveLength(3)
     expect(api.find('task_occurrences', (o) => o.title === 'Call the dentist')).toMatchObject({ plan_state: 'active' })
     await page.getByRole('button', { name: 'Put back Morning walk' }).click()
-    await expect(page.getByRole('button', { name: 'Done: Morning walk', exact: true })).toBeVisible()
+    await expect(page.getByRole('checkbox', { name: 'Done: Morning walk', exact: true })).toBeVisible()
+  })
+
+  test('each task has one checkbox that is a comfortable tap target (at least 44 px, spec DP-06)', async ({ page }) => {
+    await page.goto('/app/day')
+    const boxes = page.getByRole('checkbox', { name: /^Done: / })
+    await expect(boxes.first()).toBeVisible()
+    for (const box of await boxes.all()) {
+      const size = await box.evaluate((input) => input.closest('.MuiCheckbox-root').getBoundingClientRect().toJSON())
+      expect(size.width).toBeGreaterThanOrEqual(44)
+      expect(size.height).toBeGreaterThanOrEqual(44)
+    }
+    await expect(page.getByRole('button', { name: /^(Not done|Partly|Done)(:|$)/ })).toHaveCount(0) // no three-way buttons on the rows
   })
 
   test('adding a task shows the planner’s validation, then adds it', async ({ page, api }) => {
@@ -95,10 +113,18 @@ test.describe('My Day', () => {
     await add.getByRole('button', { name: 'Add task' }).click()
     await expect(add.getByText('Give the task a title.')).toBeVisible()
     await add.getByLabel(/^Task/).fill('Water the plants')
-    await add.getByLabel(/Category/).fill('Home')
-    await add.getByRole('button', { name: 'Add task' }).click()
-    await expect(page.getByRole('button', { name: 'Done: Water the plants', exact: true })).toBeVisible()
-    expect(api.find('task_templates', (t) => t.title === 'Water the plants')).toMatchObject({ recurrence: 'once', category: 'Home', starts_on: TODAY, ends_on: TODAY })
+    await add.getByLabel(/^Task/).press('Enter') // like a to-do list: Enter adds it
+    await expect(page.getByRole('checkbox', { name: 'Done: Water the plants', exact: true })).toBeVisible()
+    await expect(add.getByLabel(/^Task/)).toHaveValue('')
+    expect(api.find('task_templates', (t) => t.title === 'Water the plants')).toMatchObject({ recurrence: 'once', category: null, starts_on: TODAY, ends_on: TODAY })
+    // The details a quick add leaves out are set afterwards, in Edit.
+    await page.getByRole('button', { name: 'Edit Water the plants' }).click()
+    const edit = page.getByRole('form', { name: 'Edit Water the plants' })
+    await edit.getByLabel(/Category/).fill('Home')
+    await edit.getByRole('button', { name: 'Save changes' }).click()
+    await expect(page.getByText(/^Home/)).toBeVisible() // the row shows the category (a one-off task also says "repeats": an existing quirk, not part of this change)
+    // Quick add has only a title: no time, estimate, category, description, priority or repeat fields.
+    for (const label of [/Start time/, /Estimate/, /Category/, /Description/, 'Repeats']) await expect(add.getByLabel(label)).toHaveCount(0)
   })
 })
 

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material'
+import { Box, Button, Checkbox, Chip, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material'
 import { colors, radii } from '../../theme/tokens.js'
 import TaskReminderControl from '../reminders/TaskReminderControl.jsx'
 import MoveTaskForm from './MoveTaskForm.jsx'
@@ -22,12 +22,14 @@ export default function TaskRow({ task, canRecord, canEdit, busy, onCompletion, 
   const [message, setMessage] = useState('')
   const [confirming, setConfirming] = useState(false)
   const [moving, setMoving] = useState(false)
+  const [progress, setProgress] = useState(0) // the progress chosen in the edit form
   const excluded = task.planState === 'excluded'
   const meta = [timeRange(task), task.estimatedMinutes ? formatMinutes(task.estimatedMinutes) : null, task.category].filter(Boolean).join(' · ')
   const repeats = Boolean(task.templateId) && !excluded
 
   const startEdit = () => {
     setValues(taskToValues(task))
+    setProgress(task.completion)
     setErrors({})
     setMessage('')
     setEditing(true)
@@ -36,10 +38,25 @@ export default function TaskRow({ task, canRecord, canEdit, busy, onCompletion, 
     e.preventDefault()
     setErrors({})
     setMessage('')
-    const { ok, error } = await onEdit(task, toTaskInput(values))
-    if (ok) setEditing(false)
-    else if (error?.details?.fields) setErrors(error.details.fields)
-    else setMessage(error?.message ?? 'That didn’t save. Please try again.')
+    // Only what changed is saved: an unchanged detail form must not mark the task as customised, and progress goes through
+    // the same completion path as the checkbox.
+    const input = toTaskInput(values)
+    if (JSON.stringify(input) !== JSON.stringify(toTaskInput(taskToValues(task)))) {
+      const { ok, error } = await onEdit(task, input)
+      if (!ok) {
+        if (error?.details?.fields) setErrors(error.details.fields)
+        else setMessage(error?.message ?? 'That didn’t save. Please try again.')
+        return
+      }
+    }
+    if (canRecord && progress !== task.completion) {
+      const { ok, error } = await onCompletion(task, progress)
+      if (!ok) {
+        setMessage(error?.message ?? 'That didn’t save. Please try again.')
+        return
+      }
+    }
+    setEditing(false)
   }
 
   if (editing) {
@@ -47,6 +64,16 @@ export default function TaskRow({ task, canRecord, canEdit, busy, onCompletion, 
       <Box component="li" sx={{ p: 2, borderRadius: `${radii.md}px`, border: `2px solid ${colors.blue600}`, bgcolor: colors.surface }}>
         <Box component="form" onSubmit={save} noValidate aria-label={`Edit ${task.title}`} sx={{ display: 'grid', gap: 2 }}>
           <TaskFields idPrefix={`edit-${task.id}`} values={values} errors={errors} onChange={setValues} />
+          {canRecord && (
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5, alignItems: 'center' }}>
+              <Typography component="span" sx={{ fontWeight: 600 }}>Progress</Typography>
+              <ToggleButtonGroup exclusive size="small" value={progress} aria-label="Progress" onChange={(_, value) => value !== null && setProgress(value)}>
+                {STATES.map((s) => (
+                  <ToggleButton key={s.value} value={s.value}>{s.label}</ToggleButton>
+                ))}
+              </ToggleButtonGroup>
+            </Box>
+          )}
           <Typography variant="body2" color="text.secondary">Changes apply to this day only.</Typography>
           {message && <Typography role="alert" color="error">{message}</Typography>}
           <Box sx={{ display: 'flex', gap: 1 }}>
@@ -60,12 +87,24 @@ export default function TaskRow({ task, canRecord, canEdit, busy, onCompletion, 
 
   return (
     <Box component="li" sx={{ p: 2, borderRadius: `${radii.md}px`, border: `1px solid ${colors.border}`, bgcolor: colors.surface, display: 'grid', gap: 1 }}>
-      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, justifyContent: 'space-between', alignItems: 'baseline' }}>
-        <Typography sx={{ fontWeight: 600, overflowWrap: 'anywhere' }}>
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, justifyContent: 'space-between', alignItems: 'center' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', minWidth: 0 }}>
+          {!excluded && (
+            <Checkbox
+              checked={task.completion >= 1}
+              indeterminate={task.completion > 0 && task.completion < 1}
+              disabled={!canRecord || busy}
+              onChange={() => onCompletion(task, task.completion >= 1 ? 0 : 1)}
+              slotProps={{ input: { 'aria-label': `Done: ${task.title}` } }}
+              sx={{ ml: -1.5, p: 1.25 }} // 44 px square: a comfortable tap target (spec DP-06)
+            />
+          )}
+        <Typography sx={{ fontWeight: 600, overflowWrap: 'anywhere', ...(task.completion >= 1 && !excluded ? { textDecoration: 'line-through', color: 'text.secondary' } : {}) }}>
           {task.title}
           {task.isPriority ? ' (priority)' : ''}
           {task.isMinimum && !excluded && <Chip label="Minimum" size="small" variant="outlined" color="primary" sx={{ ml: 1, verticalAlign: 'middle' }} />}
         </Typography>
+        </Box>
         {(meta || repeats) && <Typography variant="body2" color="text.secondary">{[meta, repeats ? 'repeats' : null].filter(Boolean).join(' · ')}</Typography>}
       </Box>
       {task.description && <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{task.description}</Typography>}
@@ -90,20 +129,6 @@ export default function TaskRow({ task, canRecord, canEdit, busy, onCompletion, 
         </Box>
       ) : (
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center' }}>
-          <ToggleButtonGroup
-            exclusive
-            size="small"
-            value={task.completion}
-            disabled={!canRecord || busy}
-            aria-label={`Progress for ${task.title}`}
-            onChange={(_, value) => value !== null && onCompletion(task, value)}
-          >
-            {STATES.map((s) => (
-              <ToggleButton key={s.value} value={s.value} aria-label={`${s.label}: ${task.title}`}>
-                {s.label}
-              </ToggleButton>
-            ))}
-          </ToggleButtonGroup>
           {canEdit && (
             <Button size="small" disabled={busy} onClick={startEdit} aria-label={`Edit ${task.title}`}>Edit</Button>
           )}

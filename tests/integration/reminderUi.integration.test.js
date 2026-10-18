@@ -186,7 +186,7 @@ describe('task reminders in My Day', () => {
     const user = setupUser()
     renderDay()
     await screen.findByText('Stretch')
-    await user.click(screen.getByRole('button', { name: 'Done: Stretch' }))
+    await user.click(screen.getByRole('checkbox', { name: 'Done: Stretch' }))
     await waitFor(() => expect(screen.queryByRole('button', { name: 'Set a reminder for Stretch' })).toBeNull())
   })
 })
