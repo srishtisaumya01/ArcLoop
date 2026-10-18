@@ -9,7 +9,7 @@ Test names: backend = `npm run test:backend` (146), unit = `vitest --project uni
 | Foundation | Vite + React, router, MUI theme, lint, tests | Verified | Lint clean, build clean (bundle has no Supabase code and no `VITE_` names) |
 | Design system | Tokens, MUI theme, logo, shared layout | Done | |
 | Public | Landing page | Done | Sample content labelled |
-| Public | Explore challenges, Challenge details | Done (demo data) | Real data and join/leave are Phase 5 |
+| Public | Explore challenges, Challenge details | Done (demo data: 26 sample challenges in 9 categories) | Real data and join/leave are Phase 5 |
 | Public | Privacy / Terms | Draft | Not legally reviewed; do not yet describe backups or deletion |
 | Public | Contact / support | UI only | Form does not send |
 | Public | Route-level code splitting; a page that cannot load shows "This page didn't load" with retry | Verified | e2e (`release-checks`), offline load case |

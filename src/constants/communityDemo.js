@@ -2,6 +2,8 @@
 // How it works pages. None of it is real activity, and every screen that shows it labels it as sample data.
 // The automations describe the planned design; they are not running yet.
 
+import { DEMO_CHALLENGES } from './demoChallenges.js'
+
 export const WEEK_LABELS = ['W1', 'W2', 'W3', 'W4', 'W5', 'W6', 'W7', 'W8', 'W9', 'W10', 'W11', 'W12']
 
 // Active participants per week across all challenges.
@@ -9,7 +11,7 @@ export const COMMUNITY_GROWTH = [120, 168, 240, 310, 395, 470, 560, 640, 735, 82
 
 export const COMMUNITY_STATS = [
   { key: 'participants', label: 'Active participants', value: 1010, note: '+11% vs last week' },
-  { key: 'checkins', label: 'Check-ins this week', value: 6420, note: 'Across 6 challenges' },
+  { key: 'checkins', label: 'Check-ins this week', value: 6420, note: `Across ${DEMO_CHALLENGES.length} challenges` },
   { key: 'consistency', label: 'Average consistency', value: 74, suffix: '%', note: 'Of scheduled days kept' },
   { key: 'groups', label: 'Groups running', value: 86, note: '2 to 10 members each' },
 ]
