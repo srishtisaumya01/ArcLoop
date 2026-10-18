@@ -168,6 +168,9 @@ class OccurrenceResource(Resource):
         if occurrence.title is None:
             raise validation_error('Please check the highlighted details.', {'title': 'This is required.'})
         rules.validate_occurrence(occurrence)
+        if occurrence.is_minimum:
+            # One request at a time may change a day's minimum, so two cannot both take the last place (PostgreSQL).
+            list(DayPlan.objects.select_for_update().filter(user=user, plan_date=occurrence.plan_date).values_list('pk', flat=True))
         rules.guard_minimum(TaskOccurrence, user, occurrence)
         completion_changed = occurrence.completion != old_completion
         # progress can only be recorded for today or earlier, in the user's own timezone

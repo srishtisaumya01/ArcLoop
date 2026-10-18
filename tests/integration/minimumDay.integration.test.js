@@ -1,7 +1,8 @@
 import { beforeAll, describe, expect, it } from 'vitest'
 import { summarizeDay } from '../../src/utils/planner/index.js'
 import { SERVICE_ERROR } from '../../src/services/planner/errors.js'
-import { createPerson, createWorld, listRows, setClock } from './harness.js'
+import { createPlannerService } from '../../src/services/planner/createPlannerService.js'
+import { createPerson, createTestClient, createUser, createWorld, listRows, setClock } from './harness.js'
 
 // Minimum Day through the real planner service and the real server: the label is saved and validated by the API, it never
 // changes the full-plan figures, setting a task aside or moving it takes it out, and one person cannot touch another's.
@@ -167,5 +168,65 @@ describe('isolation', () => {
     expect((await rejection(bob.service.setMinimum(TODAY, [tasks[0].id]))).code).toBeDefined()
     expect((await alice.service.getDayPlan(TODAY)).minimum.count).toBe(1)
     expect((await listRows(world, bob.userId, 'task-occurrences')).filter((o) => o.is_minimum)).toEqual([])
+  })
+})
+
+
+describe('a save that is cut off part-way, against the real API and database', () => {
+  // The connection drops on the Nth write to the occurrences, as a real network failure would; the writes before it really happened.
+  async function personWithFlakyConnection(failOnWrite) {
+    const state = { writes: 0, fail: false }
+    const userId = await createUser(world, `minimum-flaky-${(seq += 1)}@example.com`, 'America/New_York')
+    const client = createTestClient(world, {
+      getUserId: () => userId,
+      hooks: {
+        before: async (query) => {
+          if (state.fail && query.table === 'task_occurrences' && query.op === 'update' && (state.writes += 1) === failOnWrite) throw new Error('Failed to fetch')
+        },
+      },
+    })
+    const service = createPlannerService({ getClient: () => client, clock: () => Date.parse(world.clockIso) })
+    return { userId, service, state }
+  }
+
+  it('says it was only partly saved, keeps a valid minimum, and a retry finishes it without creating or duplicating anything', async () => {
+    setClock(world, '2026-03-10T15:00:00Z')
+    const p = await personWithFlakyConnection(2)
+    const tasks = await dayWith(p, ['A', 'B', 'C', 'D'])
+    const [a, b, c, d] = ['A', 'B', 'C', 'D'].map((t) => byTitle(tasks, t).id)
+    await p.service.setMinimum(TODAY, [a, b])
+    const before = (await listRows(world, p.userId, 'task-occurrences')).length
+
+    // Change [a, b] to [c, d]: clear a, clear b, set c, set d. The 2nd write fails after one was really saved.
+    Object.assign(p.state, { writes: 0, fail: true })
+    const e = await rejection(p.service.setMinimum(TODAY, [c, d]))
+    expect(e.details.partial).toBe('minimum_partly_saved')
+    expect(e.message).toMatch(/only partly saved.*choose again.*No tasks were changed/)
+    const rows = await listRows(world, p.userId, 'task-occurrences')
+    expect(rows).toHaveLength(before) // nothing created or removed
+    const flagged = rows.filter((o) => o.is_minimum).map((o) => o.title)
+    expect(flagged).toEqual(['B']) // a was cleared before the failure; b, c, d were not reached: still valid, never over the limit
+    expect(rows.every((o) => o.plan_state === 'active' && o.completion === 0)).toBe(true) // no task changed
+
+    // The connection is back: choosing again finishes the job.
+    p.state.fail = false
+    await p.service.setMinimum(TODAY, [c, d])
+    const after = await listRows(world, p.userId, 'task-occurrences')
+    expect(after).toHaveLength(before)
+    expect(after.filter((o) => o.is_minimum).map((o) => o.title).sort()).toEqual(['C', 'D'])
+    await p.service.setMinimum(TODAY, [c, d]) // and again: nothing changes
+    expect((await listRows(world, p.userId, 'task-occurrences')).filter((o) => o.is_minimum)).toHaveLength(2)
+    expect((await p.service.getDayPlan(TODAY)).minimum).toMatchObject({ count: 2, status: 'open' })
+  })
+
+  it('a cut-off before anything was written changes nothing and shows the ordinary error', async () => {
+    setClock(world, '2026-03-10T15:00:00Z')
+    const p = await personWithFlakyConnection(1)
+    const tasks = await dayWith(p, ['A', 'B'])
+    p.state.fail = true
+    const e = await rejection(p.service.setMinimum(TODAY, [byTitle(tasks, 'A').id]))
+    expect(e.details?.partial).toBeUndefined()
+    expect(e.code).toBe(SERVICE_ERROR.NETWORK)
+    expect((await listRows(world, p.userId, 'task-occurrences')).filter((o) => o.is_minimum)).toEqual([])
   })
 })
