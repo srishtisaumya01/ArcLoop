@@ -17,9 +17,15 @@ from config.auth_cookies import clear_session_cookies, set_session_cookies
 from config.errors import ApiError, validation_error
 from config.security_log import log_event
 
-from .models import AuthToken
+from django.http import HttpResponse
+from django.utils import timezone
+
+from challenges.services import link_pending_memberships
+
+from .models import AuthToken, Profile, ProfileAvatar
 from .serializers import (
     AccountDeleteSerializer,
+    EmailChangeSerializer,
     LoginSerializer,
     PasswordChangeSerializer,
     PasswordResetConfirmSerializer,
@@ -33,11 +39,16 @@ User = get_user_model()
 WEAK = 'That password is too easy to guess. Try a longer or less common one.'
 
 
+def user_body(user):
+    return {'id': user.pk, 'email': user.email, 'username': user.profile.username}
+
+
 def start_session(request, user, transport, status_code):
     """Issues a session for `user` and answers in the requested transport. The cookie transport never puts the token in
     the body: the browser's script must not hold the credential."""
+    AuthToken.prune(user)  # old and surplus logins are removed as new ones are made, so the table cannot grow without bound
     raw, token = AuthToken.issue(user)
-    body = {'expires_at': token.expires_at.isoformat(), 'user': {'id': user.pk, 'email': user.email}}
+    body = {'expires_at': token.expires_at.isoformat(), 'user': user_body(user)}
     if transport == 'cookie':
         response = Response(body, status=status_code)
         set_session_cookies(request, response, raw, token)
@@ -66,13 +77,20 @@ class RegisterView(PublicAuthView):
         data = RegisterSerializer(data=request.data)
         data.is_valid(raise_exception=True)
         email, password = data.validated_data['email'], data.validated_data['password']
+        chosen = data.validated_data.get('username')
+        if chosen and Profile.objects.filter(username=chosen).exists():
+            raise validation_error('That username is taken. Try another.', {'username': 'That username is taken. Try another.'}, 'username_taken')
         try:
             with transaction.atomic():
                 if User.objects.filter(username__iexact=email).exists():
                     raise IntegrityError
                 user = User.objects.create_user(username=email, email=email, password=password)
+                if chosen:
+                    Profile.objects.filter(pk=user.pk).update(username=chosen)
         except IntegrityError:
             raise validation_error('An account may already exist for that email. Try logging in or resetting your password.', {'email': 'Try another email, or log in.'}, 'email_taken')
+        user.refresh_from_db()
+        link_pending_memberships(user)  # friends who named this username or email in a group are put in it
         log_event(request, 'registered', user=user.pk)
         return start_session(request, user, data.validated_data['transport'], status.HTTP_201_CREATED)
 
@@ -81,10 +99,16 @@ class LoginView(PublicAuthView):
     def post(self, request):
         data = LoginSerializer(data=request.data)
         data.is_valid(raise_exception=True)
-        user = authenticate(request, username=data.validated_data['email'], password=data.validated_data['password'])
+        identifier = data.validated_data['identifier']
+        if '@' in identifier:
+            login_name = identifier  # the account's sign-in name is its email
+        else:
+            profile = Profile.objects.select_related('user').filter(username=identifier).first()
+            login_name = profile.user.username if profile else identifier
+        user = authenticate(request, username=login_name, password=data.validated_data['password'])
         if user is None:
             log_event(request, 'login_failed', logging.WARNING)  # no email: it may be someone else's
-            raise ApiError('invalid_credentials', 'Email or password is incorrect.', status.HTTP_401_UNAUTHORIZED)
+            raise ApiError('invalid_credentials', 'Username or password is incorrect.', status.HTTP_401_UNAUTHORIZED)
         return start_session(request, user, data.validated_data['transport'], status.HTTP_200_OK)
 
 
@@ -100,7 +124,7 @@ class LogoutView(APIView):
 
 class MeView(APIView):
     def get(self, request):
-        return Response({'id': request.user.pk, 'email': request.user.email, 'expires_at': request.auth.expires_at.isoformat()})
+        return Response({**user_body(request.user), 'expires_at': request.auth.expires_at.isoformat()})
 
 
 class PasswordChangeView(APIView):
@@ -116,6 +140,74 @@ class PasswordChangeView(APIView):
         request.user.save(update_fields=['password'])
         AuthToken.objects.filter(user=request.user).exclude(pk=request.auth.pk).delete()  # other devices must log in again
         log_event(request, 'password_changed', user=request.user.pk)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class EmailChangeView(APIView):
+    """Changes the sign-in email. Needs the password again: a stolen session alone must not be able to take the account."""
+
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'auth'
+
+    def post(self, request):
+        data = EmailChangeSerializer(data=request.data)
+        data.is_valid(raise_exception=True)
+        user, email = request.user, data.validated_data['email']
+        if not user.check_password(data.validated_data['password']):
+            raise validation_error('Your password is incorrect.', {'password': 'That is not your password.'}, 'invalid_credentials')
+        if User.objects.filter(username__iexact=email).exclude(pk=user.pk).exists():
+            raise validation_error('That email is already used by another account.', {'email': 'Try another email.'}, 'email_taken')
+        user.username = user.email = email  # the email is also the account's sign-in name inside Django
+        user.save(update_fields=['username', 'email'])
+        link_pending_memberships(user)
+        log_event(request, 'email_changed', user=user.pk)
+        return Response(user_body(user))
+
+
+MAX_AVATAR_BYTES = 60_000  # the app sends a ~192 px JPEG of 10-25 KB; the database has little room
+IMAGE_SIGNATURES = [(b'\xff\xd8\xff', 'image/jpeg'), (b'\x89PNG\r\n\x1a\n', 'image/png')]
+
+
+def sniff_image(raw):
+    """The image type judged from the file's own first bytes (never from what the client claims), or None."""
+    for signature, kind in IMAGE_SIGNATURES:
+        if raw.startswith(signature):
+            return kind
+    if raw[:4] == b'RIFF' and raw[8:12] == b'WEBP':
+        return 'image/webp'
+    return None
+
+
+class AvatarView(APIView):
+    """The signed-in person's profile picture: GET it, PUT a new one (the raw image bytes), DELETE it."""
+
+    def get(self, request):
+        image = ProfileAvatar.objects.filter(user=request.user).first()
+        if image is None:
+            raise ApiError('not_found', 'No profile picture.', status.HTTP_404_NOT_FOUND)
+        response = HttpResponse(bytes(image.data), content_type=image.content_type)
+        response['Cache-Control'] = 'private, max-age=86400'
+        response['X-Content-Type-Options'] = 'nosniff'
+        return response
+
+    def put(self, request):
+        raw = request.body
+        if not raw or len(raw) > MAX_AVATAR_BYTES:
+            raise validation_error('Choose a smaller picture (under 60 KB).', {'avatar': 'Choose a smaller picture (under 60 KB).'}, 'avatar_too_large')
+        kind = sniff_image(raw)
+        if kind is None:
+            raise validation_error('Use a JPEG, PNG or WebP picture.', {'avatar': 'Use a JPEG, PNG or WebP picture.'}, 'avatar_type')
+        ProfileAvatar.objects.update_or_create(user=request.user, defaults={'data': raw, 'content_type': kind})
+        profile = request.user.profile
+        profile.avatar_updated_at = timezone.now()
+        profile.save(update_fields=['avatar_updated_at'])
+        return Response(ProfileSerializer(profile).data)
+
+    def delete(self, request):
+        ProfileAvatar.objects.filter(user=request.user).delete()
+        profile = request.user.profile
+        profile.avatar_updated_at = None
+        profile.save(update_fields=['avatar_updated_at'])
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -206,4 +298,6 @@ class ProfileView(APIView):
         data = ProfileSerializer(profile, data=request.data, partial=True)
         data.is_valid(raise_exception=True)
         data.save()
+        if 'username' in data.validated_data:
+            link_pending_memberships(request.user)
         return Response(ProfileSerializer(profile).data)
