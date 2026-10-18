@@ -6,26 +6,6 @@ import { isBackendConfigured } from '../../services/backend.js'
 import { ROUTES } from '../../constants/navigation.js'
 import { colors, contentWidths, gradients, navOuterHeight, onBrandButtons } from '../../theme/tokens.js'
 
-// Two large open rings echoing the logo's loop, sitting low behind the content.
-function Arcs() {
-  const ring = {
-    position: 'absolute',
-    bottom: { xs: -260, md: -330 },
-    width: { xs: 360, md: 460 },
-    height: { xs: 360, md: 460 },
-    borderRadius: '50%',
-    border: { xs: '48px solid', md: '64px solid' },
-    borderColor: 'rgba(255, 255, 255, 0.12) !important',
-    pointerEvents: 'none',
-  }
-  return (
-    <Box aria-hidden="true" sx={{ display: { xs: 'none', sm: 'block' } }}>
-      <Box sx={{ ...ring, left: { sm: '8%', md: '18%' } }} />
-      <Box sx={{ ...ring, left: { sm: '42%', md: '42%' }, borderColor: `${colors.mint300}26 !important` }} />
-    </Box>
-  )
-}
-
 export default function Hero() {
   return (
     <Box
@@ -41,7 +21,6 @@ export default function Hero() {
         color: colors.textOnDark,
       }}
     >
-      <Arcs />
       <Container sx={{ position: 'relative', maxWidth: `${contentWidths.page}px !important` }}>
         <Box
           sx={{

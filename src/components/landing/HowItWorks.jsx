@@ -1,5 +1,7 @@
-import { Box, Typography } from '@mui/material'
-import { CircleCheck, Sprout, Users } from 'lucide-react'
+import { Link as RouterLink } from 'react-router-dom'
+import { Box, Button, Typography } from '@mui/material'
+import { ArrowRight, CircleCheck, Sprout, Users } from 'lucide-react'
+import { ROUTES } from '../../constants/navigation.js'
 import { Section, SectionHeading } from '../ui/Section.jsx'
 import { HOW_IT_WORKS } from '../../constants/landingContent.js'
 import { colors, gradients } from '../../theme/tokens.js'
@@ -33,6 +35,9 @@ export default function HowItWorks() {
           )
         })}
       </Box>
+      <Button component={RouterLink} to={ROUTES.howItWorks} variant="outlined" color="primary" endIcon={<ArrowRight size={18} />} sx={{ mt: 5 }}>
+        See the full walkthrough
+      </Button>
     </Section>
   )
 }

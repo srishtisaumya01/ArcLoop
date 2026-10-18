@@ -1,16 +1,23 @@
 import { useCallback, useMemo, useState } from 'react'
-import { Alert, Box, Button, Container, InputAdornment, MenuItem, Skeleton, TextField, Typography } from '@mui/material'
-import { RefreshCw, Search, SearchX, TriangleAlert } from 'lucide-react'
+import { Link as RouterLink } from 'react-router-dom'
+import { Box, Button, Container, InputAdornment, MenuItem, Skeleton, TextField, Typography } from '@mui/material'
+import { ArrowRight, Check, Info, RefreshCw, Search, SearchX, TriangleAlert, Workflow } from 'lucide-react'
 import PageHeader from '../../components/common/PageHeader.jsx'
 import StatePanel from '../../components/common/StatePanel.jsx'
 import ChallengeCard from '../../components/challenges/ChallengeCard.jsx'
 import FeaturedChallengeCard from '../../components/challenges/FeaturedChallengeCard.jsx'
+import ChartCard from '../../components/charts/ChartCard.jsx'
+import LineChart from '../../components/charts/LineChart.jsx'
+import StatTiles from '../../components/community/StatTiles.jsx'
+import { SectionHeading } from '../../components/ui/Section.jsx'
 import { listChallenges } from '../../services/challengeService.js'
 import { useAsync } from '../../hooks/useAsync.js'
 import { usePageMeta } from '../../hooks/usePageMeta.js'
 import { CHALLENGE_CATEGORIES, VISIBILITY_OPTIONS } from '../../constants/demoChallenges.js'
+import { COMMUNITY_GROWTH, COMMUNITY_STATS, N8N_WORKFLOWS, WEEK_LABELS } from '../../constants/communityDemo.js'
+import { ROUTES } from '../../constants/navigation.js'
 import { ALL, filterChallenges, hasActiveFilters } from '../../utils/challengeFilters.js'
-import { contentWidths } from '../../theme/tokens.js'
+import { chart, colors, contentWidths, gradients, onBrandButtons, shadows } from '../../theme/tokens.js'
 
 const INITIAL_FILTERS = { query: '', category: ALL, visibility: ALL }
 
@@ -40,13 +47,17 @@ export default function ExploreChallengesPage() {
   return (
     <>
       <PageHeader
+        tone="brand"
         eyebrow="Challenges"
         title="Explore challenges"
         description="Find a challenge to build a habit alongside others, or use one as inspiration for your own."
       >
-        <Alert severity="info" variant="outlined" sx={{ maxWidth: 680 }}>
-          Demo content: these are sample challenges for previewing the layout. They are not real campaigns, and no one has joined them.
-        </Alert>
+        <Box role="note" sx={{ display: 'flex', gap: 1.25, alignItems: 'flex-start', maxWidth: 680, p: 2, borderRadius: '12px', bgcolor: 'rgba(255, 255, 255, 0.1)', border: '1px dashed rgba(255, 255, 255, 0.45)' }}>
+          <Info size={20} aria-hidden="true" style={{ flexShrink: 0, marginTop: 2 }} />
+          <Typography sx={{ color: 'rgba(255, 255, 255, 0.9)' }}>
+            Demo content: these are sample challenges for previewing the layout. They are not real campaigns, and no one has joined them.
+          </Typography>
+        </Box>
       </PageHeader>
 
       <Container sx={{ maxWidth: `${contentWidths.page}px !important`, py: { xs: 5, md: 8 } }}>
@@ -55,6 +66,64 @@ export default function ExploreChallengesPage() {
             <FeaturedChallengeCard challenge={featured} />
           </Box>
         )}
+
+        <Box component="section" aria-labelledby="community-growth-title" sx={{ mb: { xs: 6, md: 9 } }}>
+          <SectionHeading
+            eyebrow="Community growth"
+            titleId="community-growth-title"
+            title="More people show up every week"
+            description="Active participants across all challenges, and what n8n automation does for you once you join."
+          />
+          <Box sx={{ mb: 3 }}>
+            <StatTiles stats={COMMUNITY_STATS} />
+          </Box>
+          <Box sx={{ display: 'grid', gap: 3, gridTemplateColumns: { xs: '1fr', lg: '1.5fr 1fr' }, alignItems: 'start' }}>
+            <ChartCard title="Active participants per week" subtitle="Grew from 120 to 1,010 over 12 weeks">
+              <LineChart
+                ariaLabel="Line chart of active participants per week over 12 weeks, rising steadily from 120 in week 1 to 1,010 in week 12."
+                labels={WEEK_LABELS}
+                series={[{ key: 'active', label: 'Active participants', color: chart.series1, values: COMMUNITY_GROWTH }]}
+                format={(v) => (v >= 1000 ? `${(v / 1000).toFixed(v % 1000 ? 1 : 0)}K` : String(v))}
+                area
+              />
+            </ChartCard>
+            <Box sx={{ p: { xs: 3, md: 3.5 }, borderRadius: '24px', background: gradients.brand, color: colors.textOnDark, boxShadow: shadows.lg }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                <Workflow size={20} aria-hidden="true" />
+                <Typography variant="overline" component="p" sx={{ color: colors.mint300 }}>
+                  When you join · powered by n8n
+                </Typography>
+              </Box>
+              <Typography variant="h3" component="h3" sx={{ mb: 2.5 }}>
+                Automation that keeps you going
+              </Typography>
+              <Box component="ul" sx={{ listStyle: 'none', m: 0, p: 0, display: 'grid', gap: 1.75, mb: 3 }}>
+                {N8N_WORKFLOWS.map((w) => (
+                  <Box component="li" key={w.key} sx={{ display: 'flex', gap: 1.25 }}>
+                    <Box sx={{ color: colors.mint300, mt: '3px', flexShrink: 0 }}>
+                      <Check size={18} aria-hidden="true" />
+                    </Box>
+                    <Typography sx={{ color: 'rgba(255, 255, 255, 0.9)' }}>
+                      <b>{w.title}:</b> {w.action}
+                    </Typography>
+                  </Box>
+                ))}
+              </Box>
+              <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
+                <Button component={RouterLink} to={ROUTES.howItWorks} variant="contained" sx={onBrandButtons.solid} endIcon={<ArrowRight size={18} />}>
+                  How it works
+                </Button>
+                <Button component={RouterLink} to={ROUTES.participants} variant="outlined" sx={onBrandButtons.glass}>
+                  Top participants
+                </Button>
+              </Box>
+            </Box>
+          </Box>
+        </Box>
+
+        <Typography variant="h3" component="h2" sx={{ mb: 3 }}>
+          Browse all challenges
+        </Typography>
 
         <Box component="form" role="search" aria-label="Filter challenges" onSubmit={(e) => e.preventDefault()} sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', md: '2fr 1fr 1fr' }, mb: 3 }}>
           <TextField

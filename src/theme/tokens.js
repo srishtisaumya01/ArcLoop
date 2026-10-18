@@ -88,6 +88,15 @@ export const onBrandButtons = {
   },
 }
 
+// Chart roles. Series hues are validated as a pair (CVD and normal-vision separation); series2 sits below 3:1 on white,
+// so every chart labels line ends and offers a table view.
+export const chart = {
+  series1: '#2a78d6',
+  series2: '#1baf7a',
+  grid: '#E3E9F2',
+  surface: '#FFFFFF',
+}
+
 export const contentWidths = { page: 1200, narrow: 760 }
 
 export const breakpoints = { xs: 0, sm: 600, md: 900, lg: 1200, xl: 1536 }

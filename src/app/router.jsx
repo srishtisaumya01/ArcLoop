@@ -24,6 +24,8 @@ export const routes = [
           { path: ROUTES.home, element: <HomePage /> },
           { path: ROUTES.challenges, ...lazyPage(() => import('../pages/challenges/ExploreChallengesPage.jsx')) },
           { path: `${ROUTES.challenges}/:slug`, ...lazyPage(() => import('../pages/challenges/ChallengeDetailsPage.jsx')) },
+          { path: ROUTES.participants, ...lazyPage(() => import('../pages/public/ParticipantsPage.jsx')) },
+          { path: ROUTES.howItWorks, ...lazyPage(() => import('../pages/public/HowItWorksPage.jsx')) },
           { path: ROUTES.privacy, ...lazyPage(() => import('../pages/public/PrivacyPage.jsx')) },
           { path: ROUTES.terms, ...lazyPage(() => import('../pages/public/TermsPage.jsx')) },
           { path: ROUTES.contact, ...lazyPage(() => import('../pages/public/ContactPage.jsx')) },
