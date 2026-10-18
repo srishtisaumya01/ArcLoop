@@ -33,6 +33,9 @@ describe('How it works page', () => {
     renderAt('/how-it-works')
     await screen.findByRole('heading', { level: 1, name: 'From your first log-in to a steady streak' })
     expect(screen.getByText('Join solo, or create a group?')).toBeInTheDocument()
+    // Each way of joining is explained once: no separate "Join solo" / "Create a group" panels next to the rules.
+    expect(screen.queryByText('Join solo')).toBeNull()
+    expect(screen.queryByText('Create a group')).toBeNull()
     expect(screen.getByText(/add each member with their name and Arcloop username/i)).toBeInTheDocument()
     for (const name of ['As an individual', 'As a friend', 'As a group']) {
       expect(screen.getByRole('heading', { name })).toBeInTheDocument()

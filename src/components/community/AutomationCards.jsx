@@ -1,5 +1,6 @@
 import { Box, Card, CardContent, Typography } from '@mui/material'
 import { AlarmClock, ChartColumn, HeartHandshake, MailOpen, Users, Zap } from 'lucide-react'
+import Reveal from '../ui/Reveal.jsx'
 import { AUTOMATIONS } from '../../constants/communityDemo.js'
 import { colors, gradients } from '../../theme/tokens.js'
 
@@ -9,13 +10,13 @@ const ICONS = { welcome: MailOpen, reminder: AlarmClock, nudge: HeartHandshake, 
 export default function AutomationCards({ columns = 3 }) {
   return (
     <Box component="ul" sx={{ listStyle: 'none', m: 0, p: 0, display: 'grid', gap: 2.5, gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', lg: `repeat(${columns}, 1fr)` } }}>
-      {AUTOMATIONS.map((w) => {
+      {AUTOMATIONS.map((w, i) => {
         const Icon = ICONS[w.key] ?? Zap
         return (
-          <li key={w.key}>
-            <Card sx={{ height: '100%' }}>
+          <Reveal as="li" key={w.key} delay={(i % columns) * 110}>
+            <Card sx={{ height: '100%', '&:hover': { transform: 'translateY(-3px)', boxShadow: '0 12px 30px rgba(11, 27, 58, 0.12)' }, '&:hover .automation-icon': { transform: 'scale(1.08) rotate(-4deg)' } }}>
               <CardContent sx={{ p: 3 }}>
-                <Box sx={{ width: 44, height: 44, borderRadius: '12px', display: 'grid', placeItems: 'center', background: gradients.brand, color: colors.textOnDark, mb: 2 }}>
+                <Box className="automation-icon" sx={{ width: 44, height: 44, borderRadius: '12px', display: 'grid', placeItems: 'center', background: gradients.brand, color: colors.textOnDark, mb: 2, transition: 'transform 240ms cubic-bezier(0.2, 0.7, 0.2, 1)' }}>
                   <Icon size={22} aria-hidden="true" />
                 </Box>
                 <Typography variant="h4" component="h3" sx={{ mb: 1 }}>
@@ -30,7 +31,7 @@ export default function AutomationCards({ columns = 3 }) {
                 <Typography color="text.secondary">{w.action}</Typography>
               </CardContent>
             </Card>
-          </li>
+          </Reveal>
         )
       })}
     </Box>

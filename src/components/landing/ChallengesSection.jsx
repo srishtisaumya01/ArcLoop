@@ -9,7 +9,7 @@ import { ROUTES } from '../../constants/navigation.js'
 
 export default function ChallengesSection() {
   return (
-    <Section id="challenges">
+    <Section tone="alt" id="challenges">
       <SectionHeading
         eyebrow="Challenges"
         title="Join a campaign. Create your own challenge soon."

@@ -107,11 +107,20 @@ export default function ChallengeDetailsPage() {
   return (
     <>
       <PageHeader eyebrow={challenge.featured ? 'Featured campaign' : challenge.category} title={challenge.title} description={challenge.summary} back={BACK}>
-        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
-          <Chip label={challenge.category} size="small" sx={{ bgcolor: colors.bgAlt }} />
+        <Box
+          sx={{
+            display: 'flex',
+            gap: 1,
+            flexWrap: 'wrap',
+            alignItems: 'center',
+            '& .MuiChip-root': { color: colors.textOnDark, bgcolor: 'rgba(255, 255, 255, 0.12)', borderColor: 'rgba(255, 255, 255, 0.5)' },
+            '& .MuiChip-icon': { color: 'inherit' },
+          }}
+        >
+          <Chip label={challenge.category} size="small" />
           <Chip label={challenge.durationLabel} size="small" variant="outlined" />
           <VisibilityChip visibility={challenge.visibility} />
-          <DemoBadge label="Demo challenge" />
+          <DemoBadge onDark label="Demo challenge" />
         </Box>
       </PageHeader>
 

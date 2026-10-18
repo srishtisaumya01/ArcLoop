@@ -43,7 +43,7 @@ export default function AppLayout() {
       </Box>
       <ScrollManager />
       <Navbar />
-      <Box component="main" id="main" tabIndex={-1} sx={{ flex: 1, outline: 'none' }}>
+      <Box component="main" id="main" tabIndex={-1} sx={{ flex: 1, outline: 'none', position: 'relative' }}>
         <Outlet />
       </Box>
       <Footer />

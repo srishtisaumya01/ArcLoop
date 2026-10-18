@@ -95,31 +95,13 @@ export const JOIN_STEPS = [
   { title: 'Choose how to join', text: 'You are asked one question: join solo, or create a group for this challenge.' },
 ]
 
-export const JOIN_BRANCHES = {
-  solo: {
-    title: 'Join solo',
-    steps: [
-      'Your own track starts: on the day you join, or on the campaign’s start date.',
-      'You check in on your scheduled days. Progress stays private unless you share it.',
-    ],
-  },
-  group: {
-    title: 'Create a group',
-    steps: [
-      'Name the group, then add each member with their name and Arcloop username.',
-      'Each member gets an invite (sent automatically) and accepts it.',
-      'The group challenge is created, and everyone checks in for themselves.',
-    ],
-  },
-}
-
 export const JOIN_RULES = [
   {
     key: 'individual',
     title: 'As an individual',
     subtitle: 'Solo track, your pace',
     rules: [
-      'Any signed-in person can join a public challenge on their own.',
+      'Choose “Join solo” on any public challenge. Your own track starts the day you join, or on the campaign’s start date.',
       'Check in on your scheduled days: one credit per habit per scheduled day.',
       'Your score is your consistency across the challenge, not perfection.',
       'Your progress is private by default. You choose what to share.',
@@ -142,9 +124,10 @@ export const JOIN_RULES = [
     title: 'As a group',
     subtitle: 'Create it, invite, grow together',
     rules: [
-      'One person creates the group from a challenge page and becomes its organizer.',
-      'A group has 2 to 10 members; each needs an Arcloop account.',
-      'The organizer adds members by name and username; each member must accept.',
+      'Choose “Create a group” on a challenge page. You become the organizer.',
+      'Name the group, then add each member with their name and Arcloop username. A group has 2 to 10 members.',
+      'Each member gets an invite (sent automatically) and must accept it.',
+      'Once members accept, the group challenge is created.',
       'Everyone checks in for themselves. The group sees only what each member opts in to share.',
       'The group score is the members’ average consistency, so one slow week never sinks anyone.',
     ],

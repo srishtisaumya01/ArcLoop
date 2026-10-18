@@ -1,5 +1,6 @@
 import { Box, Card, CardContent, Typography } from '@mui/material'
 import { Check, User, UserPlus, Users } from 'lucide-react'
+import Reveal from '../ui/Reveal.jsx'
 import { JOIN_RULES } from '../../constants/communityDemo.js'
 import { colors, gradients } from '../../theme/tokens.js'
 
@@ -9,11 +10,11 @@ const ICONS = { individual: User, friend: UserPlus, group: Users }
 export default function JoinRules() {
   return (
     <Box component="ul" sx={{ listStyle: 'none', m: 0, p: 0, display: 'grid', gap: 3, gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' } }}>
-      {JOIN_RULES.map((r) => {
+      {JOIN_RULES.map((r, i) => {
         const Icon = ICONS[r.key]
         return (
-          <li key={r.key}>
-            <Card sx={{ height: '100%' }}>
+          <Reveal as="li" key={r.key} delay={i * 130}>
+            <Card sx={{ height: '100%', '&:hover': { transform: 'translateY(-4px)' } }}>
               <Box aria-hidden="true" sx={{ height: 6, background: gradients.brand }} />
               <CardContent sx={{ p: 3.5 }}>
                 <Box sx={{ width: 48, height: 48, borderRadius: '14px', display: 'grid', placeItems: 'center', background: gradients.brand, color: colors.textOnDark, mb: 2 }}>
@@ -35,7 +36,7 @@ export default function JoinRules() {
                 </Box>
               </CardContent>
             </Card>
-          </li>
+          </Reveal>
         )
       })}
     </Box>

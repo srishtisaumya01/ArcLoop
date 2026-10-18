@@ -17,8 +17,9 @@ const TONES = {
   },
 }
 
-// Title band shared by inner public pages. `back` = { to, label }. `tone="brand"` runs the gradient up behind the navbar.
-export default function PageHeader({ eyebrow, title, description, back, children, tone = 'light' }) {
+// Title band shared by inner pages. `back` = { to, label }. The default brand tone runs the gradient up behind the
+// navbar, like the home page; `tone="light"` is the plain pale band.
+export default function PageHeader({ eyebrow, title, description, back, children, tone = 'brand' }) {
   const t = TONES[tone]
   return (
     <Box component="section" sx={{ ...t.band, pb: { xs: 5, md: 7 } }}>

@@ -69,6 +69,8 @@ export const gradients = {
   brand: `${grain}, linear-gradient(115deg, ${colors.royal900} 0%, ${colors.royal800} 38%, ${colors.teal700} 70%, ${colors.mint400} 100%)`,
   brandVertical: `${grain}, linear-gradient(160deg, ${colors.royal900} 0%, ${colors.royal800} 45%, ${colors.teal700} 80%, ${colors.mint400} 115%)`,
   accentText: `linear-gradient(90deg, ${colors.mint300}, ${colors.ice300})`,
+  // A saturated pastel of the same blue-to-mint brand gradient, for sections that keep dark text.
+  tint: 'linear-gradient(135deg, #D2E2F8 0%, #CBE9EE 50%, #C4EBD7 100%)',
 }
 
 // Buttons placed on the brand gradient: a solid white primary and a frosted "glass" secondary with a soft glow.

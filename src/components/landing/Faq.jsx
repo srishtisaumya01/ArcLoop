@@ -6,7 +6,7 @@ import { colors } from '../../theme/tokens.js'
 
 export default function Faq() {
   return (
-    <Section tone="alt" id="faq" narrow>
+    <Section id="faq" narrow>
       <SectionHeading eyebrow="FAQ" title="Questions, answered honestly" align="center" />
       <div>
         {FAQS.map((f, i) => (
