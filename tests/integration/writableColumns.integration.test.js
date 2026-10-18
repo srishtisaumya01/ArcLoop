@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest'
 import { WRITABLE } from '../../src/services/planner/mappers.js'
+import { PLANNER_CONFIG } from '../../src/utils/planner/index.js'
 import { manage } from './manage.js'
 
 // The client lists which columns it may write (so it can never send a server-maintained one); the server lists
@@ -21,5 +22,9 @@ describe('writable columns match between the client and the API', () => {
     expect(sorted(WRITABLE.dayUpdate)).toEqual(server.day_plans.update)
     expect(sorted(WRITABLE.occurrenceInsert)).toEqual(server.task_occurrences.insert)
     expect(sorted(WRITABLE.occurrenceUpdate)).toEqual(server.task_occurrences.update)
+  })
+
+  it('has the same Minimum Day limit on both sides', () => {
+    expect(PLANNER_CONFIG.limits.minimumTasks).toBe(run().limits.minimum_tasks)
   })
 })

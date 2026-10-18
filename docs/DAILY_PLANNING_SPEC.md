@@ -46,6 +46,8 @@ Section 5.
 Shows how many tasks remain, which are priorities, which can be rescheduled or shortened, and whether the remaining estimated work may fit in the time left today, **only** when enough data exists (section 5.5).
 
 ### E. Day modes
+*(Minimum Day, an optional setting that works alongside these modes, is specified in section 17.)*
+
 `normal`, `busy` (festival / busy day), `rest` (recovery). Optional: a user never has to choose one, and the default is `normal`. A mode is a label plus guided shortcuts. **Changing the mode never deletes tasks or alters check-ins.** Custom modes are out of scope.
 
 ### F. Wellbeing goals
@@ -578,3 +580,31 @@ A mutation check broke 15 behaviours of the service (backfill allowed, forbidden
 - A new account's profile timezone is `UTC` until onboarding sets it, so "today" will follow UTC until then. Onboarding must collect it before My Day is built.
 - Creating the same template twice is allowed; only one occurrence per template per day is.
 - Template edits do not remove occurrences on dates the edited template no longer matches (reported in `noLongerMatching`).
+
+## 17. Minimum Day (implemented; Django API, Chromium-tested)
+
+*Feature name:* **Minimum Day**. *Description shown to the person:* "Choose a few important tasks to keep your day moving." It supports "Progress, not perfection. A missed day is an event, not an identity": a hard day can still have a small, chosen win, and nothing is lost if it is not reached.
+
+### 17.1 Behaviour (decisions approved for this feature)
+- **A label on tasks that already exist.** A person may choose **1 to 3** of a day's *planned* (active) tasks. The limit is provisional (a product number, not a safety cap) and lives in two places that a test keeps equal: `PLANNER_CONFIG.limits.minimumTasks` (frontend) and `MAX_MINIMUM_TASKS` (`backend/planner/rules.py`).
+- **Separate from the day type.** Normal, Busy and Rest are unchanged. Minimum Day works alongside any of them; "on" simply means at least one planned task on that day is flagged, so no new day state exists and no combination conflicts.
+- **Scoring is untouched.** The full-plan percentage, the original-plan comparison, weekly summaries, recurring-task figures and snapshots are computed exactly as before and never read the flag (`progress.js` is not modified; a regression test compares every consumer with and without flags, and was checked to fail if the percentage rule is touched). The minimum is reported separately: `status` is `none`, `open` or `complete` (complete = every chosen task is **done**; partly done is progress but not complete). Completing the minimum never makes the day 100% unless the existing rules do.
+- **It never acts on other tasks.** Choosing, changing, clearing or finishing a minimum does not delete, set aside, move or complete any task, does not change the day type, and does not fix the day's baseline (it is not a revision of the plan).
+- **Interactions.** Setting a chosen task aside, removing it or moving it takes it out of the minimum (the server clears the flag; the database also forbids a flagged set-aside task). Putting a task back or undoing a move does **not** re-choose it. A moved task's copy on the new day is not flagged. Busy and Rest "set aside" proposals never include a chosen task (the person asked to keep it); with no minimum chosen they are exactly as before.
+- **Per day.** Each date has its own minimum; switching dates shows that date's. It can be changed on any day the planner can edit (today, the previous 6 dates, and future days it holds); older days show it as a record with no controls.
+- **Validation** is on both sides with the same rules: at most 3, no repeats, only planned tasks of that day, only your own tasks (other people's rows are invisible to the API), only editable days, boolean values only.
+
+### 17.2 Data and API
+- Column `task_occurrences.is_minimum` (boolean, default false; migration `planner/0002_occurrence_is_minimum`) and a check constraint `task_occurrences_minimum_is_active`. It is writable on update only (`PATCH /task-occurrences/?id=...` with `{"is_minimum": true|false}`); it cannot be set when a task is created. The server enforces the limit (`400 limit_reached`), the planned-only rule (`400 constraint_violation`) and ownership, and a write still needs the CSRF header when authenticated by cookie.
+- Service: `plannerService.setMinimum(planDate, ids)` makes the day's minimum exactly `ids` (empty list clears). It clears removed flags before setting new ones, one request per task (at most six), so the day never exceeds the limit part-way; a failure midway leaves a valid minimum the person can fix by choosing again (not atomic, like the other multi-step operations). Day plans now carry `minimum: { count, done, partial, ids, status }` beside `summary`.
+- Pure logic: `src/utils/planner/minimumDay.js` (`isMinimumTask`, `minimumOccurrences`, `summarizeMinimum`, `planMinimum`).
+
+### 17.3 Interface and copy
+- Panel **Minimum Day** on My Day (after "Day type"), shown for a day that exists; a "Minimum" label on each chosen task. States: nothing chosen, choosing (checkboxes, "n of 3 chosen", a fourth is disabled), chosen (task list with states, "x of y done"), saving, failed save (calm message, stays open), no tasks yet, and read-only history.
+- Wording lives in `src/constants/minimumDayCopy.js`: complete (today only) **"You showed up for yourself today."**; open (today only) **"Your minimum is still here whenever you’re ready."** No failure, streak or loss language; a test checks the panel text.
+
+### 17.4 Not covered / limitations
+- Suggestions, reminders or calendar export for the minimum; any effect on weekly or monthly views (the Week and Progress screens do not show it).
+- Past days are not scored differently: the minimum is a record, not history that changes figures.
+- Saving is several requests (see 17.2). Undoing a move or restoring a set-aside task does not bring the label back.
+- The limit of 3 is provisional and needs product confirmation.

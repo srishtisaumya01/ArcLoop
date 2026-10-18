@@ -17,6 +17,7 @@ MAX_DAYS_AHEAD = 366  # sanity bound; the app enforces its own shorter limit
 MAX_ACTIVE_TEMPLATES = 200  # PROVISIONAL abuse cap, not a product decision
 MAX_OCCURRENCES_PER_DAY = 100  # PROVISIONAL abuse cap
 MAX_SUPPRESSED = 200
+MAX_MINIMUM_TASKS = 3  # PROVISIONAL product limit (Minimum Day); the client mirrors it (PLANNER_CONFIG.limits.minimumTasks)
 RECURRENCES = ('once', 'daily', 'weekly')
 DAY_MODES = ('normal', 'busy', 'rest')
 PLAN_STATES = ('active', 'excluded')
@@ -109,3 +110,14 @@ def validate_occurrence(o):
         raise constraint_violation(fields={'excluded_reason': 'A set-aside task needs a reason, and only those have one.'})
     if excluded and o.completion >= 1:
         raise constraint_violation(fields={'plan_state': 'A done task cannot be set aside.'})  # C2
+
+
+def guard_minimum(occurrence_model, user, occurrence):
+    """Minimum Day: a flagged task must still be planned, and a day holds at most MAX_MINIMUM_TASKS of them."""
+    if not occurrence.is_minimum:
+        return
+    if occurrence.plan_state != 'active':
+        raise constraint_violation(fields={'is_minimum': 'Only a task that is still planned can be part of your minimum.'})
+    others = occurrence_model.objects.filter(user=user, plan_date=occurrence.plan_date, is_minimum=True).exclude(pk=occurrence.pk)
+    if others.count() >= MAX_MINIMUM_TASKS:
+        raise limit_reached(f'Choose up to {MAX_MINIMUM_TASKS} tasks for your minimum.')

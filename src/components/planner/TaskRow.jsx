@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Box, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material'
+import { Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material'
 import { colors, radii } from '../../theme/tokens.js'
 import TaskReminderControl from '../reminders/TaskReminderControl.jsx'
 import MoveTaskForm from './MoveTaskForm.jsx'
@@ -64,6 +64,7 @@ export default function TaskRow({ task, canRecord, canEdit, busy, onCompletion, 
         <Typography sx={{ fontWeight: 600, overflowWrap: 'anywhere' }}>
           {task.title}
           {task.isPriority ? ' (priority)' : ''}
+          {task.isMinimum && !excluded && <Chip label="Minimum" size="small" variant="outlined" color="primary" sx={{ ml: 1, verticalAlign: 'middle' }} />}
         </Typography>
         {(meta || repeats) && <Typography variant="body2" color="text.secondary">{[meta, repeats ? 'repeats' : null].filter(Boolean).join(' · ')}</Typography>}
       </Box>

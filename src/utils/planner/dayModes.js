@@ -48,9 +48,10 @@ export function unsuppressTemplate(day, templateId) {
 
 // Guided shortcut for Busy and Rest days: which tasks to PROPOSE setting aside.
 // It only suggests; the user chooses, and each task is set aside explicitly
-// (always reversible). Priority tasks are kept in Busy mode; Done tasks are never proposed.
+// (always reversible). Priority tasks are kept in Busy mode; Done tasks are never proposed. Tasks chosen for
+// the day's Minimum Day are never proposed in either mode: the person asked to keep them.
 export function proposeSetAside({ mode, occurrences }) {
-  const open = occurrences.filter((o) => o.planState === PLAN_STATES.ACTIVE && o.completion < 1)
+  const open = occurrences.filter((o) => o.planState === PLAN_STATES.ACTIVE && o.completion < 1 && o.isMinimum !== true)
   if (mode === DAY_MODES.BUSY) {
     return { reason: EXCLUDED_REASONS.BUSY_DAY, ids: open.filter((o) => !o.isPriority).map((o) => o.id) }
   }

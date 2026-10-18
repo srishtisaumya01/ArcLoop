@@ -35,5 +35,8 @@ export const PLANNER_CONFIG = Object.freeze({
     descriptionMax: 1000,
     categoryMax: 40,
     estimatedMinutesMax: 1440,
+    // PROVISIONAL product limit for Minimum Day. The server mirrors it (backend/planner/rules.py MAX_MINIMUM_TASKS);
+    // tests/integration/writableColumns checks they agree.
+    minimumTasks: 3,
   }),
 })

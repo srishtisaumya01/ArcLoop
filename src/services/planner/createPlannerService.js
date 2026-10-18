@@ -10,6 +10,7 @@ import {
   occurrencesToCreate,
   planForRange,
   parseDate,
+  planMinimum,
   planRemoval,
   planTemplateEdit,
   planUndoReschedule,
@@ -22,6 +23,7 @@ import {
   sortOccurrencesForDisplay,
   summarizeDay,
   summarizeHabits,
+  summarizeMinimum,
   templatesDueOn,
   expectedTaskView,
   RECOVERY_LOOKBACK_DAYS,
@@ -46,6 +48,7 @@ import {
   occurrenceDiffRow,
   occurrenceFromRow,
   occurrenceInsertRow,
+  occurrenceMinimumRow,
   occurrenceStateRow,
   templateFromRow,
   templateInsertRow,
@@ -176,6 +179,7 @@ export function createPlannerService({ getClient, clock = () => Date.now() }) {
       moves: await fetchMoves(client, occurrences),
       expected: await fetchExpected(client, planDate, day, occurrences, access),
       summary: day ? summarizeDay({ day, occurrences }) : null,
+      minimum: summarizeMinimum(occurrences), // reported on its own: it never feeds `summary`
       access,
     }
   }
@@ -511,6 +515,22 @@ export function createPlannerService({ getClient, clock = () => Date.now() }) {
       const next = setDayModeLogic({ day, mode }, ctx)
       if (next === day) return day
       return writeDay(client, planDate, { day_mode: next.dayMode })
+    },
+
+    // Minimum Day: make the day's minimum exactly `ids` (1 to 3 active tasks on that day; an empty list clears it). Only a label
+    // on tasks that already exist: completion, plan state, the baseline and every other task are left alone. Flags are
+    // cleared before new ones are set, so the day never holds more than the limit part-way. One request per task (at most
+    // six); a failure midway leaves a valid minimum the person can fix by choosing again.
+    async setMinimum(planDate, ids) {
+      parseDate(planDate)
+      const { client, ctx } = await session()
+      const day = await fetchDay(client, planDate)
+      if (!day) throw fail(SERVICE_ERROR.NOT_FOUND, 'Start this day before choosing your minimum.')
+      const occurrences = await fetchOccurrencesOn(client, planDate)
+      const { clear, set } = planMinimum({ planDate, occurrences, ids }, ctx)
+      for (const id of clear) await writeOccurrence(client, id, occurrenceMinimumRow(false))
+      for (const id of set) await writeOccurrence(client, id, occurrenceMinimumRow(true))
+      return summarizeMinimum(await fetchOccurrencesOn(client, planDate))
     },
 
     // ---- history ---------------------------------------------------------------

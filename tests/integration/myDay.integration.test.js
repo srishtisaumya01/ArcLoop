@@ -583,3 +583,84 @@ describe('My Day against the real service and database', () => {
     expect(await screen.findByText('Today')).toBeTruthy()
   })
 })
+
+
+describe('Minimum Day on My Day, against the real service and database', () => {
+  const panel = () => screen.getByRole('region', { name: 'Minimum Day' })
+
+  it('chooses a minimum, shows it on the task, and leaves the day percentage alone as it is completed', async () => {
+    for (const title of ['Walk', 'Read', 'Write', 'Tidy']) await service.createTemplate(daily(title))
+    const user = setupUser()
+    renderDay()
+    await screen.findByText('Walk')
+    expect(within(panel()).getByText('Choose a few important tasks to keep your day moving.')).toBeTruthy()
+    await user.click(within(panel()).getByRole('button', { name: 'Choose your minimum' }))
+    await user.click(within(panel()).getByRole('checkbox', { name: 'Walk' }))
+    await user.click(within(panel()).getByRole('checkbox', { name: 'Read' }))
+    await user.click(within(panel()).getByRole('button', { name: 'Save minimum' }))
+    await within(panel()).findByRole('list', { name: 'Your minimum tasks' })
+    expect(within(panel()).getByRole('status').textContent).toBe('Your minimum is still here whenever you’re ready.')
+    expect((await persisted('Walk')).isMinimum).toBe(true)
+    expect((await persisted('Write')).isMinimum).toBe(false)
+    expect(within(progress()).getByText('0% of today’s plan')).toBeTruthy()
+
+    await user.click(screen.getByRole('button', { name: 'Done: Walk' }))
+    await waitFor(() => expect(within(progress()).getByText('25% of today’s plan')).toBeTruthy())
+    await user.click(screen.getByRole('button', { name: 'Done: Read' }))
+    await waitFor(() => expect(within(panel()).getByRole('status').textContent).toBe('You showed up for yourself today.'))
+    expect(within(progress()).getByText('50% of today’s plan')).toBeTruthy() // the minimum done is not the day done
+    expect(within(panel()).getByText('2 of 2 done')).toBeTruthy()
+    expect((await persisted('Write')).completion).toBe(0)
+  })
+
+  it('stops at three choices, and keeps the tasks the person chose when a Busy day proposes setting others aside', async () => {
+    for (const title of ['A', 'B', 'C', 'D']) await service.createTemplate(daily(title))
+    const user = setupUser()
+    renderDay()
+    await screen.findByText('A')
+    await user.click(within(panel()).getByRole('button', { name: 'Choose your minimum' }))
+    for (const title of ['A', 'B', 'C']) await user.click(within(panel()).getByRole('checkbox', { name: title }))
+    expect(within(panel()).getByRole('checkbox', { name: 'D' }).disabled).toBe(true)
+    await user.click(within(panel()).getByRole('button', { name: 'Save minimum' }))
+    await within(panel()).findByRole('list', { name: 'Your minimum tasks' })
+
+    await user.click(screen.getByRole('button', { name: 'Busy' }))
+    const offer = await screen.findByRole('list', { name: 'Tasks proposed for setting aside' })
+    expect(within(offer).getAllByRole('listitem').map((li) => li.textContent)).toEqual(['D']) // never the minimum
+    expect((await service.getDayPlan(TODAY)).occurrences.every((o) => o.planState === 'active')).toBe(true) // nothing moved by itself
+  })
+
+  it('can be cleared, and clearing deletes or skips nothing', async () => {
+    await service.createTemplate(daily('Walk'))
+    const user = setupUser()
+    renderDay()
+    await screen.findByText('Walk')
+    await user.click(within(panel()).getByRole('button', { name: 'Choose your minimum' }))
+    await user.click(within(panel()).getByRole('checkbox', { name: 'Walk' }))
+    await user.click(within(panel()).getByRole('button', { name: 'Save minimum' }))
+    await user.click(await within(panel()).findByRole('button', { name: 'Clear minimum' }))
+    await waitFor(() => expect(within(panel()).getByText('You haven’t chosen a minimum for this day. That is fine.')).toBeTruthy())
+    expect((await persisted('Walk')).planState).toBe('active')
+    expect(await countRows(world, userId, 'task-occurrences')).toBe(1)
+  })
+
+  it('is per day: another date does not inherit it, and a day that does not exist yet shows no panel', async () => {
+    await service.createTemplate(daily('Walk'))
+    const today = await service.openDay(TODAY)
+    await service.setMinimum(TODAY, [today.occurrences[0].id])
+    renderDay('/app/day?date=2026-03-11')
+    expect(await screen.findByText('Nothing planned for this day yet')).toBeTruthy()
+    expect(screen.queryByRole('region', { name: 'Minimum Day' })).toBeNull() // the day does not exist yet: nothing to choose from
+  })
+
+  it('shows a minimum on history outside the editing window as a record, with no controls', async () => {
+    await service.createTask(TODAY, { title: 'Keeper' })
+    const today = await service.openDay(TODAY)
+    await service.setMinimum(TODAY, [today.occurrences[0].id])
+    holder.service = createPlannerService({ getClient: () => createTestClient(world, { getUserId: () => userId }), clock: () => Date.parse('2026-03-20T15:00:00Z') })
+    renderDay(`/app/day?date=${TODAY}`)
+    const record = await screen.findByRole('region', { name: 'Minimum Day' })
+    expect(within(record).getByText(/Keeper · Not done/)).toBeTruthy()
+    expect(within(record).queryByRole('button')).toBeNull()
+  })
+})

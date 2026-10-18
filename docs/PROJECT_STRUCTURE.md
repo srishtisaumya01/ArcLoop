@@ -70,6 +70,7 @@ src/utils/planner/
   occurrences.js reschedule.js        top-up, complete, set aside, remove (C1), move / undo move (C2)
   dayModes.js snapshots.js            day state and modes, baseline, immutable snapshots
   weekly.js workload.js               Monday-Sunday metrics, remaining effort and fit
+  minimumDay.js                       Minimum Day: summary and selection plan (a label; never feeds progress)
   index.js                            re-exports everything
 tests/unit/planner/                   unit tests (fixtures.js holds the fixed clock and builders)
 ```

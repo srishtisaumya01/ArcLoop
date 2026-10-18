@@ -52,6 +52,7 @@ const CALLS = {
   rescheduleOccurrence: [OID, '2026-03-12'],
   undoReschedule: [OID],
   setDayMode: [TODAY, 'busy'],
+  setMinimum: [TODAY, []],
   getPlanSnapshot: [TODAY],
   listSnapshots: [{ from: '2026-03-01', to: TODAY }],
   getWeekSummary: [{}],
@@ -922,5 +923,64 @@ describe('rescheduling', () => {
     expect((await orphan.service.undoReschedule(OID)).source).toMatchObject({ planState: 'active', excludedReason: null })
     const never = setup({ occurrences: [occRow({ id: OID })], days: [dayRow()] })
     expect((await rejection(never.service.undoReschedule(OID))).code).toBe(SERVICE_ERROR.CONFLICT)
+  })
+})
+
+
+describe('setMinimum (Minimum Day)', () => {
+  const A = '11111111-1111-4111-8111-1111111111a1'
+  const B = '11111111-1111-4111-8111-1111111111b2'
+  const C = '11111111-1111-4111-8111-1111111111c3'
+  const D = '11111111-1111-4111-8111-1111111111d4'
+  const base = (rows = [occRow({ id: A }), occRow({ id: B }), occRow({ id: C }), occRow({ id: D })]) => setup({ occurrences: rows, days: [dayRow()] })
+  const flagged = (mem) => mem.tables.task_occurrences.filter((o) => o.is_minimum).map((o) => o.id)
+
+  it('flags the chosen tasks, writes only the label, and reports the minimum on its own', async () => {
+    const { service, mem, client } = base()
+    const result = await service.setMinimum(TODAY, [A, B])
+    expect(flagged(mem)).toEqual([A, B])
+    expect(result).toMatchObject({ count: 2, done: 0, status: 'open', ids: [A, B] })
+    const writes = writesOf(client)
+    expect(writes.map((w) => w.payload)).toEqual([{ is_minimum: true }, { is_minimum: true }])
+    expect(mem.tables.task_occurrences.every((o) => o.completion === 0 && o.plan_state === 'active')).toBe(true) // nothing else changed
+    expect(mem.tables.day_plans[0]).toMatchObject({ day_mode: 'normal', baseline_at: null }) // not a revision of the plan
+  })
+
+  it('clears flags before setting new ones, so the day never holds more than the limit part-way', async () => {
+    const { service, mem, client } = base([occRow({ id: A, is_minimum: true }), occRow({ id: B, is_minimum: true }), occRow({ id: C, is_minimum: true }), occRow({ id: D })])
+    await service.setMinimum(TODAY, [A, D])
+    expect(writesOf(client).map((w) => w.payload.is_minimum)).toEqual([false, false, true]) // clears first, then sets
+    expect(flagged(mem).sort()).toEqual([A, D].sort())
+  })
+
+  it('an empty list clears the minimum', async () => {
+    const { service, mem } = base([occRow({ id: A, is_minimum: true }), occRow({ id: B })])
+    expect(await service.setMinimum(TODAY, [])).toMatchObject({ count: 0, status: 'none' })
+    expect(flagged(mem)).toEqual([])
+  })
+
+  it('refuses more than 3, a repeated task, an unknown task and a set-aside task, without writing', async () => {
+    const aside = occRow({ id: D, plan_state: 'excluded', excluded_reason: 'busy_day', excluded_at: BASELINE })
+    const { service, client } = base([occRow({ id: A }), occRow({ id: B }), occRow({ id: C }), aside])
+    for (const ids of [[A, B, C, D], [A, A], ['22222222-2222-4222-8222-222222222299'], [D]]) {
+      expect((await rejection(service.setMinimum(TODAY, ids))).code, JSON.stringify(ids)).toMatch(/VALIDATION|CONFLICT/)
+    }
+    expect(writesOf(client)).toEqual([])
+  })
+
+  it('needs the day to exist and to be editable', async () => {
+    const empty = setup({ occurrences: [], days: [] })
+    expect((await rejection(empty.service.setMinimum(TODAY, []))).code).toBe(SERVICE_ERROR.NOT_FOUND)
+    const old = setup({ occurrences: [occRow({ id: A, plan_date: '2026-03-01' })], days: [dayRow({ plan_date: '2026-03-01' })] })
+    expect((await rejection(old.service.setMinimum('2026-03-01', [A]))).code).toBe(SERVICE_ERROR.VALIDATION)
+    expect(writesOf(old.client)).toEqual([])
+  })
+
+  it('shows the minimum in the day plan without touching the day summary', async () => {
+    const { service } = base([occRow({ id: A, is_minimum: true, completion: 1 }), occRow({ id: B })])
+    const plan = await service.getDayPlan(TODAY)
+    expect(plan.minimum).toMatchObject({ count: 1, done: 1, status: 'complete' })
+    expect(plan.summary.current).toMatchObject({ count: 2, done: 1, percent: 50 }) // the full-plan figure is unchanged by the minimum
+    expect(plan.occurrences.find((o) => o.id === A).isMinimum).toBe(true)
   })
 })

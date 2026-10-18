@@ -83,6 +83,13 @@ Backend: Django + SQLite (migrated from Supabase; see `docs/DJANGO_MIGRATION.md`
 - The page loads 8 weeks with one request set per week; not optimised for very busy accounts.
 - Goals with targets are not built: the spec calls them a separate later concept and there is no approved data model.
 
+## Minimum Day
+- The limit of **3 tasks** is provisional (product decision pending). It is kept equal on the client and the server by a test.
+- Saving a minimum is one request per task (at most six): not atomic. A failure midway leaves a valid minimum, never more than three, and the person can choose again.
+- Putting a set-aside task back, or undoing a move, does not re-choose it for the minimum; a moved task's copy is never flagged. This is deliberate (nothing is chosen on the person's behalf).
+- The Week and Progress screens, reminders and the calendar export do not know about the minimum.
+- Not tested: Firefox and Safari, real phones, a screen reader (the markup uses a labelled region, a fieldset-style group of checkboxes, `role="status"` for the message and `aria-live` for the count).
+
 ## Recurring tasks
 - **There is no pause or resume.** The planner has no paused state, and an ended task cannot be restarted; create a new one.
 - Ending a task ends it after today. Days already opened keep their copy. Editing a schedule leaves already-planned days that no longer match in place and says so.
