@@ -15,7 +15,7 @@ const STATES = [
 
 // One task in the day's checklist. Completion is 0 / half / done; set-aside tasks can be put back.
 // Editing changes this day's task only; removing follows the planner's removal rules.
-export default function TaskRow({ task, canRecord, canEdit, busy, onCompletion, onSetAside, onRestore, onEdit, onRemove, onStopRepeating, canRemind, reminder, remindersOn, onSetReminder, onRemoveReminder, move, onMove, onUndoMove }) {
+export default function TaskRow({ task, canRecord, canEdit, busy, moveRange, onCompletion, onSetAside, onRestore, onEdit, onRemove, onStopRepeating, canRemind, reminder, remindersOn, onSetReminder, onRemoveReminder, move, onMove, onUndoMove }) {
   const [editing, setEditing] = useState(false)
   const [values, setValues] = useState(null)
   const [errors, setErrors] = useState({})
@@ -141,7 +141,7 @@ export default function TaskRow({ task, canRecord, canEdit, busy, onCompletion, 
           )}
         </Box>
       )}
-      {moving && !excluded && <MoveTaskForm task={task} busy={busy} onMove={onMove} onCancel={() => setMoving(false)} />}
+      {moving && !excluded && <MoveTaskForm task={task} busy={busy} onMove={onMove} range={moveRange} onCancel={() => setMoving(false)} />}
       {canRemind && !excluded && task.completion < 1 && (
         <TaskReminderControl task={task} reminder={reminder} remindersOn={remindersOn} busy={busy} onSet={onSetReminder} onRemove={onRemoveReminder} />
       )}

@@ -85,3 +85,15 @@ export function latestResetLink(to) {
   }
   throw new Error(`no reset email for ${to}`)
 }
+
+// Tasks created straight through the API (the add-task form is covered by planner.spec.js): opening My Day creates today's
+// day, then each task is added to that exact date and the page is reloaded to show them.
+export async function seedTasks(page, context, titles) {
+  await page.goto('/app/day')
+  await expect(page.getByText('No tasks on this day')).toBeVisible() // the page has opened (created) today's day
+  const api = apiAs(context)
+  const planDate = (await api.get('/day-plans/')).body.results[0].plan_date
+  for (const title of titles) expect((await api.post('/task-occurrences/', { plan_date: planDate, title })).status).toBe(201)
+  await page.reload()
+  await expect(page.getByRole('checkbox', { name: `Done: ${titles.at(-1)}`, exact: true })).toBeVisible()
+}

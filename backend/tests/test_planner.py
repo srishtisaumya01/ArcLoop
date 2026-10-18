@@ -165,6 +165,34 @@ class OccurrenceTests(ApiCase):
         self.assertIsNone(undone['completed_at'])
         self.assertError(self.patch('task-occurrences', {'completed_at': '2026-03-10T00:00:00Z'}, id=occ['id']), 403, 'permission_denied')
 
+    def test_a_conditional_patch_changes_a_row_only_while_it_is_still_in_the_expected_state(self):
+        """Undo relies on this existing contract: filters on the PATCH decide which rows it touches, so naming the state the row
+        is expected to be in (`completion=1`) makes the update a compare-and-set. A row in any other state is simply not
+        matched: 200 with an empty list, and nothing is written."""
+        occ = self.make_occurrence()
+        self.patch('task-occurrences', {'completion': 1}, id=occ['id'])
+        # Still done: the conditional update applies, and the server clears the completion time.
+        undone = self.patch('task-occurrences', {'completion': 0}, id=occ['id'], completion=1)
+        self.assertEqual(undone.status_code, 200)
+        self.assertEqual([(r['completion'], r['completed_at']) for r in undone.json()['results']], [(0.0, None)])
+        # It is no longer done, so the same conditional update matches nothing and changes nothing.
+        stale = self.patch('task-occurrences', {'completion': 0.5}, id=occ['id'], completion=1)
+        self.assertEqual((stale.status_code, stale.json()), (200, {'results': []}))
+        self.assertEqual(self.list('task-occurrences', id=occ['id']).json()['results'][0]['completion'], 0.0)
+        # Half-done values compare exactly too, and a condition that is not a valid value is refused, not ignored.
+        self.patch('task-occurrences', {'completion': 0.5}, id=occ['id'])
+        self.assertEqual(self.patch('task-occurrences', {'completion': 1}, id=occ['id'], completion=0.5).json()['results'][0]['completion'], 1.0)
+        self.assertEqual(self.patch('task-occurrences', {'completion': 0}, id=occ['id'], completion=0.5).json()['results'], [])
+        self.assertError(self.patch('task-occurrences', {'completion': 0}, id=occ['id'], completion='soon'), 400, 'validation_error')
+
+    def test_a_conditional_patch_never_reaches_another_persons_row(self):
+        occ = self.make_occurrence()
+        self.patch('task-occurrences', {'completion': 1}, id=occ['id'])
+        self.as_user(self.bob)
+        self.assertEqual(self.patch('task-occurrences', {'completion': 0}, id=occ['id'], completion=1).json()['results'], [])
+        self.as_user(self.alice)
+        self.assertEqual(self.list('task-occurrences', id=occ['id']).json()['results'][0]['completion'], 1.0)
+
     def test_progress_is_only_recorded_for_today_or_earlier(self):
         self.make_day('2026-03-11')
         future = self.make_occurrence('2026-03-11')

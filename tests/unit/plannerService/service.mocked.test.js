@@ -1031,3 +1031,117 @@ describe('setMinimum when a save fails part-way', () => {
     expect(flagged(mem)).toEqual([A])
   })
 })
+
+
+describe('undoCompletion with an expected state (the Undo notice)', () => {
+  const doneRow = (extra = {}) => occRow({ id: OID, completion: 1, completed_at: '2026-03-10T14:00:00+00:00', ...extra })
+  const base = (rows = [doneRow()]) => setup({ occurrences: rows, days: [dayRow({ baseline_at: BASELINE })] })
+
+  it('puts the task back to the state it was in, writing only the state columns, and only while it is still done', async () => {
+    const { service, mem, client } = base()
+    const result = await service.undoCompletion(OID, { from: 1, to: 0.5 })
+    expect(result.occurrence).toMatchObject({ id: OID, completion: 0.5 })
+    expect(mem.tables.task_occurrences[0].completion).toBe(0.5)
+    const [write] = writesOf(client)
+    expect(Object.keys(write.payload).sort()).toEqual(['completion', 'excluded_reason', 'plan_state'])
+    expect(write.filters).toEqual(expect.arrayContaining([{ column: 'id', op: 'eq', value: OID }, { column: 'completion', op: 'eq', value: 1 }])) // the condition travels with the write
+  })
+
+  it('can go all the way back to not done', async () => {
+    const { service, mem } = base()
+    await service.undoCompletion(OID, { from: 1, to: 0 })
+    expect(mem.tables.task_occurrences[0].completion).toBe(0)
+  })
+
+  it('refuses, without writing, when the task is no longer in the state that was recorded', async () => {
+    const { service, mem, client } = base([doneRow({ completion: 0.5 })])
+    const e = await rejection(service.undoCompletion(OID, { from: 1, to: 0 }))
+    expect(e).toMatchObject({ code: SERVICE_ERROR.CONFLICT, message: 'That task changed since. Reload to see where it is now.' })
+    expect(writesOf(client)).toEqual([])
+    expect(mem.tables.task_occurrences[0].completion).toBe(0.5)
+  })
+
+  it('refuses when the task changes between the read and the write, and overwrites nothing', async () => {
+    const mem = createMemoryDb({ occurrences: [doneRow()], days: [dayRow({ baseline_at: BASELINE })] })
+    let raced = false
+    const handler = (state) => {
+      if (state.table === 'task_occurrences' && state.op === 'update' && !raced) {
+        raced = true
+        mem.tables.task_occurrences[0].completion = 0.5 // another tab got there first
+      }
+      return mem.handler(state)
+    }
+    const e = await rejection(serviceFor(createFakeClient({ handler })).undoCompletion(OID, { from: 1, to: 0 }))
+    expect(e.code).toBe(SERVICE_ERROR.CONFLICT)
+    expect(mem.tables.task_occurrences[0].completion).toBe(0.5)
+  })
+
+  it('a failed write is an error, never a success, and leaves the task as it was', async () => {
+    const mem = createMemoryDb({ occurrences: [doneRow()], days: [dayRow({ baseline_at: BASELINE })] })
+    const handler = (state) => (state.table === 'task_occurrences' && state.op === 'update' ? { error: { code: '57P01', message: 'connection lost' } } : mem.handler(state))
+    const e = await rejection(serviceFor(createFakeClient({ handler })).undoCompletion(OID, { from: 1, to: 0 }))
+    expect(e).toBeInstanceOf(Error)
+    expect(e.code).not.toBe(SERVICE_ERROR.CONFLICT)
+    expect(mem.tables.task_occurrences[0].completion).toBe(1)
+  })
+
+  it('checks its input before reading or writing anything', async () => {
+    const { service, client } = base()
+    for (const options of [{ from: 1, to: 1 }, { from: 1, to: 0.3 }, { from: 2, to: 0 }, {}]) {
+      expect((await rejection(service.undoCompletion(OID, options))).code, JSON.stringify(options)).toBe(SERVICE_ERROR.VALIDATION)
+    }
+    expect((await rejection(service.undoCompletion('not-an-id', { from: 1, to: 0 }))).code).toBe(SERVICE_ERROR.VALIDATION)
+    expect(client.calls.filter((c) => c.table === 'task_occurrences')).toEqual([])
+  })
+
+  it('follows the same rules as any change of progress: not on a day that left the editing window, not on a future day', async () => {
+    const old = setup({ occurrences: [doneRow({ plan_date: '2026-03-01' })], days: [dayRow({ plan_date: '2026-03-01', baseline_at: BASELINE })] })
+    expect((await rejection(old.service.undoCompletion(OID, { from: 1, to: 0 }))).code).toBe(SERVICE_ERROR.VALIDATION)
+    expect(writesOf(old.client)).toEqual([])
+    const future = setup({ occurrences: [doneRow({ plan_date: '2026-03-12' })], days: [dayRow({ plan_date: '2026-03-12' })] })
+    expect((await rejection(future.service.undoCompletion(OID, { from: 1, to: 0.5 }))).code).toBe(SERVICE_ERROR.VALIDATION)
+  })
+
+  it('without options it still just sets not done', async () => {
+    const { service, mem } = base()
+    expect((await service.undoCompletion(OID)).occurrence.completion).toBe(0)
+    expect(mem.tables.task_occurrences[0].completion).toBe(0)
+  })
+})
+
+describe('rescheduling: is an immediate Undo clean? (undoIsClean)', () => {
+  const FRIDAY = '2026-03-13'
+  const SATURDAY = '2026-03-14'
+  const move = async ({ template, to, templateId = TID }) => {
+    const { service } = setup({ occurrences: [occRow({ id: OID, template_id: templateId })], days: [dayRow()], templates: template ? [template] : [] })
+    return service.rescheduleOccurrence(OID, to)
+  }
+  const tpl = (extra) => tplRow({ id: TID, starts_on: '2026-01-01', ...extra })
+
+  it('is clean for a task with no template, and for a one-off task', async () => {
+    expect((await move({ template: null, templateId: null, to: FRIDAY })).undoIsClean).toBe(true)
+    expect((await move({ template: tpl({ recurrence: 'once', starts_on: TODAY, ends_on: TODAY }), to: FRIDAY })).undoIsClean).toBe(true)
+  })
+
+  it('is clean for a repeating task that is not due on the new day', async () => {
+    expect((await move({ template: tpl({ recurrence: 'weekly', weekdays: [2] }), to: FRIDAY })).undoIsClean).toBe(true) // a Tuesday task moved to a Friday
+  })
+
+  it('is not clean for a repeating task that is due on the new day anyway', async () => {
+    expect((await move({ template: tpl({ recurrence: 'daily' }), to: FRIDAY })).undoIsClean).toBe(false)
+    expect((await move({ template: tpl({ recurrence: 'weekly', weekdays: [2, 5] }), to: FRIDAY })).undoIsClean).toBe(false) // Tuesday and Friday
+    expect((await move({ template: tpl({ recurrence: 'weekly', weekdays: [2, 6] }), to: SATURDAY })).undoIsClean).toBe(false) // Tuesday and Saturday
+  })
+
+  it('looks at the dates the repeating task actually covers: a task that has ended is clean to undo', async () => {
+    expect((await move({ template: tpl({ recurrence: 'daily', ends_on: '2026-03-11' }), to: FRIDAY })).undoIsClean).toBe(true)
+  })
+
+  it('reads the template before writing anything, so a failed read cannot leave a half-done move', async () => {
+    const mem = createMemoryDb({ occurrences: [occRow({ id: OID, template_id: TID })], days: [dayRow()], templates: [tplRow({ id: TID })] })
+    const handler = (state) => (state.table === 'task_templates' ? { error: { code: '57P01', message: 'connection lost' } } : mem.handler(state))
+    await rejection(serviceFor(createFakeClient({ handler })).rescheduleOccurrence(OID, FRIDAY))
+    expect(mem.tables.task_occurrences).toHaveLength(1) // no copy was made
+    expect(mem.tables.task_occurrences[0].plan_state).toBe('active')
+  })
+})

@@ -86,6 +86,13 @@ Backend: Django + SQLite (migrated from Supabase; see `docs/DJANGO_MIGRATION.md`
 - The page loads 8 weeks with one request set per week; not optimised for very busy accounts.
 - Goals with targets are not built: the spec calls them a separate later concept and there is no approved data model.
 
+## Undo (finishing and moving a task)
+- **Existing behaviour found while testing, not changed:** undoing a move of a *repeating* task onto a day it is due (a daily task onto an unopened day, say) deletes the copy and records the task as removed for that day, so the day never gets its own occurrence (opening it returns nothing). The quick Undo notice is not offered after such a move; the "Undo move" button on the moved row still does this. A fix changes the planner's removal rule and needs a product decision. A pending test (`it.todo`) in `tests/integration/undo.integration.test.js` marks it.
+- The Undo notice is not remembered: it is gone after a reload or when the day changes. Only the latest change is offered; earlier ticks are undone by unticking.
+- Keyboard users reach the notice with Tab after the task list; if they do not get there within 8 seconds it closes (unticking the checkbox still undoes a completion).
+- The 8-second timer is MUI's: after the pointer or focus leaves the notice it restarts for another 8 seconds rather than resuming.
+- Not tested: Firefox, Safari, real phones, screen readers (the notice is a status region; whether it is announced was not checked with a screen reader).
+
 ## My Day as a to-do list
 - Quick add takes a **title only**. Times, estimate, category, description and priority are set with Edit afterwards; a repeating task is made on the Recurring tasks page (My Day has no repeat option, and a one-off task cannot be turned into a repeating one).
 - "Partly done" is two steps away (Edit, then Progress); one tap on the checkbox finishes a partly done task.

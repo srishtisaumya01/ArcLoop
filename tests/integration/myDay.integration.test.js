@@ -26,9 +26,22 @@ beforeAll(() => {
 
 let userId
 let service
+let failNext = null // (state) => boolean: the next matching request fails, as a dropped connection would
+let updates = 0 // writes to the occurrences, counted
 beforeEach(async () => {
   userId = await createUser(world, `myday-${(seq += 1)}@example.com`, 'America/New_York')
-  const client = createTestClient(world, { getUserId: () => userId })
+  failNext = null
+  updates = 0
+  const hooks = {
+    before: async (state) => {
+      if (state.table === 'task_occurrences' && state.op === 'update') updates += 1
+      if (failNext && failNext(state)) {
+        failNext = null
+        throw new Error('Failed to fetch')
+      }
+    },
+  }
+  const client = createTestClient(world, { getUserId: () => userId, hooks })
   service = createPlannerService({ getClient: () => client, clock: () => Date.parse(CLOCK) })
   holder.service = service
   localStorage.clear() // dismissals (welcome-back, day-mode offers) are per browser and must not leak between tests
@@ -664,5 +677,262 @@ describe('Minimum Day on My Day, against the real service and database', () => {
     const record = await screen.findByRole('region', { name: 'Minimum Day' })
     expect(within(record).getByText(/Keeper · Not done/)).toBeTruthy()
     expect(within(record).queryByRole('button')).toBeNull()
+  })
+})
+
+
+describe('Undo on My Day, against the real service and database', () => {
+  const doneNotice = (title) => `“${title}” marked done.`
+  const undoButton = (title) => screen.getByRole('button', { name: `Undo: ${title} marked done` })
+  const writesToTasks = (state) => state.table === 'task_occurrences' && state.op === 'update'
+
+  it('ticking a task offers Undo; Undo puts it back, and what is shown is what the server holds', async () => {
+    await service.createTemplate(daily('Walk'))
+    await service.createTemplate(daily('Read'))
+    const user = setupUser()
+    renderDay()
+    await screen.findByText('Walk')
+    await user.click(box('Walk'))
+    expect(await screen.findByText(doneNotice('Walk'))).toBeTruthy()
+    expect((await persisted('Walk')).completion).toBe(1)
+    await user.click(undoButton('Walk'))
+    await waitFor(() => expect(screen.queryByText(doneNotice('Walk'))).toBeNull())
+    expect(box('Walk').checked).toBe(false)
+    expect((await persisted('Walk')).completion).toBe(0)
+    expect((await persisted('Walk')).completedAt).toBeNull()
+    expect(within(progress()).getByText('0% of today’s plan')).toBeTruthy()
+  })
+
+  it('Undo restores a partly done task to partly done', async () => {
+    await service.createTemplate(daily('Walk'))
+    const user = setupUser()
+    renderDay()
+    await screen.findByText('Walk')
+    await markPartly(user, 'Walk')
+    await user.click(box('Walk')) // a dash: one tick finishes it
+    expect(await screen.findByText(doneNotice('Walk'))).toBeTruthy()
+    await user.click(undoButton('Walk'))
+    await waitFor(() => expect(box('Walk').indeterminate).toBe(true))
+    expect((await persisted('Walk')).completion).toBe(0.5)
+  })
+
+  it('unticking a task does not offer Undo, and a refused tick does not claim success', async () => {
+    await service.createTemplate(daily('Walk'))
+    const user = setupUser()
+    renderDay()
+    await screen.findByText('Walk')
+    failNext = writesToTasks
+    await user.click(box('Walk'))
+    expect(await screen.findByRole('alert')).toBeTruthy() // the page says it did not save
+    expect(screen.queryByText(doneNotice('Walk'))).toBeNull() // no notice for something that did not happen
+    expect((await persisted('Walk')).completion).toBe(0)
+    await user.click(box('Walk'))
+    await screen.findByText(doneNotice('Walk'))
+    await user.click(box('Walk')) // unticking by hand
+    await waitFor(() => expect(screen.queryByText(doneNotice('Walk'))).toBeNull()) // the notice no longer describes the screen
+  })
+
+  it('with several tasks ticked in succession, the notice is for the latest only and Undo touches only that task', async () => {
+    for (const title of ['Walk', 'Read', 'Write']) await service.createTemplate(daily(title))
+    const user = setupUser()
+    renderDay()
+    await screen.findByText('Walk')
+    await user.click(box('Walk'))
+    await screen.findByText(doneNotice('Walk'))
+    await user.click(box('Read'))
+    expect(await screen.findByText(doneNotice('Read'))).toBeTruthy()
+    expect(screen.queryByText(doneNotice('Walk'))).toBeNull()
+    expect(screen.getAllByRole('button', { name: /^Undo:/ })).toHaveLength(1)
+    await user.click(undoButton('Read'))
+    await waitFor(() => expect(box('Read').checked).toBe(false))
+    expect(box('Walk').checked).toBe(true) // the earlier one is untouched
+    expect((await persisted('Walk')).completion).toBe(1)
+    expect((await persisted('Write')).completion).toBe(0)
+  })
+
+  it('a failed Undo says so, keeps the task as the server has it, and Try again works', async () => {
+    await service.createTemplate(daily('Walk'))
+    const user = setupUser()
+    renderDay()
+    await screen.findByText('Walk')
+    await user.click(box('Walk'))
+    await screen.findByText(doneNotice('Walk'))
+    failNext = writesToTasks
+    await user.click(undoButton('Walk'))
+    const alert = await screen.findByRole('alert')
+    expect(alert.textContent).not.toMatch(/marked done/) // no false success, and no stale message either
+    expect(box('Walk').checked).toBe(true)
+    expect((await persisted('Walk')).completion).toBe(1)
+    await user.click(screen.getByRole('button', { name: 'Try again' }))
+    await waitFor(() => expect(box('Walk').checked).toBe(false)) // shown only once the server has confirmed it
+    expect(screen.queryByRole('alert')).toBeNull()
+    expect((await persisted('Walk')).completion).toBe(0)
+  })
+
+  it('if the task changed somewhere else, Undo says so plainly and does not overwrite it', async () => {
+    await service.createTemplate(daily('Walk'))
+    const user = setupUser()
+    renderDay()
+    await screen.findByText('Walk')
+    await user.click(box('Walk'))
+    await screen.findByText(doneNotice('Walk'))
+    await service.setCompletion((await persisted('Walk')).id, 0.5) // another tab
+    await user.click(undoButton('Walk'))
+    expect(await screen.findByText('That task changed since. Reload to see where it is now.')).toBeTruthy()
+    await waitFor(() => expect(screen.queryByText(doneNotice('Walk'))).toBeNull())
+    expect((await persisted('Walk')).completion).toBe(0.5)
+    await waitFor(() => expect(box('Walk').indeterminate).toBe(true)) // the screen shows where it is now
+  })
+
+  it('pressing Undo twice in a row sends one request', async () => {
+    await service.createTemplate(daily('Walk'))
+    const user = setupUser()
+    renderDay()
+    await screen.findByText('Walk')
+    await user.click(box('Walk'))
+    await screen.findByText(doneNotice('Walk'))
+    const before = updates
+    const button = undoButton('Walk')
+    fireEvent.click(button)
+    fireEvent.click(button)
+    await waitFor(() => expect(box('Walk').checked).toBe(false))
+    expect(updates - before).toBe(1)
+    expect((await persisted('Walk')).completion).toBe(0)
+  })
+
+  it('moving to another day ends the notice: it only ever describes the day on screen', async () => {
+    await service.createTemplate(daily('Walk'))
+    const user = setupUser()
+    renderDay()
+    await screen.findByText('Walk')
+    await user.click(box('Walk'))
+    await screen.findByText(doneNotice('Walk'))
+    await user.click(screen.getByRole('button', { name: 'Previous day' }))
+    await waitFor(() => expect(screen.queryByText(doneNotice('Walk'))).toBeNull())
+  })
+
+  it('works from the keyboard: Tab to Undo, Enter', async () => {
+    await service.createTemplate(daily('Walk'))
+    const user = setupUser()
+    renderDay()
+    await screen.findByText('Walk')
+    await user.click(box('Walk'))
+    await screen.findByText(doneNotice('Walk'))
+    undoButton('Walk').focus()
+    expect(document.activeElement).toBe(undoButton('Walk'))
+    await user.keyboard('{Enter}')
+    await waitFor(() => expect(box('Walk').checked).toBe(false))
+    expect((await persisted('Walk')).completion).toBe(0)
+  })
+
+  it('a repeating task: Undo changes only that day’s occurrence and the repeating task is untouched', async () => {
+    const template = await service.createTemplate(daily('Walk'))
+    const user = setupUser()
+    renderDay()
+    await screen.findByText('Walk')
+    await user.click(box('Walk'))
+    await screen.findByText(doneNotice('Walk'))
+    await user.click(undoButton('Walk'))
+    await waitFor(() => expect(box('Walk').checked).toBe(false))
+    expect(await service.listTemplates()).toEqual([expect.objectContaining({ id: template.id, recurrence: 'daily', endsOn: null })])
+    expect(await countRows(world, userId, 'task-occurrences')).toBe(1)
+  })
+})
+
+describe('Move and its Undo on My Day, against the real service and database', () => {
+  const moveForm = (title) => screen.getByRole('form', { name: `Move ${title}` })
+  const movedNotice = (title, when) => `“${title}” moved to ${when}.`
+
+  it('the date field offers only days the planner accepts: 6 days back to 30 days ahead', async () => {
+    await service.createTemplate({ title: 'Dentist', recurrence: 'once', startsOn: TODAY })
+    const user = setupUser()
+    renderDay()
+    await screen.findByText('Dentist')
+    await user.click(screen.getByRole('button', { name: 'Move Dentist' }))
+    const date = within(moveForm('Dentist')).getByLabelText('Move to')
+    expect(date.getAttribute('min')).toBe('2026-03-04')
+    expect(date.getAttribute('max')).toBe('2026-04-09')
+    expect(date.value).toBe('2026-03-11')
+  })
+
+  it('moving a one-off task offers Undo, and Undo brings it back to its own day without leaving a copy', async () => {
+    await service.createTemplate({ title: 'Dentist', recurrence: 'once', startsOn: TODAY })
+    const user = setupUser()
+    renderDay()
+    await screen.findByText('Dentist')
+    await user.click(screen.getByRole('button', { name: 'Move Dentist' }))
+    fireEvent.change(within(moveForm('Dentist')).getByLabelText('Move to'), { target: { value: '2026-03-12' } })
+    await user.click(within(moveForm('Dentist')).getByRole('button', { name: 'Move task' }))
+    expect(await screen.findByText(movedNotice('Dentist', 'Thursday 12 Mar'))).toBeTruthy()
+    expect(within(screen.getByLabelText('Set aside tasks')).getByText('Moved to Thursday 12 Mar')).toBeTruthy()
+    await user.click(screen.getByRole('button', { name: 'Undo: move of Dentist' }))
+    await waitFor(() => expect(screen.queryByText(movedNotice('Dentist', 'Thursday 12 Mar'))).toBeNull())
+    expect(await screen.findByRole('checkbox', { name: 'Done: Dentist' })).toBeTruthy() // back in today's list, ready to tick
+    expect(screen.queryByLabelText('Set aside tasks')).toBeNull()
+    expect(await countRows(world, userId, 'task-occurrences')).toBe(1) // no duplicate
+    expect((await persisted('Dentist')).planState).toBe('active')
+    expect((await service.getDayPlan('2026-03-12')).occurrences.filter((o) => o.planState === 'active')).toEqual([])
+  })
+
+  it('a failed Undo of a move says so and leaves the move as the server has it', async () => {
+    await service.createTemplate({ title: 'Dentist', recurrence: 'once', startsOn: TODAY })
+    const user = setupUser()
+    renderDay()
+    await screen.findByText('Dentist')
+    await user.click(screen.getByRole('button', { name: 'Move Dentist' }))
+    fireEvent.change(within(moveForm('Dentist')).getByLabelText('Move to'), { target: { value: '2026-03-12' } })
+    await user.click(within(moveForm('Dentist')).getByRole('button', { name: 'Move task' }))
+    await screen.findByText(movedNotice('Dentist', 'Thursday 12 Mar'))
+    failNext = (state) => state.table === 'task_occurrences' && state.op === 'select' && state.filters.some((f) => f.column === 'rescheduled_from_id')
+    await user.click(screen.getByRole('button', { name: 'Undo: move of Dentist' }))
+    expect(await screen.findByRole('alert')).toBeTruthy()
+    expect(screen.queryByText(movedNotice('Dentist', 'Thursday 12 Mar'))).toBeNull()
+    expect((await service.getDayPlan(TODAY)).occurrences[0]).toMatchObject({ planState: 'excluded', excludedReason: 'rescheduled' }) // still moved
+    await user.click(screen.getByRole('button', { name: 'Try again' }))
+    expect(await screen.findByRole('checkbox', { name: 'Done: Dentist' })).toBeTruthy() // back on the day only once the server confirmed it
+    expect(screen.queryByRole('alert')).toBeNull()
+    expect((await persisted('Dentist')).planState).toBe('active')
+  })
+
+  it('a repeating task that is not due on the new day gets a clean Undo; the repeating task is untouched', async () => {
+    const template = await service.createTemplate({ title: 'Gym', recurrence: 'weekly', weekdays: [2], startsOn: '2026-03-01' })
+    const user = setupUser()
+    renderDay()
+    await screen.findByText('Gym')
+    await user.click(screen.getByRole('button', { name: 'Move Gym' }))
+    fireEvent.change(within(moveForm('Gym')).getByLabelText('Move to'), { target: { value: '2026-03-13' } })
+    await user.click(within(moveForm('Gym')).getByRole('button', { name: 'Move task' }))
+    await screen.findByText(movedNotice('Gym', 'Friday 13 Mar'))
+    await user.click(screen.getByRole('button', { name: 'Undo: move of Gym' }))
+    await waitFor(() => expect(screen.queryByLabelText('Set aside tasks')).toBeNull())
+    expect(await service.listTemplates()).toEqual([expect.objectContaining({ id: template.id, recurrence: 'weekly', weekdays: [2] })])
+    expect((await service.getDayPlan('2026-03-13')).occurrences.filter((o) => o.planState === 'active')).toEqual([])
+  })
+
+  it('a repeating task that is due on the new day anyway is moved without the quick Undo (the row’s own "Undo move" is still there)', async () => {
+    await service.createTemplate(daily('Walk'))
+    const user = setupUser()
+    renderDay()
+    await screen.findByText('Walk')
+    await user.click(screen.getByRole('button', { name: 'Move Walk' }))
+    fireEvent.change(within(moveForm('Walk')).getByLabelText('Move to'), { target: { value: '2026-03-12' } })
+    await user.click(within(moveForm('Walk')).getByRole('button', { name: 'Move task' }))
+    expect(await screen.findByText('Moved to Thursday 12 Mar')).toBeTruthy() // the row says where it went
+    expect(screen.queryByText(movedNotice('Walk', 'Thursday 12 Mar'))).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Undo: move of Walk' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Undo move of Walk' })).toBeTruthy()
+  })
+
+  it('a refused move shows the planner’s message, offers no Undo, and moves nothing', async () => {
+    await service.createTemplate({ title: 'Dentist', recurrence: 'once', startsOn: TODAY })
+    const user = setupUser()
+    renderDay()
+    await screen.findByText('Dentist')
+    await user.click(screen.getByRole('button', { name: 'Move Dentist' }))
+    fireEvent.change(within(moveForm('Dentist')).getByLabelText('Move to'), { target: { value: '2026-05-01' } }) // past the limit (a typed date can still be out of range)
+    await user.click(within(moveForm('Dentist')).getByRole('button', { name: 'Move task' }))
+    expect(await within(moveForm('Dentist')).findByText(/ahead|far|plan/i)).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /^Undo:/ })).toBeNull()
+    expect((await persisted('Dentist')).planState).toBe('active')
   })
 })

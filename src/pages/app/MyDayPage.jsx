@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Link as RouterLink, useSearchParams } from 'react-router-dom'
 import { Box, Button, Chip, Container, LinearProgress, Skeleton, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material'
 import { CalendarCheck, ChevronLeft, ChevronRight, RefreshCw, TriangleAlert } from 'lucide-react'
@@ -13,11 +13,12 @@ import { useDismissible } from '../../hooks/useDismissible.js'
 import { useRecoveryStatus } from '../../hooks/useRecoveryStatus.js'
 import DayModePanel from '../../components/planner/DayModePanel.jsx'
 import MinimumDayPanel from '../../components/planner/MinimumDayPanel.jsx'
+import UndoNotice from '../../components/planner/UndoNotice.jsx'
 import GentleNote from '../../components/planner/GentleNote.jsx'
 import { WELCOME_BACK } from '../../constants/recoveryCopy.js'
 import { usePageMeta } from '../../hooks/usePageMeta.js'
 import { ROUTES } from '../../constants/navigation.js'
-import { PLANNER_CONFIG, addDays, diffDays, isValidDate, startOfWeek } from '../../utils/planner/index.js'
+import { PLANNER_CONFIG, addDays, diffDays, editableRange, isValidDate, startOfWeek } from '../../utils/planner/index.js'
 import { colors, contentWidths, onBrandButtons } from '../../theme/tokens.js'
 
 const MODES = [
@@ -55,6 +56,12 @@ export default function MyDayPage() {
   const date = dateParam && isValidDate(dateParam) ? dateParam : undefined
   const { status, data: plan, error, busy, run, refresh } = useDayPlan(date)
   const [actionError, setActionError] = useState('')
+  // The one change that can be undone from the notice at the bottom: finishing a task, or moving one.
+  const [undo, setUndo] = useState(null)
+  const [undoBusy, setUndoBusy] = useState(false)
+  const [undoError, setUndoError] = useState('')
+  const undoing = useRef(false) // a second press while one is in flight does nothing
+  const noticeCount = useRef(0)
 
   const perform = async (change, options) => {
     setActionError('')
@@ -67,6 +74,11 @@ export default function MyDayPage() {
   const addTask = (input) => run((s) => s.createTask(target, input), { open: true })
 
   const goTo = (target) => setParams(target ? { date: target } : {})
+  const offerUndo = (next) => {
+    noticeCount.current += 1
+    setUndoError('')
+    setUndo({ key: noticeCount.current, ...next })
+  }
   const access = plan?.access
   const canEdit = access === 'today' || access === 'editable_past' || access === 'future'
   const canRecord = access === 'today' || access === 'editable_past'
@@ -80,6 +92,43 @@ export default function MyDayPage() {
   const setAside = plan?.occurrences.filter((o) => o.planState === 'excluded') ?? []
   const summary = plan?.summary
   const mode = plan?.day?.dayMode ?? 'normal'
+  const moveRange = plan ? editableRange(plan.today) : undefined
+  // The notice is shown only while it still describes what is on screen: the same day, and the task still where the change put it
+  // (a day change, another change to that task, or a refresh from another tab all end it). The server checks again on Undo.
+  const noticeTask = undo && plan ? plan.occurrences.find((o) => o.id === (undo.occurrenceId ?? undo.sourceId)) : null
+  const stillCurrent = undo?.kind === 'move' ? noticeTask?.planState === 'excluded' && noticeTask.excludedReason === 'rescheduled' : noticeTask?.completion === undo?.from
+  const activeUndo = undo && undo.planDate === target && stillCurrent ? undo : null
+
+  const complete = async (task, value) => {
+    const outcome = await perform((s) => s.setCompletion(task.id, value))
+    if (outcome.ok && value >= 1 && task.completion < 1) {
+      offerUndo({ kind: 'completion', planDate: target, occurrenceId: task.id, from: value, to: task.completion, message: `“${task.title}” marked done.`, undoLabel: `Undo: ${task.title} marked done` })
+    }
+    return outcome
+  }
+  const move = async (task, date) => {
+    const outcome = await run((s) => s.rescheduleOccurrence(task.id, date))
+    // A repeating task that is due on the new day anyway is not offered the quick Undo: see rescheduleOccurrence.
+    if (outcome.ok && outcome.result.undoIsClean) {
+      offerUndo({ kind: 'move', planDate: target, sourceId: task.id, message: `“${task.title}” moved to ${weekdayName(date)} ${formatDay(date)}.`, undoLabel: `Undo: move of ${task.title}` })
+    }
+    return outcome
+  }
+  const undoNow = async () => {
+    if (!activeUndo || undoing.current) return
+    undoing.current = true
+    setUndoBusy(true)
+    setUndoError('')
+    const change = activeUndo
+    const outcome = await run((s) => (change.kind === 'move' ? s.undoReschedule(change.sourceId) : s.undoCompletion(change.occurrenceId, { from: change.from, to: change.to })))
+    undoing.current = false
+    setUndoBusy(false)
+    if (outcome.ok) setUndo(null) // the day was reloaded from the server, so what is shown is what is saved
+    else if (outcome.error?.code === 'CONFLICT') {
+      setUndo(null) // it changed since: say so once, plainly, and let the screen show where it is now
+      setActionError(outcome.error.message)
+    } else setUndoError(outcome.error?.message ?? 'That could not be undone. Please try again.')
+  }
 
   return (
     <>
@@ -178,11 +227,11 @@ export default function MyDayPage() {
                 <Box component="ul" aria-label="Today’s tasks" sx={{ listStyle: 'none', m: 0, p: 0, display: 'grid', gap: 1.5 }}>
                   {active.map((task) => (
                     <TaskRow key={task.id} task={task} canRecord={canRecord} canEdit={canEdit} busy={busy}
-                      onCompletion={(t, value) => perform((s) => s.setCompletion(t.id, value))}
+                      onCompletion={complete} moveRange={moveRange}
                       onSetAside={(t) => perform((s) => s.setAside(t.id, mode === 'rest' ? 'rest_day' : 'busy_day'))}
                       onRestore={(t) => perform((s) => s.restore(t.id))}
                       move={plan.moves?.[task.id]}
-                      onMove={(t, date) => run((s) => s.rescheduleOccurrence(t.id, date))}
+                      onMove={move}
                       onEdit={(t, input) => run((s) => s.updateOccurrence(t.id, input))}
                       onRemove={(t) => perform((s) => s.removeOccurrence(t.id))}
                       onStopRepeating={(t) => perform((s) => s.archiveTemplate(t.templateId))}
@@ -215,6 +264,9 @@ export default function MyDayPage() {
                 </Box>
               )}
             </Box>
+
+            {/* Right after the task list, so a keyboard user reaches Undo straight after the tasks. */}
+            <UndoNotice notice={activeUndo} busy={undoBusy} error={undoError} onUndo={undoNow} onDismiss={() => setUndo(null)} />
 
             {canEdit && <QuickAddTask busy={busy} onAdd={addTask} />}
           </>

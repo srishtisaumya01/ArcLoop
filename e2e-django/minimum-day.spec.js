@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { apiAs, signUpViaForm, uniqueEmail } from './support/helpers.js'
+import { apiAs, seedTasks, signUpViaForm, uniqueEmail } from './support/helpers.js'
 
 // Minimum Day through the real UI, the real Django API and a real SQLite file: the label is saved by the server, it is
 // validated there (three at most, planned tasks only, your own tasks only, a CSRF-protected write), and it never changes the
@@ -13,18 +13,6 @@ async function addTask(page, title) {
 }
 
 const panelOf = (page) => page.getByRole('region', { name: 'Minimum Day' })
-
-// Tasks created straight through the API (the add-task form is covered by planner.spec.js): opening My Day creates today's
-// day, then each task is added to that exact date and the page is reloaded to show them.
-async function seedTasks(page, context, titles) {
-  await page.goto('/app/day')
-  await expect(page.getByText('No tasks on this day')).toBeVisible() // the page has opened (created) today's day
-  const api = apiAs(context)
-  const planDate = (await api.get('/day-plans/')).body.results[0].plan_date
-  for (const title of titles) expect((await api.post('/task-occurrences/', { plan_date: planDate, title })).status).toBe(201)
-  await page.reload()
-  await expect(page.getByRole('checkbox', { name: `Done: ${titles.at(-1)}`, exact: true })).toBeVisible()
-}
 
 test('choose a minimum, finish it, reload: the server keeps it and the day percentage is not changed', async ({ page, context }) => {
   await signUpViaForm(page, uniqueEmail('minimum'))

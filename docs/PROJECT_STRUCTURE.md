@@ -11,7 +11,7 @@ src/
     common/       PageHeader, StatePanel (empty/error), PageLoader, RouteError, LegalDocument
     landing/      Landing page sections
     layout/       AppLayout (skip link, scroll handling), Navbar, Footer
-    planner/      My Day, Week, Recurring Tasks building blocks (TaskRow, QuickAddTask, AddTaskForm, MinimumDayPanel, TemplateCard, DayCard, ...)
+    planner/      My Day, Week, Recurring Tasks building blocks (TaskRow, QuickAddTask, AddTaskForm, MinimumDayPanel, UndoNotice, MoveTaskForm, TemplateCard, DayCard, ...)
     profile/ reminders/ settings/   TimezonePrompt, ReminderNotifier, settings sections, DeleteAccount
     ui/           Logo, Section/SectionHeading, DemoBadge
   context/        authContext.js, AuthProvider.jsx (session restore, auth-state listener)

@@ -1,5 +1,6 @@
 import {
   addDays,
+  assertCompletion,
   assertEditableDate,
   buildPlanSnapshot,
   classifyDate,
@@ -9,6 +10,7 @@ import {
   isValidDate,
   occurrencesToCreate,
   planForRange,
+  occursOn,
   parseDate,
   planMinimum,
   planRemoval,
@@ -415,8 +417,25 @@ export function createPlannerService({ getClient, clock = () => Date.now() }) {
       return { occurrence: saved, day: (await fetchDay(client, occurrence.planDate)) ?? day, changed: true, restored: result.restored }
     },
 
-    undoCompletion(occurrenceId) {
-      return ops.setCompletion(occurrenceId, 0)
+    // Without options: back to not done. With { from, to }: put the task back to `to`, but only while it is still at `from`
+    // (what the person just recorded). The write itself carries that condition (`completion = from`), so if the task
+    // changed in the meantime, in this tab or another, nothing is overwritten and the answer is a CONFLICT.
+    async undoCompletion(occurrenceId, options) {
+      if (options === undefined) return ops.setCompletion(occurrenceId, 0)
+      const { from, to } = options
+      assertId(occurrenceId, 'occurrenceId')
+      assertCompletion(from)
+      assertCompletion(to)
+      if (from === to) throw fail(SERVICE_ERROR.VALIDATION, 'There is nothing to undo.')
+      const { client, ctx } = await session()
+      const occurrence = await fetchOccurrence(client, occurrenceId)
+      const changed = () => fail(SERVICE_ERROR.CONFLICT, 'That task changed since. Reload to see where it is now.', { reason: 'changed_since' })
+      if (occurrence.completion !== from) throw changed()
+      const day = await requireDay(client, occurrence.planDate)
+      const result = setCompletionLogic({ occurrence, day, value: to }, ctx) // the same rules as any change of progress
+      const rows = check(await client.from(T.occurrences).update(occurrenceStateRow(result.occurrence)).eq('id', occurrenceId).eq('completion', from).select(OCCURRENCE_COLUMNS))
+      if (!rows || rows.length !== 1) throw changed() // it moved on between the read and the write
+      return { occurrence: occurrenceFromRow(rows[0]), day: (await fetchDay(client, occurrence.planDate)) ?? day, changed: true }
     },
 
     async setAside(occurrenceId, reason) {
@@ -461,6 +480,13 @@ export function createPlannerService({ getClient, clock = () => Date.now() }) {
       const occurrencesOnTarget = targetDayBefore ? await fetchOccurrencesOn(client, targetDate) : []
       const plan = rescheduleLogic({ occurrence, day, targetDate, targetDay: targetDayBefore, occurrencesOnTarget, plannedStart, plannedEnd }, ctx)
 
+      // Undoing a move removes the copy and, for a repeating task, records that the task is not wanted on that day. If the
+      // repeating task is due on the new day anyway, that would leave the day without its own occurrence, so a quick Undo
+      // is only offered when it is clean. (The "Undo move" button on the moved task still works as before.)
+      // (read before anything is written, so a failed read cannot leave a half-done move)
+      const template = occurrence.templateId ? await fetchTemplate(client, occurrence.templateId) : null
+      const undoIsClean = !template || !occursOn(template, targetDate)
+
       if (plan.createsTargetDay) await ensureDay(client, userId, targetDate)
       const suppressionChanged = targetDayBefore && !sameSet(plan.targetDay.suppressedTemplateIds, targetDayBefore.suppressedTemplateIds)
       if (suppressionChanged) await writeDay(client, targetDate, { suppressed_template_ids: plan.targetDay.suppressedTemplateIds })
@@ -471,7 +497,7 @@ export function createPlannerService({ getClient, clock = () => Date.now() }) {
 
       try {
         const source = await writeOccurrence(client, occurrenceId, occurrenceStateRow(plan.source))
-        return { source, target, link: plan.link }
+        return { source, target, link: plan.link, undoIsClean }
       } catch (error) {
         try {
           await deleteOccurrence(client, target.id)
