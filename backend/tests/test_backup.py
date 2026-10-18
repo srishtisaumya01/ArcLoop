@@ -239,7 +239,8 @@ class RecoveryProcedureTests(SimpleTestCase):
         self.dir = Path(tmp.name)
         self.live = self.dir / 'live.sqlite3'
         self.backups = self.dir / 'backups'
-        self.env = {**os.environ, 'DJANGO_DEBUG': 'true', 'DJANGO_SECRET_KEY': '', 'DJANGO_DB_PATH': str(self.live), 'ARCLOOP_TEST_CLOCK': '', 'PYTHONIOENCODING': 'utf-8'}
+        inherited = {k: v for k, v in os.environ.items() if k != 'DATABASE_URL'}  # these tools are SQLite-only: never inherit a PostgreSQL URL
+        self.env = {**inherited, 'DJANGO_DEBUG': 'true', 'DJANGO_SECRET_KEY': '', 'DJANGO_DB_PATH': str(self.live), 'ARCLOOP_TEST_CLOCK': '', 'PYTHONIOENCODING': 'utf-8'}
         self.assertNotEqual(str(self.live), str(BACKEND_DIR / 'db.sqlite3'))  # never the project database
 
     def manage(self, *args, expect=0):
