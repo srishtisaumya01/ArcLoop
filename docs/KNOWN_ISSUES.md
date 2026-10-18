@@ -86,6 +86,14 @@ Backend: Django + SQLite (migrated from Supabase; see `docs/DJANGO_MIGRATION.md`
 - The page loads 8 weeks with one request set per week; not optimised for very busy accounts.
 - Goals with targets are not built: the spec calls them a separate later concept and there is no approved data model.
 
+## My Day as a to-do list
+- Quick add takes a **title only**. Times, estimate, category, description and priority are set with Edit afterwards; a repeating task is made on the Recurring tasks page (My Day has no repeat option, and a one-off task cannot be turned into a repeating one).
+- "Partly done" is two steps away (Edit, then Progress); one tap on the checkbox finishes a partly done task.
+- The checkbox's accessible name is "Done: <title>"; it was a three-way button group before, so any saved bookmarks or scripts that looked for "Not done" / "Partly" buttons need updating.
+- **Existing quirk, not changed here:** a one-off task made with Add is linked to a one-off template, so its row says "repeats" and its remove dialog offers "Stop repeating after today". Found while testing; it predates this change.
+- The checkbox updates when the server confirms (the old buttons did too), so it is briefly disabled while a change is saving. Its tap target is 44 px (tested at desktop and phone width).
+- Not tested: Firefox, Safari, real phones, screen readers; Hindi (these screens are English-only).
+
 ## Minimum Day
 - **Product decision still needed: the limit of 3 tasks is provisional and has not been confirmed.** Do not treat it as final. It is kept equal on the client and the server by a test, so changing it means changing `PLANNER_CONFIG.limits.minimumTasks` and `MAX_MINIMUM_TASKS` together.
 - Saving a minimum is one request per task (at most six): not atomic. A failure midway leaves a valid minimum, never more than three; the person is told it was only partly saved, sees what is saved, and can choose again safely (nothing is created, so nothing duplicates). Tested with a server that fails the second write.
