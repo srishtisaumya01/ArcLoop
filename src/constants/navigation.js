@@ -43,6 +43,7 @@ export const APP_NAV = [
   { label: 'Challenges', to: ROUTES.appChallenges, icon: 'challenges' },
   { label: 'Recurring Tasks', to: ROUTES.recurring, icon: 'recurring' },
   { label: 'Reminders', to: ROUTES.reminders, icon: 'reminders' },
+  { label: 'Profile', to: ROUTES.profile, icon: 'profile' },
   { label: 'Settings', to: ROUTES.settings, icon: 'settings' },
 ]
 

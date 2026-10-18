@@ -1,20 +1,22 @@
 import { Link as RouterLink, NavLink, useNavigate } from 'react-router-dom'
 import { Box, Button, Typography } from '@mui/material'
 import { keyframes } from '@mui/material/styles'
-import { Bell, CalendarCheck, CalendarRange, Flame, Home, LayoutDashboard, LogOut, Repeat, Settings, TrendingUp, Trophy, Users } from 'lucide-react'
+import { Bell, CalendarCheck, CalendarRange, Flame, Home, LayoutDashboard, LogOut, Repeat, Settings, UserRound, TrendingUp, Trophy, Users } from 'lucide-react'
 import Logo from '../ui/Logo.jsx'
 import LanguageToggle from '../layout/LanguageToggle.jsx'
 import ThemeToggle from '../layout/ThemeToggle.jsx'
 import { useAuth } from '../../hooks/useAuth.js'
-import { useAppShell } from '../../hooks/useAppShell.js'
 import { useMyChallenges } from '../../hooks/useMyChallenges.js'
 import { useI18n } from '../../hooks/useI18n.js'
-import UserAvatar from './UserAvatar.jsx'
 import { APP_NAV, EXPLORE_NAV, ROUTES, appChallengePath } from '../../constants/navigation.js'
 import { noMotion } from '../../theme/animations.js'
 import { colors, gradients, navFontFamily } from '../../theme/tokens.js'
 
+// Each icon has its own soft colour, so the list reads at a glance and the sidebar is not one flat tone.
+const ICON_COLORS = { dashboard: '#7CF0C0', day: '#A9DDF9', week: '#FFD68A', progress: '#7CF0C0', challenges: '#FFB4A2', recurring: '#C4B5FD', reminders: '#FDE68A', profile: '#F9A8D4', settings: '#A9DDF9', participants: '#F9A8D4' }
+
 const ICONS = {
+  profile: UserRound,
   dashboard: LayoutDashboard,
   day: CalendarCheck,
   week: CalendarRange,
@@ -62,7 +64,9 @@ function NavList({ items, label, onNavigate }) {
         const Icon = ICONS[item.icon]
         return (
           <Box key={item.to} component={NavLink} to={item.to} end={item.end} onClick={onNavigate} sx={itemSx}>
-            <Icon size={20} aria-hidden="true" />
+            <Box component="span" sx={{ display: 'inline-flex', color: ICON_COLORS[item.icon] }}>
+              <Icon size={20} aria-hidden="true" />
+            </Box>
             {t(item.label)}
           </Box>
         )
@@ -106,10 +110,8 @@ function ChallengeMini({ onNavigate }) {
 // account, language and theme, and Log out).
 export default function Sidebar({ navLabel = 'App', onNavigate }) {
   const { t } = useI18n()
-  const { user, signOut } = useAuth()
-  const { displayName, profile } = useAppShell()
+  const { signOut } = useAuth()
   const navigate = useNavigate()
-  const name = displayName || user?.email || ''
 
   const logOut = async () => {
     onNavigate?.()
@@ -125,16 +127,6 @@ export default function Sidebar({ navLabel = 'App', onNavigate }) {
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, minHeight: '100%', p: 2.5, background: gradients.sidebar, color: '#FFFFFF' }}>
       <Box component={RouterLink} to={ROUTES.app} onClick={onNavigate} aria-label={t('Arcloop home')} sx={{ display: 'inline-flex', alignSelf: 'flex-start', textDecoration: 'none', px: 0.5, pt: 0.5 }}>
         <Logo onDark size={42} />
-      </Box>
-
-      <Box component={RouterLink} to={ROUTES.profile} onClick={onNavigate} aria-label={t('Profile')} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, p: 1.5, borderRadius: '14px', bgcolor: 'rgba(255, 255, 255, 0.1)', border: '1px solid rgba(255, 255, 255, 0.2)', color: 'inherit', textDecoration: 'none', '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.16)' } }}>
-        <UserAvatar name={name} version={profile?.avatar_version} size={44} />
-        <Box sx={{ minWidth: 0 }}>
-          <Typography sx={{ fontWeight: 700, lineHeight: 1.25, overflowWrap: 'anywhere' }}>{name}</Typography>
-          <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.78)', overflowWrap: 'anywhere' }}>
-            {profile?.username ? `@${profile.username}` : user?.email}
-          </Typography>
-        </Box>
       </Box>
 
       <NavList items={APP_NAV} label={navLabel} onNavigate={onNavigate} />
