@@ -3,7 +3,8 @@ import { Box, Button, Card, CardContent, Chip, Typography } from '@mui/material'
 import { Clock, Globe, Mail } from 'lucide-react'
 import DemoBadge from '../ui/DemoBadge.jsx'
 import { challengePath } from '../../constants/navigation.js'
-import { colors, shadows } from '../../theme/tokens.js'
+import Reveal from '../ui/Reveal.jsx'
+import { colors, gradients, shadows } from '../../theme/tokens.js'
 
 export function VisibilityChip({ visibility }) {
   const isPublic = visibility === 'public'
@@ -19,11 +20,13 @@ export function VisibilityChip({ visibility }) {
 }
 
 // Demo-labelled card. `showActions=false` renders title and summary only.
-export default function ChallengeCard({ challenge, showActions = true }) {
+export default function ChallengeCard({ challenge, showActions = true, delay = 0 }) {
   const { slug, title, summary, category, durationLabel, visibility } = challenge
   const titleId = `challenge-${slug}-title`
   return (
-    <Card component="article" aria-labelledby={titleId} sx={{ height: '100%', display: 'flex', flexDirection: 'column', '&:hover': { boxShadow: shadows.md, transform: 'translateY(-2px)' } }}>
+    <Reveal delay={delay} sx={{ height: '100%' }}>
+    <Card component="article" aria-labelledby={titleId} sx={{ position: 'relative', overflow: 'hidden', height: '100%', display: 'flex', flexDirection: 'column', '&:hover': { boxShadow: shadows.lg, transform: 'translateY(-5px)' }, '&:hover .card-accent': { transform: 'scaleX(1)' } }}>
+      <Box className="card-accent" aria-hidden="true" sx={{ position: 'absolute', inset: '0 0 auto 0', height: 4, background: gradients.brand, transform: 'scaleX(0.28)', transformOrigin: 'left', transition: 'transform 320ms cubic-bezier(0.2, 0.7, 0.2, 1)' }} />
       <CardContent sx={{ p: 3.5, display: 'flex', flexDirection: 'column', flex: 1 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 1, mb: 2 }}>
           <Chip label={category} size="small" sx={{ bgcolor: colors.bgAlt }} />
@@ -51,5 +54,6 @@ export default function ChallengeCard({ challenge, showActions = true }) {
         )}
       </CardContent>
     </Card>
+    </Reveal>
   )
 }

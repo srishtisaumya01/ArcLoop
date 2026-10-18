@@ -1,8 +1,23 @@
 import { Box, Typography } from '@mui/material'
 import { Check, Flame } from 'lucide-react'
+import { keyframes } from '@mui/material/styles'
 import DemoBadge from '../ui/DemoBadge.jsx'
 import { DEMO_PREVIEW_HABITS } from '../../constants/landingContent.js'
+import { enter, floatY, grow, noMotion, popIn } from '../../theme/animations.js'
 import { colors, gradients, radii, shadows } from '../../theme/tokens.js'
+
+// The unchecked habit ticks itself now and then, as if someone had just checked in.
+const tickCircle = keyframes`
+  0%, 35% { background-color: transparent; border-color: ${colors.textMuted}; }
+  45%, 85% { background-color: ${colors.navy900}; border-color: ${colors.navy900}; }
+  95%, 100% { background-color: transparent; border-color: ${colors.textMuted}; }
+`
+const tickMark = keyframes`
+  0%, 35% { opacity: 0; transform: scale(0.4); }
+  45%, 85% { opacity: 1; transform: none; }
+  95%, 100% { opacity: 0; transform: scale(0.4); }
+`
+const TICKING_ROW = 2
 
 const WEEK = [
   { d: 'M', v: 1 },
@@ -14,7 +29,7 @@ const WEEK = [
   { d: 'S', v: 0 },
 ]
 
-// Static illustration of the planned dashboard. Not interactive, not real data.
+// Illustration of the planned dashboard: gently floating, with the rows and bars animating in. Not interactive, not real data.
 export default function ProductPreview() {
   return (
     <Box
@@ -30,6 +45,8 @@ export default function ProductPreview() {
         width: '100%',
         maxWidth: 520,
         mx: 'auto',
+        animation: `${floatY} 7s ease-in-out 1.6s infinite`,
+        ...noMotion,
       }}
     >
       <Box aria-hidden="true">
@@ -41,10 +58,11 @@ export default function ProductPreview() {
         </Box>
 
         <Box sx={{ display: 'grid', gap: 1.25 }}>
-          {DEMO_PREVIEW_HABITS.map((h) => (
+          {DEMO_PREVIEW_HABITS.map((h, i) => (
             <Box
               key={h.name}
               sx={{
+                ...enter(650 + i * 140, 600),
                 display: 'flex',
                 alignItems: 'center',
                 gap: 1.5,
@@ -65,9 +83,16 @@ export default function ProductPreview() {
                   bgcolor: h.done ? colors.navy900 : 'transparent',
                   border: `2px solid ${h.done ? colors.navy900 : colors.textMuted}`,
                   color: colors.textOnDark,
+                  ...(h.done && { animation: `${popIn} 500ms ease ${900 + i * 140}ms both`, ...noMotion }),
+                  ...(i === TICKING_ROW && { animation: `${tickCircle} 7s ease-in-out 3s infinite`, ...noMotion }),
                 }}
               >
                 {h.done && <Check size={16} strokeWidth={3} />}
+                {i === TICKING_ROW && (
+                  <Box component="span" sx={{ display: 'flex', animation: `${tickMark} 7s ease-in-out 3s infinite`, ...noMotion }}>
+                    <Check size={16} strokeWidth={3} />
+                  </Box>
+                )}
               </Box>
               <Box sx={{ minWidth: 0 }}>
                 <Typography sx={{ fontWeight: 700, lineHeight: 1.3 }}>{h.name}</Typography>
@@ -98,6 +123,9 @@ export default function ProductPreview() {
                     borderRadius: 1,
                     bgcolor: w.v ? colors.mint300 : 'rgba(255,255,255,0.18)',
                     opacity: w.v === 0.5 ? 0.6 : 1,
+                    transformOrigin: 'bottom',
+                    animation: `${grow} 700ms cubic-bezier(0.2, 0.7, 0.2, 1) ${1300 + i * 90}ms both`,
+                    ...noMotion,
                   }}
                 />
               </Box>

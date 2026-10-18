@@ -69,18 +69,18 @@ export default function AutomationFlow() {
   return (
     <Box
       role="figure"
-      aria-label="Planned architecture. The Arcloop web app on Vercel calls the Django API on Render, which stores data in Neon Postgres. The API sends events to the automation engine by webhook, which also runs on a schedule. Its workflows send email and in-app notifications and update the leaderboard through the API."
+      aria-label="Planned flow. The Arcloop web app talks to Arcloop, which stores your habits and progress. Arcloop sends events to the automation engine, which also runs on a schedule. Its workflows send email and in-app notices and update the leaderboard."
     >
       <Box aria-hidden="true">
         <Typography variant="overline" component="p" sx={{ color: colors.blue600, mb: 1.25 }}>
           Arcloop platform
         </Typography>
         <Box sx={row}>
-          <Node icon={MonitorSmartphone} title="Web app" sub="React · Vercel" />
+          <Node icon={MonitorSmartphone} title="Web app" sub="What you see and use" />
           <FlowConnector delay={0} />
-          <Node icon={Server} title="Arcloop API" sub="Django · Render" />
+          <Node icon={Server} title="Arcloop" sub="Your account and check-ins" />
           <FlowConnector delay={0.6} />
-          <Node icon={Database} title="Database" sub="Postgres · Neon" />
+          <Node icon={Database} title="Your data" sub="Habits and progress, safely stored" />
         </Box>
 
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, my: 1.5, pl: { md: '16%' } }}>

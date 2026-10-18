@@ -77,7 +77,7 @@ export default function ExploreChallengesPage() {
           <Box sx={{ mb: 3 }}>
             <StatTiles stats={COMMUNITY_STATS} />
           </Box>
-          <Box sx={{ display: 'grid', gap: 3, gridTemplateColumns: { xs: '1fr', lg: '1.5fr 1fr' }, alignItems: 'start' }}>
+          <Box sx={{ display: 'grid', gap: 3, gridTemplateColumns: { xs: 'minmax(0, 1fr)', lg: 'minmax(0, 1.5fr) minmax(0, 1fr)' }, alignItems: 'start' }}>
             <ChartCard title="Active participants per week" subtitle="Grew from 120 to 1,010 over 12 weeks">
               <LineChart
                 ariaLabel="Line chart of active participants per week over 12 weeks, rising steadily from 120 in week 1 to 1,010 in week 12."
@@ -187,9 +187,9 @@ export default function ExploreChallengesPage() {
 
         {status === 'success' && gridItems.length > 0 && (
           <Box component="ul" sx={{ listStyle: 'none', m: 0, p: 0, display: 'grid', gap: 3, gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(3, 1fr)' } }}>
-            {gridItems.map((c) => (
+            {gridItems.map((c, i) => (
               <li key={c.slug}>
-                <ChallengeCard challenge={c} />
+                <ChallengeCard challenge={c} delay={(i % 3) * 110} />
               </li>
             ))}
           </Box>

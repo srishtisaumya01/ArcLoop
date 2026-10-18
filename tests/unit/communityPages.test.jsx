@@ -40,7 +40,7 @@ describe('How it works page', () => {
     for (const name of ['As an individual', 'As a friend', 'As a group']) {
       expect(screen.getByRole('heading', { name })).toBeInTheDocument()
     }
-    expect(screen.getByRole('figure', { name: /planned architecture/i })).toBeInTheDocument()
+    expect(screen.getByRole('figure', { name: /planned flow/i })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Daily check-in reminder' })).toBeInTheDocument()
   })
 })

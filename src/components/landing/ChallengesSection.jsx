@@ -25,8 +25,8 @@ export default function ChallengesSection() {
         <DemoBadge label="Sample challenges" />
       </Box>
       <Box sx={{ display: 'grid', gap: 3, gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' } }}>
-        {LANDING_SAMPLE_CHALLENGES.map((c) => (
-          <ChallengeCard key={c.slug} challenge={c} showActions={false} />
+        {LANDING_SAMPLE_CHALLENGES.map((c, i) => (
+          <ChallengeCard key={c.slug} challenge={c} showActions={false} delay={i * 120} />
         ))}
       </Box>
       <Box sx={{ mt: 4 }}>

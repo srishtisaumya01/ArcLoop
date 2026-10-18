@@ -25,7 +25,6 @@ export const challengePath = (slug) => `${ROUTES.challenges}/${slug}`
 // Primary navigation. `hash` entries scroll within the landing page.
 export const NAV_LINKS = [
   { label: 'How it works', to: ROUTES.howItWorks },
-  { label: 'Groups', to: { pathname: ROUTES.home, hash: '#groups' } },
   { label: 'Challenges', to: ROUTES.challenges },
   { label: 'Participants', to: ROUTES.participants },
   { label: 'FAQ', to: { pathname: ROUTES.home, hash: '#faq' } },

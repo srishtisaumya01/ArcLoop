@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Box, Typography } from '@mui/material'
+import { useInView } from '../../hooks/useInView.js'
 import { chart, colors } from '../../theme/tokens.js'
 
 // Rounds the top of the y-axis up to a clean step (1, 2, 2.5 or 5 x 10^n) with about four intervals.
@@ -30,6 +31,7 @@ function useWidth(ref, fallback = 640) {
 export default function LineChart({ series, labels, yMin = 0, yMax, yStep, format = String, area = false, height = 280, ariaLabel }) {
   const wrapRef = useRef(null)
   const width = useWidth(wrapRef)
+  const [viewRef, drawn] = useInView({ threshold: 0.3 })
   const [active, setActive] = useState(null)
 
   const narrow = width < 520
@@ -75,8 +77,10 @@ export default function LineChart({ series, labels, yMin = 0, yMax, yStep, forma
   const tooltipLeft = active === null ? 0 : x(active)
   const flip = tooltipLeft > width - 200
 
+  const reveal = (delayMs) => ({ opacity: drawn ? 1 : 0, transition: `opacity 500ms ease ${delayMs}ms` })
+
   return (
-    <Box>
+    <Box ref={viewRef}>
       {series.length > 1 && (
         <Box component="ul" aria-label="Legend" sx={{ listStyle: 'none', m: 0, mb: 1.5, p: 0, display: 'flex', flexWrap: 'wrap', gap: 2.5 }}>
           {series.map((s) => (
@@ -124,15 +128,25 @@ export default function LineChart({ series, labels, yMin = 0, yMax, yStep, forma
             const d = s.values.map((v, i) => `${i ? 'L' : 'M'}${x(i)},${y(v)}`).join(' ')
             return (
               <g key={s.key}>
-                {area && <path d={`${d} L${x(n - 1)},${y(yMin)} L${x(0)},${y(yMin)} Z`} fill={s.color} opacity={0.1} />}
-                <path d={d} fill="none" stroke={s.color} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
-                <circle cx={x(n - 1)} cy={y(s.values[n - 1])} r={5} fill={s.color} stroke={chart.surface} strokeWidth={2} />
+                {area && <path d={`${d} L${x(n - 1)},${y(yMin)} L${x(0)},${y(yMin)} Z`} fill={s.color} style={{ opacity: drawn ? 0.1 : 0, transition: 'opacity 900ms ease 500ms' }} />}
+                <path
+                  d={d}
+                  pathLength={1}
+                  fill="none"
+                  stroke={s.color}
+                  strokeWidth={2}
+                  strokeLinejoin="round"
+                  strokeLinecap="round"
+                  strokeDasharray={1}
+                  style={{ strokeDashoffset: drawn ? 0 : 1, opacity: drawn ? 1 : 0, transition: 'stroke-dashoffset 1500ms cubic-bezier(0.2, 0.7, 0.2, 1), opacity 120ms' }}
+                />
+                <circle cx={x(n - 1)} cy={y(s.values[n - 1])} r={5} fill={s.color} stroke={chart.surface} strokeWidth={2} style={reveal(1300)} />
               </g>
             )
           })}
 
           {ends.map((e) => (
-            <text key={e.key} x={x(n - 1) + 12} y={e.y} dy="0.32em" fontSize={13} fill={colors.textPrimary} fontWeight={700}>
+            <text key={e.key} x={x(n - 1) + 12} y={e.y} dy="0.32em" fontSize={13} fill={colors.textPrimary} fontWeight={700} style={reveal(1300)}>
               {format(e.value)}
               {!narrow && series.length > 1 && (
                 <tspan fill={colors.textSecondary} fontWeight={500}>

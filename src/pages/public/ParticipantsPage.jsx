@@ -184,7 +184,7 @@ export default function ParticipantsPage() {
           title="Automation keeps people coming back"
           description="Participants who receive the reminders and nudges keep more of their scheduled days, week after week."
         />
-        <Box sx={{ display: 'grid', gap: 3, gridTemplateColumns: { xs: '1fr', lg: '1.5fr 1fr' }, alignItems: 'start' }}>
+        <Box sx={{ display: 'grid', gap: 3, gridTemplateColumns: { xs: 'minmax(0, 1fr)', lg: 'minmax(0, 1.5fr) minmax(0, 1fr)' }, alignItems: 'start' }}>
           <ChartCard title="Weekly consistency" subtitle="Average share of scheduled check-ins kept, by week since joining">
             <LineChart
               ariaLabel="Line chart of weekly consistency over 8 weeks. With reminders and nudges it rises from 62% to 79%. Without them it falls from 58% to 49%."

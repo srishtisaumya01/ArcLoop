@@ -1,6 +1,9 @@
 import { usePageMeta } from '../../hooks/usePageMeta.js'
 import Hero from '../../components/landing/Hero.jsx'
+import ImpactStats from '../../components/landing/ImpactStats.jsx'
 import HowItWorks from '../../components/landing/HowItWorks.jsx'
+import MomentumSection from '../../components/landing/MomentumSection.jsx'
+import AutomationSection from '../../components/landing/AutomationSection.jsx'
 import Benefits from '../../components/landing/Benefits.jsx'
 import GroupsSection from '../../components/landing/GroupsSection.jsx'
 import ChallengesSection from '../../components/landing/ChallengesSection.jsx'
@@ -12,7 +15,10 @@ export default function HomePage() {
   return (
     <>
       <Hero />
+      <ImpactStats />
       <HowItWorks />
+      <MomentumSection />
+      <AutomationSection />
       <Benefits />
       <GroupsSection />
       <ChallengesSection />

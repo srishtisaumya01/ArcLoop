@@ -8,10 +8,10 @@ export const WEEK_LABELS = ['W1', 'W2', 'W3', 'W4', 'W5', 'W6', 'W7', 'W8', 'W9'
 export const COMMUNITY_GROWTH = [120, 168, 240, 310, 395, 470, 560, 640, 735, 820, 910, 1010]
 
 export const COMMUNITY_STATS = [
-  { label: 'Active participants', value: '1,010', note: '+11% vs last week' },
-  { label: 'Check-ins this week', value: '6,420', note: 'Across 6 challenges' },
-  { label: 'Average consistency', value: '74%', note: 'Of scheduled days kept' },
-  { label: 'Groups running', value: '86', note: '2 to 10 members each' },
+  { key: 'participants', label: 'Active participants', value: 1010, note: '+11% vs last week' },
+  { key: 'checkins', label: 'Check-ins this week', value: 6420, note: 'Across 6 challenges' },
+  { key: 'consistency', label: 'Average consistency', value: 74, suffix: '%', note: 'Of scheduled days kept' },
+  { key: 'groups', label: 'Groups running', value: 86, note: '2 to 10 members each' },
 ]
 
 // Average weekly consistency (% of scheduled check-ins kept) for participants with and without the automated nudges.
