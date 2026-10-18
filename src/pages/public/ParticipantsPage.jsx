@@ -8,6 +8,7 @@ import ChartCard from '../../components/charts/ChartCard.jsx'
 import LineChart from '../../components/charts/LineChart.jsx'
 import FinalCta from '../../components/landing/FinalCta.jsx'
 import { usePageMeta } from '../../hooks/usePageMeta.js'
+import { useI18n } from '../../hooks/useI18n.js'
 import { AUTOMATION_IMPACT, AUTOMATION_WEEKS, TOP_FEEDBACK, TOP_PARTICIPANTS } from '../../constants/communityDemo.js'
 import { ROUTES } from '../../constants/navigation.js'
 import { chart, colors, gradients, radii, shadows } from '../../theme/tokens.js'
@@ -36,18 +37,19 @@ function ConsistencyBar({ value }) {
 }
 
 function PodiumCard({ p, rank }) {
+  const { t } = useI18n()
   const first = rank === 1
   return (
-    <Card component="article" aria-label={`Rank ${rank}: ${p.name}`} sx={{ height: '100%', position: 'relative', overflow: 'visible', ...(first && { border: '2px solid transparent', background: `linear-gradient(${colors.surface}, ${colors.surface}) padding-box, ${gradients.brand} border-box`, boxShadow: shadows.lg }) }}>
+    <Card component="article" aria-label={t('Rank {rank}: {name}', { rank, name: p.name })} sx={{ height: '100%', position: 'relative', overflow: 'visible', ...(first && { border: '2px solid transparent', background: `linear-gradient(${colors.surface}, ${colors.surface}) padding-box, ${gradients.brand} border-box`, boxShadow: shadows.lg }) }}>
       <CardContent sx={{ p: 3 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-          <Box sx={{ px: 1.5, py: 0.5, borderRadius: '999px', fontWeight: 800, fontSize: '0.875rem', ...(first ? { background: gradients.brand, color: colors.textOnDark } : { bgcolor: colors.bgAlt, color: colors.navy900 }) }}>
-            #{rank} this week
+          <Box sx={{ px: 1.5, py: 0.5, borderRadius: '999px', fontWeight: 800, fontSize: '0.875rem', ...(first ? { background: gradients.brand, color: colors.textOnDark } : { bgcolor: colors.bgAlt, color: colors.textPrimary }) }}>
+            {t('#{rank} this week', { rank })}
           </Box>
           <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5, color: colors.textSecondary }}>
             <Flame size={16} aria-hidden="true" />
             <Typography variant="body2" sx={{ fontWeight: 700, color: 'inherit' }}>
-              {p.streak}-day streak
+              {t('{count}-day streak', { count: p.streak })}
             </Typography>
           </Box>
         </Box>
@@ -65,9 +67,9 @@ function PodiumCard({ p, rank }) {
         <Typography variant="body2" sx={{ color: colors.textSecondary, mb: 0.5 }}>
           Challenge
         </Typography>
-        <Typography sx={{ fontWeight: 700, mb: 0.25 }}>{p.challenge}</Typography>
+        <Typography sx={{ fontWeight: 700, mb: 0.25 }}>{t(p.challenge)}</Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          {p.mode}
+          {t(p.mode)}
         </Typography>
         <Typography variant="body2" sx={{ color: colors.textSecondary, mb: 0.75 }}>
           Consistency this week
@@ -79,6 +81,7 @@ function PodiumCard({ p, rank }) {
 }
 
 function RankTable({ rows, startRank }) {
+  const { t } = useI18n()
   return (
     <Box sx={{ overflowX: 'auto', bgcolor: colors.surface, border: `1px solid ${colors.border}`, borderRadius: `${radii.lg}px`, boxShadow: shadows.sm }}>
       <Box
@@ -94,16 +97,16 @@ function RankTable({ rows, startRank }) {
         }}
       >
         <caption style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>
-          Participants ranked {startRank} to {startRank + rows.length - 1} this week (sample data)
+          {t('Participants ranked {from} to {to} this week (sample data)', { from: startRank, to: startRank + rows.length - 1 })}
         </caption>
         <thead>
           <tr>
-            <th scope="col">Rank</th>
-            <th scope="col">Participant</th>
-            <th scope="col">Challenge</th>
-            <th scope="col">Joined as</th>
-            <th scope="col">Consistency</th>
-            <th scope="col">Streak</th>
+            <th scope="col">{t('Rank')}</th>
+            <th scope="col">{t('Participant')}</th>
+            <th scope="col">{t('Challenge')}</th>
+            <th scope="col">{t('Joined as')}</th>
+            <th scope="col">{t('Consistency')}</th>
+            <th scope="col">{t('Streak')}</th>
           </tr>
         </thead>
         <tbody>
@@ -123,10 +126,10 @@ function RankTable({ rows, startRank }) {
                   </Box>
                 </Box>
               </th>
-              <td>{p.challenge}</td>
+              <td>{t(p.challenge)}</td>
               <td>
                 <Typography variant="body2" color="text.secondary">
-                  {p.mode}
+                  {t(p.mode)}
                 </Typography>
               </td>
               <td>
@@ -134,7 +137,7 @@ function RankTable({ rows, startRank }) {
               </td>
               <td>
                 <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                  {p.streak} days
+                  {t('{count} days', { count: p.streak })}
                 </Typography>
               </td>
             </tr>
@@ -152,7 +155,8 @@ const HELPS = [
 ]
 
 export default function ParticipantsPage() {
-  usePageMeta('Top participants', 'This week’s most consistent Arcloop participants, how automated reminders help them, and what they say.')
+  const { t } = useI18n()
+  usePageMeta(t('Top participants'), t('This week’s most consistent Arcloop participants, how automated reminders help them, and what they say.'))
   const podium = TOP_PARTICIPANTS.slice(0, 3)
   const rest = TOP_PARTICIPANTS.slice(3)
 
@@ -160,15 +164,15 @@ export default function ParticipantsPage() {
     <>
       <PageHeader
         tone="brand"
-        eyebrow="Participants"
-        title="Top participants this week"
-        description="Celebrating consistency, not perfection: ranked by the share of their scheduled days each person kept this week."
+        eyebrow={t('Participants')}
+        title={t('Top participants this week')}
+        description={t('Celebrating consistency, not perfection: ranked by the share of their scheduled days each person kept this week.')}
       >
         <DemoBadge onDark label="Sample data: names and numbers are illustrative" />
       </PageHeader>
 
       <Section>
-        <Box component="ol" aria-label="Top three participants" sx={{ listStyle: 'none', m: 0, p: 0, display: 'grid', gap: 3, gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' }, mb: 4 }}>
+        <Box component="ol" aria-label={t('Top three participants')} sx={{ listStyle: 'none', m: 0, p: 0, display: 'grid', gap: 3, gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' }, mb: 4 }}>
           {podium.map((p, i) => (
             <li key={p.username}>
               <PodiumCard p={p} rank={i + 1} />
@@ -180,22 +184,22 @@ export default function ParticipantsPage() {
 
       <Section tone="alt" id="growth">
         <SectionHeading
-          eyebrow="Growth"
-          title="Automation keeps people coming back"
-          description="Participants who receive the reminders and nudges keep more of their scheduled days, week after week."
+          eyebrow={t('Growth')}
+          title={t('Automation keeps people coming back')}
+          description={t('Participants who receive the reminders and nudges keep more of their scheduled days, week after week.')}
         />
         <Box sx={{ display: 'grid', gap: 3, gridTemplateColumns: { xs: 'minmax(0, 1fr)', lg: 'minmax(0, 1.5fr) minmax(0, 1fr)' }, alignItems: 'start' }}>
           <ChartCard title="Weekly consistency" subtitle="Average share of scheduled check-ins kept, by week since joining">
             <LineChart
-              ariaLabel="Line chart of weekly consistency over 8 weeks. With reminders and nudges it rises from 62% to 79%. Without them it falls from 58% to 49%."
+              ariaLabel={t('Line chart of weekly consistency over 8 weeks. With reminders and nudges it rises from 62% to 79%. Without them it falls from 58% to 49%.')}
               labels={AUTOMATION_WEEKS}
               yMin={40}
               yMax={90}
               yStep={10}
               format={(v) => `${v}%`}
               series={[
-                { key: 'with', label: 'With nudges', color: chart.series1, values: AUTOMATION_IMPACT.withNudges },
-                { key: 'without', label: 'Without nudges', color: chart.series2, values: AUTOMATION_IMPACT.withoutNudges },
+                { key: 'with', label: t('With nudges'), color: chart.series1, values: AUTOMATION_IMPACT.withNudges },
+                { key: 'without', label: t('Without nudges'), color: chart.series2, values: AUTOMATION_IMPACT.withoutNudges },
               ]}
             />
           </ChartCard>
@@ -206,22 +210,22 @@ export default function ParticipantsPage() {
                   <Icon size={22} aria-hidden="true" />
                 </Box>
                 <Box>
-                  <Typography sx={{ fontWeight: 700, mb: 0.5 }}>{title}</Typography>
+                  <Typography sx={{ fontWeight: 700, mb: 0.5 }}>{t(title)}</Typography>
                   <Typography variant="body2" color="text.secondary">
-                    {text}
+                    {t(text)}
                   </Typography>
                 </Box>
               </Box>
             ))}
             <Button component={RouterLink} to={ROUTES.howItWorks} variant="outlined" color="primary" endIcon={<ArrowRight size={18} />} sx={{ justifySelf: 'start' }}>
-              See how the automation works
+              {t('See how the automation works')}
             </Button>
           </Box>
         </Box>
       </Section>
 
       <Section id="feedback">
-        <SectionHeading eyebrow="In their words" title="What this week’s top performers say" />
+        <SectionHeading eyebrow={t('In their words')} title={t('What this week’s top performers say')} />
         <Box component="ul" sx={{ listStyle: 'none', m: 0, p: 0, display: 'grid', gap: 3, gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' } }}>
           {TOP_FEEDBACK.map((f) => (
             <li key={f.username}>
@@ -231,14 +235,14 @@ export default function ParticipantsPage() {
                     <Quote size={28} aria-hidden="true" />
                   </Box>
                   <Typography component="blockquote" sx={{ m: 0, mb: 3, fontSize: '1.0625rem', lineHeight: 1.65 }}>
-                    {f.quote}
+                    {t(f.quote)}
                   </Typography>
                   <Box component="figcaption" sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mt: 'auto' }}>
                     <Avatar name={f.name} size={40} />
                     <Box sx={{ minWidth: 0 }}>
                       <Typography sx={{ fontWeight: 700 }}>{f.name}</Typography>
                       <Typography variant="body2" color="text.secondary">
-                        @{f.username} · {f.challenge}
+                        @{f.username} · {t(f.challenge)}
                       </Typography>
                     </Box>
                   </Box>

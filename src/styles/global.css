@@ -1,3 +1,58 @@
 *, *::before, *::after { box-sizing: border-box; }
 html, body, #root { min-height: 100%; }
-body { margin: 0; overflow-x: hidden; }
+body { margin: 0; overflow-x: hidden; transition: background-color 240ms ease, color 240ms ease; }
+
+/* Theme colours. The light values are also the fallbacks in src/theme/tokens.js. The theme provider sets data-theme on <html>. */
+:root {
+  color-scheme: light;
+  --ac-bg: #F5F8FC;
+  --ac-bg-alt: #EAF1F9;
+  --ac-surface: #FFFFFF;
+  --ac-border: #D9E2EE;
+  --ac-text-primary: #0B1B3A;
+  --ac-text-secondary: #44546F;
+  --ac-text-muted: #5B6B85;
+  --ac-blue600: #1B5BC8;
+  --ac-blue700: #144AA6;
+  --ac-ink: #0B1B3A;
+  --ac-on-ink: #FFFFFF;
+  --ac-success: #0F7B53;
+  --ac-warning: #9A5B00;
+  --ac-error: #B42318;
+  --ac-error-bg: #FDECEA;
+  --ac-tint: linear-gradient(135deg, #D2E2F8 0%, #CBE9EE 50%, #C4EBD7 100%);
+  --ac-series-1: #2a78d6;
+  --ac-series-2: #1baf7a;
+  --ac-grid: #E3E9F2;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --ac-bg: #0A1730;
+  --ac-bg-alt: #16294F;
+  --ac-surface: #11254A;
+  --ac-border: #2A4070;
+  --ac-text-primary: #EAF1FF;
+  --ac-text-secondary: #B7C5E0;
+  --ac-text-muted: #94A6C9;
+  --ac-blue600: #7DB2FF;
+  --ac-blue700: #A6C9FF;
+  --ac-ink: #EAF1FF;
+  --ac-on-ink: #0B1B3A;
+  --ac-success: #4ADE9B;
+  --ac-warning: #F5B54A;
+  --ac-error: #FF9A90;
+  --ac-error-bg: #3A1B22;
+  --ac-tint: linear-gradient(135deg, #10285A 0%, #0F3A56 50%, #0F4A45 100%);
+  --ac-series-1: #3987e5;
+  --ac-series-2: #199e70;
+  --ac-grid: #2A4070;
+}
+
+/* Hindi: letters in Devanagari join each other, so no tight tracking, and headings get a little more line height. */
+html[lang='hi'] body,
+html[lang='hi'] .MuiTypography-root,
+html[lang='hi'] .MuiButton-root { letter-spacing: 0 !important; }
+html[lang='hi'] h1 { line-height: 1.3 !important; }
+html[lang='hi'] h2,
+html[lang='hi'] h3 { line-height: 1.35 !important; }

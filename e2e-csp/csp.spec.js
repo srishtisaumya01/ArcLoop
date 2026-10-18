@@ -6,7 +6,7 @@ import { parseIcs } from '../tests/support/icsParse.js'
 // event or "Refused to ..." console message fails the test. Then the policy is shown to really block things, so a
 // silently permissive policy cannot pass.
 
-const PUBLIC = ['/', '/challenges', '/login', '/signup', '/forgot-password', '/privacy', '/terms', '/contact', '/no-such-page']
+const PUBLIC = ['/', '/challenges', '/how-it-works', '/participants', '/faq', '/login', '/signup', '/forgot-password', '/privacy', '/terms', '/contact', '/no-such-page']
 const APP = ['/app', '/app/day', '/app/week', '/app/progress', '/app/recurring', '/app/reminders', '/app/settings']
 
 async function watch(page) {

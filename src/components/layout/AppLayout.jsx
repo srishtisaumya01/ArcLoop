@@ -3,6 +3,8 @@ import { Outlet, useLocation } from 'react-router-dom'
 import { Box } from '@mui/material'
 import Navbar from './Navbar.jsx'
 import Footer from './Footer.jsx'
+import ChallengeBanner from '../challenge/ChallengeBanner.jsx'
+import { useI18n } from '../../hooks/useI18n.js'
 
 // React Router does not scroll to #hash targets or reset scroll by itself.
 function ScrollManager() {
@@ -21,6 +23,7 @@ function ScrollManager() {
 }
 
 export default function AppLayout() {
+  const { t } = useI18n()
   return (
     <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       <Box
@@ -39,9 +42,10 @@ export default function AppLayout() {
           '&:focus': { top: 16 },
         }}
       >
-        Skip to content
+        {t('Skip to content')}
       </Box>
       <ScrollManager />
+      <ChallengeBanner />
       <Navbar />
       <Box component="main" id="main" tabIndex={-1} sx={{ flex: 1, outline: 'none', position: 'relative' }}>
         <Outlet />

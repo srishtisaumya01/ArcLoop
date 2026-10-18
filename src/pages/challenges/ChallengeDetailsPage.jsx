@@ -11,12 +11,14 @@ import DemoBadge from '../../components/ui/DemoBadge.jsx'
 import { getChallenge } from '../../services/challengeService.js'
 import { useAsync } from '../../hooks/useAsync.js'
 import { usePageMeta } from '../../hooks/usePageMeta.js'
+import { useI18n } from '../../hooks/useI18n.js'
 import { ROUTES } from '../../constants/navigation.js'
 import { colors, contentWidths } from '../../theme/tokens.js'
 
 const BACK = { to: ROUTES.challenges, label: 'All challenges' }
 
 function List({ items }) {
+  const { t } = useI18n()
   return (
     <Box component="ul" sx={{ listStyle: 'none', m: 0, p: 0, display: 'grid', gap: 1.5 }}>
       {items.map((item) => (
@@ -24,7 +26,7 @@ function List({ items }) {
           <Box sx={{ color: colors.blue600, mt: '3px', flexShrink: 0 }}>
             <Check size={20} aria-hidden="true" />
           </Box>
-          <Typography>{item}</Typography>
+          <Typography>{t(item)}</Typography>
         </Box>
       ))}
     </Box>
@@ -32,10 +34,11 @@ function List({ items }) {
 }
 
 function Block({ title, children }) {
+  const { t } = useI18n()
   return (
     <Box component="section" sx={{ mb: 5 }}>
       <Typography variant="h3" component="h2" sx={{ mb: 2 }}>
-        {title}
+        {t(title)}
       </Typography>
       {children}
     </Box>
@@ -43,12 +46,13 @@ function Block({ title, children }) {
 }
 
 export default function ChallengeDetailsPage() {
+  const { t } = useI18n()
   const { slug } = useParams()
   const load = useCallback(() => getChallenge(slug), [slug])
   const { status, data: challenge, retry } = useAsync(load)
 
-  const title = status === 'success' ? (challenge ? challenge.title : 'Challenge not found') : 'Challenge'
-  usePageMeta(title, challenge?.summary)
+  const title = status === 'success' ? (challenge ? t(challenge.title) : t('Challenge not found')) : t('Challenge')
+  usePageMeta(title, challenge ? t(challenge.summary) : undefined)
 
   // The #join target only exists once the challenge has loaded.
   const { hash } = useLocation()
@@ -59,7 +63,7 @@ export default function ChallengeDetailsPage() {
   if (status === 'loading') {
     return (
       <Container aria-busy="true" sx={{ maxWidth: `${contentWidths.page}px !important`, py: { xs: 5, md: 8 } }}>
-        <span role="status" style={{ position: 'absolute', left: -9999 }}>Loading challenge…</span>
+        <span role="status" style={{ position: 'absolute', left: -9999 }}>{t('Loading challenge…')}</span>
         <Skeleton width={160} height={24} />
         <Skeleton width="60%" height={64} sx={{ mb: 3 }} />
         <Skeleton variant="rounded" height={320} sx={{ borderRadius: 4 }} />
@@ -74,11 +78,11 @@ export default function ChallengeDetailsPage() {
           tone="error"
           headingLevel={1}
           icon={TriangleAlert}
-          title="We couldn’t load this challenge"
-          text="Something went wrong while loading. Please try again."
+          title={t('We couldn’t load this challenge')}
+          text={t('Something went wrong while loading. Please try again.')}
           action={
             <Button variant="contained" color="primary" startIcon={<RefreshCw size={18} aria-hidden="true" />} onClick={retry}>
-              Try again
+              {t('Try again')}
             </Button>
           }
         />
@@ -92,11 +96,11 @@ export default function ChallengeDetailsPage() {
         <StatePanel
           headingLevel={1}
           icon={FileQuestion}
-          title="Challenge not found"
-          text="This challenge doesn’t exist, or the link is out of date."
+          title={t('Challenge not found')}
+          text={t('This challenge doesn’t exist, or the link is out of date.')}
           action={
             <Button component={RouterLink} to={ROUTES.challenges} variant="contained" color="primary">
-              Browse challenges
+              {t('Browse challenges')}
             </Button>
           }
         />
@@ -106,7 +110,7 @@ export default function ChallengeDetailsPage() {
 
   return (
     <>
-      <PageHeader eyebrow={challenge.featured ? 'Featured campaign' : challenge.category} title={challenge.title} description={challenge.summary} back={BACK}>
+      <PageHeader eyebrow={challenge.featured ? t('Featured campaign') : t(challenge.category)} title={t(challenge.title)} description={t(challenge.summary)} back={{ ...BACK, label: t(BACK.label) }}>
         <Box
           sx={{
             display: 'flex',
@@ -117,8 +121,8 @@ export default function ChallengeDetailsPage() {
             '& .MuiChip-icon': { color: 'inherit' },
           }}
         >
-          <Chip label={challenge.category} size="small" />
-          <Chip label={challenge.durationLabel} size="small" variant="outlined" />
+          <Chip label={t(challenge.category)} size="small" />
+          <Chip label={t(challenge.durationLabel)} size="small" variant="outlined" />
           <VisibilityChip visibility={challenge.visibility} />
           <DemoBadge onDark label="Demo challenge" />
         </Box>
@@ -126,15 +130,15 @@ export default function ChallengeDetailsPage() {
 
       <Container sx={{ maxWidth: `${contentWidths.page}px !important`, py: { xs: 5, md: 8 } }}>
         <Alert severity="info" variant="outlined" sx={{ mb: 5 }}>
-          Demo content: this challenge is sample data for previewing the layout. Joining is a prototype and is not saved.
+          {t('Demo content: this challenge is sample data for previewing the layout. Joining is a prototype and is not saved.')}
         </Alert>
         <Box sx={{ display: 'grid', gap: { xs: 5, md: 7 }, gridTemplateColumns: { xs: '1fr', md: 'minmax(0, 1.6fr) minmax(0, 1fr)' }, alignItems: 'start' }}>
           <Box>
             <Block title="About this challenge">
-              <Typography color="text.secondary">{challenge.description}</Typography>
+              <Typography color="text.secondary">{t(challenge.description)}</Typography>
               <Typography sx={{ mt: 2 }}>
-                <Box component="span" sx={{ fontWeight: 700 }}>Organizer: </Box>
-                {challenge.organizer.name} ({challenge.organizer.role})
+                <Box component="span" sx={{ fontWeight: 700 }}>{t('Organizer:')} </Box>
+                {t(challenge.organizer.name)} ({t(challenge.organizer.role)})
               </Typography>
             </Block>
             <Block title="Rules">
@@ -144,7 +148,7 @@ export default function ChallengeDetailsPage() {
               <List items={challenge.habits} />
             </Block>
             <Block title="How progress is counted">
-              <Typography color="text.secondary">{challenge.scoring}</Typography>
+              <Typography color="text.secondary">{t(challenge.scoring)}</Typography>
             </Block>
             <ProgressPreview progress={challenge.sampleProgress} />
           </Box>

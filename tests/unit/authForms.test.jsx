@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderAt } from './renderRoute.jsx'
@@ -56,20 +56,31 @@ describe('Protected routes (unconfigured)', () => {
   })
 })
 
-describe('Contact layout', () => {
-  it('shows configuration placeholders instead of an invented email', async () => {
+describe('Contact page', () => {
+  it('shows the support email as a mail link', async () => {
     renderAt('/contact')
-    expect(await screen.findByText('[to be configured]')).toBeInTheDocument()
+    // The address is shown on the page and again in the footer; every one of them is a mail link.
+    const links = await screen.findAllByRole('link', { name: 'arcloopoct@gmail.com' })
+    expect(links.length).toBeGreaterThan(0)
+    links.forEach((link) => expect(link).toHaveAttribute('href', 'mailto:arcloopoct@gmail.com'))
   })
 
-  it('does not claim a message was sent', async () => {
+  it('opens an email addressed to support and says plainly that nothing was sent yet', async () => {
+    // jsdom cannot navigate to a mailto: link and reports that on the console; the test only needs the form's behaviour.
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
     const user = userEvent.setup()
     renderAt('/contact')
     await user.type(await screen.findByLabelText('Your email'), 'a@example.com')
-    await user.type(screen.getByLabelText('Message'), 'Hello')
+    await user.type(screen.getByLabelText('Message'), 'Hello there')
     await user.click(screen.getByLabelText('Topic'))
     await user.click(await screen.findByRole('option', { name: 'Question about Arcloop' }))
     await user.click(screen.getByRole('button', { name: 'Send message' }))
-    expect(await screen.findByText(/Not sent: messaging is not connected/i, {}, { timeout: 3000 })).toBeInTheDocument()
+    expect(await screen.findByText(/It has not been sent yet: press send there/i)).toBeInTheDocument()
+    const again = screen.getByRole('link', { name: 'Open email again' })
+    const href = again.getAttribute('href')
+    expect(href).toMatch(/^mailto:arcloopoct@gmail\.com\?subject=/)
+    expect(decodeURIComponent(href)).toContain('[Arcloop] Question about Arcloop')
+    expect(decodeURIComponent(href)).toContain('Hello there')
+    consoleError.mockRestore()
   })
 })

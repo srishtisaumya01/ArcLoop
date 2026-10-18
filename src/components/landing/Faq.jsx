@@ -1,32 +1,30 @@
-import { Accordion, AccordionDetails, AccordionSummary, Typography } from '@mui/material'
-import { ChevronDown } from 'lucide-react'
+import { Link as RouterLink } from 'react-router-dom'
+import { Button } from '@mui/material'
+import { ArrowRight } from 'lucide-react'
 import { Section, SectionHeading } from '../ui/Section.jsx'
-import { FAQS } from '../../constants/landingContent.js'
-import { colors } from '../../theme/tokens.js'
+import Reveal from '../ui/Reveal.jsx'
+import FaqList from '../faq/FaqList.jsx'
+import { useI18n } from '../../hooks/useI18n.js'
+import { FAQ_GROUPS } from '../../constants/faqContent.js'
+import { ROUTES } from '../../constants/navigation.js'
 
+// The first few questions, with a link to the full FAQ page.
 export default function Faq() {
+  const { t } = useI18n()
+  const items = FAQ_GROUPS[0].items.slice(0, 4)
   return (
     <Section id="faq" narrow>
-      <SectionHeading eyebrow="FAQ" title="Questions, answered honestly" align="center" />
-      <div>
-        {FAQS.map((f, i) => (
-          <Accordion key={f.q} sx={{ '&:first-of-type': { borderTop: `1px solid ${colors.border}` } }}>
-            <AccordionSummary
-              expandIcon={<ChevronDown size={22} aria-hidden="true" />}
-              aria-controls={`faq-${i}-content`}
-              id={`faq-${i}-header`}
-              sx={{ px: 0, py: 1, minHeight: 64 }}
-            >
-              <Typography component="h3" sx={{ fontWeight: 700, fontSize: '1.0625rem' }}>
-                {f.q}
-              </Typography>
-            </AccordionSummary>
-            <AccordionDetails sx={{ px: 0, pt: 0, pb: 3 }}>
-              <Typography color="text.secondary">{f.a}</Typography>
-            </AccordionDetails>
-          </Accordion>
-        ))}
-      </div>
+      <Reveal>
+        <SectionHeading eyebrow={t('FAQ')} title={t('Questions, answered honestly')} align="center" />
+      </Reveal>
+      <Reveal delay={100}>
+        <FaqList items={items} idPrefix="home-faq" />
+      </Reveal>
+      <Reveal delay={150}>
+        <Button component={RouterLink} to={ROUTES.faq} variant="outlined" color="primary" endIcon={<ArrowRight size={18} />} sx={{ mt: 4, display: 'flex', mx: 'auto', width: 'fit-content' }}>
+          {t('See all questions')}
+        </Button>
+      </Reveal>
     </Section>
   )
 }

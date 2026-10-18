@@ -6,6 +6,7 @@ import { Section, SectionHeading } from '../ui/Section.jsx'
 import Reveal from '../ui/Reveal.jsx'
 import FlowConnector from '../community/FlowConnector.jsx'
 import { useInView } from '../../hooks/useInView.js'
+import { useI18n } from '../../hooks/useI18n.js'
 import { HOW_IT_WORKS } from '../../constants/landingContent.js'
 import { floatY, noMotion, popIn } from '../../theme/animations.js'
 import { ROUTES } from '../../constants/navigation.js'
@@ -30,6 +31,7 @@ const FRIENDS = ['A', 'M', 'K', 'R']
 
 // A small looping picture for each step. `play` starts the motion once the card has scrolled into view.
 function PickVisual({ play }) {
+  const { t } = useI18n()
   return (
     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
       {HABITS.map((h, i) => (
@@ -48,7 +50,7 @@ function PickVisual({ play }) {
             ...noMotion,
           }}
         >
-          {h}
+          {t(h)}
         </Box>
       ))}
     </Box>
@@ -56,6 +58,7 @@ function PickVisual({ play }) {
 }
 
 function CheckVisual({ play }) {
+  const { t } = useI18n()
   return (
     <Box sx={{ display: 'grid', gap: 1 }}>
       {CHECKINS.map((c, i) => (
@@ -79,7 +82,7 @@ function CheckVisual({ play }) {
             </Box>
           </Box>
           <Typography variant="body2" sx={{ fontWeight: 600 }}>
-            {c}
+            {t(c)}
           </Typography>
         </Box>
       ))}
@@ -88,6 +91,7 @@ function CheckVisual({ play }) {
 }
 
 function FriendsVisual({ play }) {
+  const { t } = useI18n()
   return (
     <Box sx={{ display: 'flex', alignItems: 'center' }}>
       {FRIENDS.map((f, i) => (
@@ -113,7 +117,7 @@ function FriendsVisual({ play }) {
         </Box>
       ))}
       <Typography variant="body2" sx={{ ml: 1.5, fontWeight: 600, color: colors.textSecondary }}>
-        Your group
+        {t('Your group')}
       </Typography>
     </Box>
   )
@@ -122,6 +126,7 @@ function FriendsVisual({ play }) {
 const VISUALS = { sprout: PickVisual, check: CheckVisual, users: FriendsVisual }
 
 function StepCard({ step, index, last }) {
+  const { t } = useI18n()
   const [ref, play] = useInView({ threshold: 0.3 })
   const Icon = ICONS[step.icon]
   const Visual = VISUALS[step.icon]
@@ -149,14 +154,14 @@ function StepCard({ step, index, last }) {
             <Icon size={26} aria-hidden="true" />
           </Box>
           <Typography variant="overline" component="p" sx={{ color: colors.blue600, m: 0 }}>
-            Step {index + 1}
+            {t('Step {n}', { n: index + 1 })}
           </Typography>
         </Box>
         <Typography variant="h3" component="h3" sx={{ mb: 1.5 }}>
-          {step.title}
+          {t(step.title)}
         </Typography>
         <Typography color="text.secondary" sx={{ mb: 3 }}>
-          {step.text}
+          {t(step.text)}
         </Typography>
         <Box aria-hidden="true" sx={{ p: 2, borderRadius: `${radii.md}px`, bgcolor: colors.bg, border: `1px dashed ${colors.border}`, minHeight: 112, display: 'flex', alignItems: 'center' }}>
           <Box sx={{ width: '100%' }}>
@@ -188,13 +193,14 @@ function StepCard({ step, index, last }) {
 }
 
 export default function HowItWorks() {
+  const { t } = useI18n()
   return (
     <Section id="how-it-works">
       <Reveal>
         <SectionHeading
-          eyebrow="How it works"
-          title="Three simple steps to a steadier you"
-          description="No complicated setup. Start with one habit and build from there."
+          eyebrow={t('How it works')}
+          title={t('Three simple steps to a steadier you')}
+          description={t('No complicated setup. Start with one habit and build from there.')}
         />
       </Reveal>
       <Box component="ol" sx={{ m: 0, p: 0, display: 'grid', gap: '40px', gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' } }}>
@@ -204,7 +210,7 @@ export default function HowItWorks() {
       </Box>
       <Reveal delay={200}>
         <Button component={RouterLink} to={ROUTES.howItWorks} variant="contained" color="primary" endIcon={<ArrowRight size={18} />} sx={{ mt: 5 }}>
-          See the full walkthrough
+          {t('See the full walkthrough')}
         </Button>
       </Reveal>
     </Section>

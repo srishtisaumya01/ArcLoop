@@ -2,6 +2,7 @@ import { Box, Typography } from '@mui/material'
 import { keyframes } from '@mui/material/styles'
 import { Flag, Rocket, UserPlus, UsersRound, MailCheck } from 'lucide-react'
 import DemoBadge from '../ui/DemoBadge.jsx'
+import { useI18n } from '../../hooks/useI18n.js'
 import { useInView } from '../../hooks/useInView.js'
 import { noMotion, popIn } from '../../theme/animations.js'
 import { colors, radii } from '../../theme/tokens.js'
@@ -34,6 +35,7 @@ const activeText = keyframes`
 
 // The plan for joining a challenge as a group, as an animated timeline. The member names are sample data.
 export default function GroupPlan() {
+  const { t } = useI18n()
   const [ref, play] = useInView({ threshold: 0.25 })
   const cycle = STEPS.length * STEP_SECONDS
   return (
@@ -50,11 +52,11 @@ export default function GroupPlan() {
     >
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1, flexWrap: 'wrap', mb: 2.5 }}>
         <Typography variant="h4" component="h3">
-          Your plan to join as a group
+          {t('Your plan to join as a group')}
         </Typography>
         <DemoBadge onDark label="Sample members" />
       </Box>
-      <Box component="ol" aria-label="Steps" sx={{ listStyle: 'none', m: 0, p: 0 }}>
+      <Box component="ol" aria-label={t('Steps')} sx={{ listStyle: 'none', m: 0, p: 0 }}>
       {STEPS.map(({ icon: Icon, title, text, members }, i) => (
         <Box component="li" key={title} sx={{ display: 'flex', gap: 2, position: 'relative', pb: i === STEPS.length - 1 ? 0 : 2.5 }}>
           {i < STEPS.length - 1 && <Box aria-hidden="true" sx={{ position: 'absolute', left: 21, top: 44, bottom: 0, width: 2, borderRadius: 1, background: 'linear-gradient(rgba(124, 240, 192, 0.7), rgba(255, 255, 255, 0.14))' }} />}
@@ -80,10 +82,10 @@ export default function GroupPlan() {
               <Box component="span" sx={{ color: colors.mint300, mr: 1 }}>
                 {i + 1}.
               </Box>
-              {title}
+              {t(title)}
             </Typography>
             <Typography variant="body2" sx={{ color: colors.textOnDarkMuted, mt: 0.25 }}>
-              {text}
+              {t(text)}
             </Typography>
             {members && (
               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1.25 }}>

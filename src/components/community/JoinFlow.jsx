@@ -3,6 +3,7 @@ import { keyframes } from '@mui/material/styles'
 import { Repeat, Split } from 'lucide-react'
 import FlowConnector from './FlowConnector.jsx'
 import Reveal from '../ui/Reveal.jsx'
+import { useI18n } from '../../hooks/useI18n.js'
 import { JOIN_STEPS } from '../../constants/communityDemo.js'
 import { colors, gradients, radii, shadows } from '../../theme/tokens.js'
 
@@ -26,6 +27,7 @@ function StepNumber({ n }) {
 
 // The join journey: three shared steps, the solo/group question, then `children` (the ways to join), then the daily loop.
 export default function JoinFlow({ children }) {
+  const { t } = useI18n()
   return (
     <Box>
       <Box component="ol" sx={{ listStyle: 'none', m: 0, p: 0, display: 'flex', flexDirection: { xs: 'column', md: 'row' }, alignItems: 'stretch', gap: { xs: 0.5, md: 1 } }}>
@@ -35,10 +37,10 @@ export default function JoinFlow({ children }) {
               <Box sx={{ height: '100%', p: 2.5, borderRadius: `${radii.md}px`, bgcolor: colors.surface, border: `1px solid ${colors.border}`, boxShadow: shadows.sm }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, mb: 1 }}>
                   <StepNumber n={i + 1} />
-                  <Typography sx={{ fontWeight: 800 }}>{s.title}</Typography>
+                  <Typography sx={{ fontWeight: 800 }}>{t(s.title)}</Typography>
                 </Box>
                 <Typography variant="body2" color="text.secondary">
-                  {s.text}
+                  {t(s.text)}
                 </Typography>
               </Box>
             </Reveal>
@@ -51,7 +53,7 @@ export default function JoinFlow({ children }) {
         <FlowConnector vertical delay={0.3} />
         <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 1, px: 2.5, py: 1.25, borderRadius: '999px', background: gradients.brand, color: colors.textOnDark, fontWeight: 700, animation: `${pulse} 2.2s ease-out infinite`, ...noMotion }}>
           <Split size={18} aria-hidden="true" />
-          Join solo, or create a group?
+          {t('Join solo, or create a group?')}
         </Box>
         <FlowConnector vertical delay={0.9} />
       </Box>
@@ -68,10 +70,9 @@ export default function JoinFlow({ children }) {
               </Box>
             </Box>
             <Box>
-              <Typography sx={{ fontWeight: 800, mb: 0.5 }}>Then, every day</Typography>
+              <Typography sx={{ fontWeight: 800, mb: 0.5 }}>{t('Then, every day')}</Typography>
               <Typography color="text.secondary">
-                Check in on your scheduled days. You get a reminder each morning, a kind nudge after a missed day, and every Sunday you get
-                your weekly report and the top participants list is refreshed.
+                {t('Check in on your scheduled days. You get a reminder each morning, a kind nudge after a missed day, and every Sunday you get your weekly report and the top participants list is refreshed.')}
               </Typography>
             </Box>
           </Box>

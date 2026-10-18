@@ -1,6 +1,7 @@
 import { usePageMeta } from '../../hooks/usePageMeta.js'
 import Hero from '../../components/landing/Hero.jsx'
 import ImpactStats from '../../components/landing/ImpactStats.jsx'
+import WinterArcTracker from '../../components/landing/WinterArcTracker.jsx'
 import HowItWorks from '../../components/landing/HowItWorks.jsx'
 import MomentumSection from '../../components/landing/MomentumSection.jsx'
 import AutomationSection from '../../components/landing/AutomationSection.jsx'
@@ -16,6 +17,7 @@ export default function HomePage() {
     <>
       <Hero />
       <ImpactStats />
+      <WinterArcTracker />
       <HowItWorks />
       <MomentumSection />
       <AutomationSection />

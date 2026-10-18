@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Box, Typography } from '@mui/material'
 import { useInView } from '../../hooks/useInView.js'
+import { useI18n } from '../../hooks/useI18n.js'
 import { chart, colors } from '../../theme/tokens.js'
 
 // Rounds the top of the y-axis up to a clean step (1, 2, 2.5 or 5 x 10^n) with about four intervals.
@@ -32,6 +33,7 @@ export default function LineChart({ series, labels, yMin = 0, yMax, yStep, forma
   const wrapRef = useRef(null)
   const width = useWidth(wrapRef)
   const [viewRef, drawn] = useInView({ threshold: 0.3 })
+  const { t } = useI18n()
   const [active, setActive] = useState(null)
 
   const narrow = width < 520
@@ -82,7 +84,7 @@ export default function LineChart({ series, labels, yMin = 0, yMax, yStep, forma
   return (
     <Box ref={viewRef}>
       {series.length > 1 && (
-        <Box component="ul" aria-label="Legend" sx={{ listStyle: 'none', m: 0, mb: 1.5, p: 0, display: 'flex', flexWrap: 'wrap', gap: 2.5 }}>
+        <Box component="ul" aria-label={t('Legend')} sx={{ listStyle: 'none', m: 0, mb: 1.5, p: 0, display: 'flex', flexWrap: 'wrap', gap: 2.5 }}>
           {series.map((s) => (
             <Box component="li" key={s.key} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <Box aria-hidden="true" sx={{ width: 18, height: 3, borderRadius: 2, bgcolor: s.color }} />
@@ -205,12 +207,12 @@ export default function LineChart({ series, labels, yMin = 0, yMax, yStep, forma
       </Box>
 
       <Box component="details" sx={{ mt: 1.5, '& summary': { cursor: 'pointer', color: colors.blue600, fontWeight: 600, fontSize: '0.875rem', width: 'fit-content' } }}>
-        <summary>View as table</summary>
+        <summary>{t('View as table')}</summary>
         <Box sx={{ overflowX: 'auto', mt: 1.5 }}>
           <Box component="table" sx={{ borderCollapse: 'collapse', fontSize: '0.875rem', minWidth: 240, '& th, & td': { textAlign: 'left', py: 0.75, pr: 3, borderBottom: `1px solid ${colors.border}` } }}>
             <thead>
               <tr>
-                <th scope="col">Week</th>
+                <th scope="col">{t('Week')}</th>
                 {series.map((s) => (
                   <th scope="col" key={s.key}>{s.label}</th>
                 ))}

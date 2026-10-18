@@ -2,12 +2,14 @@ import { Box, Typography } from '@mui/material'
 import { CheckCheck, TrendingUp, Users, UsersRound } from 'lucide-react'
 import CountUp from '../ui/CountUp.jsx'
 import Reveal from '../ui/Reveal.jsx'
+import { useI18n } from '../../hooks/useI18n.js'
 import { colors, gradients, radii, shadows } from '../../theme/tokens.js'
 
 const ICONS = { participants: Users, checkins: CheckCheck, consistency: TrendingUp, groups: UsersRound }
 
 // Headline numbers: one value per tile, counting up on first view, with a short note under it.
 export default function StatTiles({ stats, elevated = false }) {
+  const { t } = useI18n()
   return (
     <Box component="dl" sx={{ m: 0, display: 'grid', gap: 2, gridTemplateColumns: { xs: 'repeat(2, 1fr)', md: `repeat(${stats.length}, 1fr)` } }}>
       {stats.map((s, i) => {
@@ -35,13 +37,13 @@ export default function StatTiles({ stats, elevated = false }) {
                 </Box>
               )}
               <Typography component="dt" variant="body2" sx={{ color: colors.textSecondary, fontWeight: 600, order: 1 }}>
-                {s.label}
+                {t(s.label)}
               </Typography>
               <Typography component="dd" sx={{ m: 0, order: 0, fontSize: { xs: '1.75rem', md: '2.25rem' }, fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.1, mb: 0.5 }}>
                 <CountUp value={s.value} suffix={s.suffix} />
               </Typography>
               <Typography component="dd" variant="body2" sx={{ m: 0, order: 2, color: colors.textMuted, mt: 0.5 }}>
-                {s.note}
+                {t(s.note)}
               </Typography>
             </Box>
           </Reveal>

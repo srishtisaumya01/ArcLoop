@@ -68,4 +68,16 @@ describe('navigation', () => {
     expect(screen.queryByRole('navigation', { name: 'App' })).toBeNull()
     expect(screen.queryByRole('link', { name: 'Settings' })).toBeNull()
   })
+
+  it('offers Get in touch in place of Log in, and keeps Log in in the footer', async () => {
+    h.getSession.mockResolvedValue(null)
+    renderAt('/')
+    const nav = await screen.findByRole('navigation', { name: 'Primary' })
+    expect(within(nav).getAllByRole('link').map((a) => a.textContent)).toEqual(['How it works', 'Challenges', 'Participants', 'FAQ'])
+    const header = nav.closest('header')
+    expect(within(header).getByRole('link', { name: 'Get in touch' })).toHaveAttribute('href', '/contact')
+    expect(within(header).queryByRole('link', { name: 'Log in' })).toBeNull()
+    const footer = screen.getByRole('contentinfo')
+    expect(within(footer).getByRole('link', { name: 'Log in' })).toHaveAttribute('href', '/login')
+  })
 })

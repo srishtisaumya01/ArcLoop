@@ -2,6 +2,7 @@ import { Box, Typography } from '@mui/material'
 import { Check, Flame } from 'lucide-react'
 import { keyframes } from '@mui/material/styles'
 import DemoBadge from '../ui/DemoBadge.jsx'
+import { useI18n } from '../../hooks/useI18n.js'
 import { DEMO_PREVIEW_HABITS } from '../../constants/landingContent.js'
 import { enter, floatY, grow, noMotion, popIn } from '../../theme/animations.js'
 import { colors, gradients, radii, shadows } from '../../theme/tokens.js'
@@ -9,7 +10,7 @@ import { colors, gradients, radii, shadows } from '../../theme/tokens.js'
 // The unchecked habit ticks itself now and then, as if someone had just checked in.
 const tickCircle = keyframes`
   0%, 35% { background-color: transparent; border-color: ${colors.textMuted}; }
-  45%, 85% { background-color: ${colors.navy900}; border-color: ${colors.navy900}; }
+  45%, 85% { background-color: ${colors.ink}; border-color: ${colors.ink}; }
   95%, 100% { background-color: transparent; border-color: ${colors.textMuted}; }
 `
 const tickMark = keyframes`
@@ -20,21 +21,27 @@ const tickMark = keyframes`
 const TICKING_ROW = 2
 
 const WEEK = [
-  { d: 'M', v: 1 },
-  { d: 'T', v: 1 },
-  { d: 'W', v: 0.5 },
-  { d: 'T', v: 1 },
-  { d: 'F', v: 0 },
-  { d: 'S', v: 0 },
-  { d: 'S', v: 0 },
+  { k: 'Mon', v: 1 },
+  { k: 'Tue', v: 1 },
+  { k: 'Wed', v: 0.5 },
+  { k: 'Thu', v: 1 },
+  { k: 'Fri', v: 0 },
+  { k: 'Sat', v: 0 },
+  { k: 'Sun', v: 0 },
 ]
 
 // Illustration of the planned dashboard: gently floating, with the rows and bars animating in. Not interactive, not real data.
 export default function ProductPreview() {
+  const { t } = useI18n()
+  // English shows the weekday's first letter; a translation (e.g. Hindi) supplies its own short form.
+  const dayLabel = (k) => {
+    const label = t(k)
+    return label === k ? k[0] : label
+  }
   return (
     <Box
       role="img"
-      aria-label="Illustrative preview of the Arcloop dashboard showing today's habits and weekly progress, using sample data"
+      aria-label={t("Illustrative preview of the Arcloop dashboard showing today's habits and weekly progress, using sample data")}
       sx={{
         bgcolor: colors.surface,
         color: colors.textPrimary,
@@ -52,7 +59,7 @@ export default function ProductPreview() {
       <Box aria-hidden="true">
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2.5, gap: 1, flexWrap: 'wrap' }}>
           <Typography variant="h4" component="p">
-            Today
+            {t('Today')}
           </Typography>
           <DemoBadge label="Sample data" />
         </Box>
@@ -80,9 +87,9 @@ export default function ProductPreview() {
                   flexShrink: 0,
                   display: 'grid',
                   placeItems: 'center',
-                  bgcolor: h.done ? colors.navy900 : 'transparent',
-                  border: `2px solid ${h.done ? colors.navy900 : colors.textMuted}`,
-                  color: colors.textOnDark,
+                  bgcolor: h.done ? colors.ink : 'transparent',
+                  border: `2px solid ${h.done ? colors.ink : colors.textMuted}`,
+                  color: colors.onInk,
                   ...(h.done && { animation: `${popIn} 500ms ease ${900 + i * 140}ms both`, ...noMotion }),
                   ...(i === TICKING_ROW && { animation: `${tickCircle} 7s ease-in-out 3s infinite`, ...noMotion }),
                 }}
@@ -95,9 +102,9 @@ export default function ProductPreview() {
                 )}
               </Box>
               <Box sx={{ minWidth: 0 }}>
-                <Typography sx={{ fontWeight: 700, lineHeight: 1.3 }}>{h.name}</Typography>
+                <Typography sx={{ fontWeight: 700, lineHeight: 1.3 }}>{t(h.name)}</Typography>
                 <Typography variant="body2" color="text.secondary">
-                  {h.note}
+                  {t(h.note)}
                 </Typography>
               </Box>
             </Box>
@@ -106,11 +113,11 @@ export default function ProductPreview() {
 
         <Box sx={{ mt: 3, p: 2, borderRadius: `${radii.md}px`, background: gradients.brand, color: colors.textOnDark }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
-            <Typography sx={{ fontWeight: 700 }}>This week</Typography>
+            <Typography sx={{ fontWeight: 700 }}>{t('This week')}</Typography>
             <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5, color: colors.mint300 }}>
               <Flame size={16} />
               <Typography variant="body2" sx={{ color: 'inherit', fontWeight: 700 }}>
-                4 of 7 days
+                {t('4 of 7 days')}
               </Typography>
             </Box>
           </Box>
@@ -134,7 +141,7 @@ export default function ProductPreview() {
           <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 0.75, mt: 0.75 }}>
             {WEEK.map((w, i) => (
               <Typography key={i} variant="body2" sx={{ textAlign: 'center', color: colors.textOnDarkMuted, fontSize: '0.75rem' }}>
-                {w.d}
+                {dayLabel(w.k)}
               </Typography>
             ))}
           </Box>

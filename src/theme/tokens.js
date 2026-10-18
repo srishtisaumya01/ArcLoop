@@ -1,6 +1,10 @@
 // Single source of truth for Arcloop design tokens.
 // Everything visual (MUI theme, components) reads from here.
 
+// Colours that change with the light/dark theme are CSS variables (defined in styles/global.css, with the light value as
+// the fallback); the brand and on-gradient colours below are fixed hex values.
+const themed = (name, fallback) => `var(--ac-${name}, ${fallback})`
+
 export const colors = {
   navy950: '#06122B',
   navy900: '#0B1B3A',
@@ -14,25 +18,33 @@ export const colors = {
   teal700: '#17698F',
   mint300: '#7CF0C0',
   mint400: '#2ED68B',
-  // Interactive blue for use on light surfaces (5.9:1 on white).
-  blue600: '#1B5BC8',
-  blue700: '#144AA6',
-  bg: '#F5F8FC',
-  bgAlt: '#EAF1F9',
-  surface: '#FFFFFF',
-  border: '#D9E2EE',
-  textPrimary: '#0B1B3A',
-  textSecondary: '#44546F',
-  textMuted: '#5B6B85',
   textOnDark: '#FFFFFF',
   textOnDarkMuted: '#B8C6DD',
-  success: '#0F7B53',
-  warning: '#9A5B00',
-  error: '#B42318',
+  // Interactive blue for use on the page surface (5.9:1 on white in light mode).
+  blue600: themed('blue600', '#1B5BC8'),
+  blue700: themed('blue700', '#144AA6'),
+  bg: themed('bg', '#F5F8FC'),
+  bgAlt: themed('bg-alt', '#EAF1F9'),
+  surface: themed('surface', '#FFFFFF'),
+  border: themed('border', '#D9E2EE'),
+  textPrimary: themed('text-primary', '#0B1B3A'),
+  textSecondary: themed('text-secondary', '#44546F'),
+  textMuted: themed('text-muted', '#5B6B85'),
+  // Filled "ink" elements (dark chip in light mode, light chip in dark mode) and the text that sits on them.
+  ink: themed('ink', '#0B1B3A'),
+  onInk: themed('on-ink', '#FFFFFF'),
+  success: themed('success', '#0F7B53'),
+  warning: themed('warning', '#9A5B00'),
+  error: themed('error', '#B42318'),
+  errorBg: themed('error-bg', '#FDECEA'),
 }
 
 export const fontFamily =
-  '"Plus Jakarta Sans Variable", "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif'
+  '"Plus Jakarta Sans Variable", "Plus Jakarta Sans", "Noto Sans Devanagari Variable", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif'
+
+// The navigation bar's own face: Outfit for Latin text, with Noto Sans Devanagari for Hindi.
+export const navFontFamily =
+  '"Outfit Variable", "Outfit", "Noto Sans Devanagari Variable", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif'
 
 // Fluid type scale (rem-based clamp so headings scale with viewport).
 export const typeScale = {
@@ -60,25 +72,23 @@ export const shadows = {
   lg: '0 24px 60px rgba(11, 27, 58, 0.16)',
 }
 
-// Fine film grain laid over the brand gradient so large flat areas do not band.
-const grain =
-  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.07 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")"
-
 export const gradients = {
   hero: `radial-gradient(900px 480px at 85% 0%, ${colors.ice300}66, transparent 70%), ${colors.bg}`,
-  brand: `${grain}, linear-gradient(115deg, ${colors.royal900} 0%, ${colors.royal800} 38%, ${colors.teal700} 70%, ${colors.mint400} 100%)`,
-  brandVertical: `${grain}, linear-gradient(160deg, ${colors.royal900} 0%, ${colors.royal800} 45%, ${colors.teal700} 80%, ${colors.mint400} 115%)`,
+  brand: `linear-gradient(115deg, ${colors.royal900} 0%, ${colors.royal800} 38%, ${colors.teal700} 70%, ${colors.mint400} 100%)`,
+  brandVertical: `linear-gradient(160deg, ${colors.royal900} 0%, ${colors.royal800} 45%, ${colors.teal700} 80%, ${colors.mint400} 115%)`,
   accentText: `linear-gradient(90deg, ${colors.mint300}, ${colors.ice300})`,
+  // The footer: the brand gradient, kept dark all the way across so white link text stays readable.
+  footer: `linear-gradient(120deg, ${colors.royal900} 0%, ${colors.royal800} 40%, ${colors.teal700} 78%, #14806E 100%)`,
   // A saturated pastel of the same blue-to-mint brand gradient, for sections that keep dark text.
-  tint: 'linear-gradient(135deg, #D2E2F8 0%, #CBE9EE 50%, #C4EBD7 100%)',
+  tint: themed('tint', 'linear-gradient(135deg, #D2E2F8 0%, #CBE9EE 50%, #C4EBD7 100%)'),
 }
 
 // Buttons placed on the brand gradient: a solid white primary and a frosted "glass" secondary with a soft glow.
 export const onBrandButtons = {
   solid: {
-    bgcolor: colors.surface,
+    bgcolor: '#FFFFFF',
     color: colors.navy900,
-    '&:hover': { bgcolor: colors.bgAlt, transform: 'translateY(-1px)' },
+    '&:hover': { bgcolor: '#E6F0FF', transform: 'translateY(-1px)' },
   },
   glass: {
     color: colors.textOnDark,
@@ -93,15 +103,16 @@ export const onBrandButtons = {
 // Chart roles. Series hues are validated as a pair (CVD and normal-vision separation); series2 sits below 3:1 on white,
 // so every chart labels line ends and offers a table view.
 export const chart = {
-  series1: '#2a78d6',
-  series2: '#1baf7a',
-  grid: '#E3E9F2',
-  surface: '#FFFFFF',
+  series1: themed('series-1', '#2a78d6'),
+  series2: themed('series-2', '#1baf7a'),
+  grid: themed('grid', '#E3E9F2'),
+  surface: themed('surface', '#FFFFFF'),
 }
 
 export const contentWidths = { page: 1200, narrow: 760 }
 
-export const breakpoints = { xs: 0, sm: 600, md: 900, lg: 1200, xl: 1536 }
+// `nav` is where the full navigation bar (links, buttons, language and theme) fits on one line; below it a menu button is shown.
+export const breakpoints = { xs: 0, sm: 600, md: 900, lg: 1200, nav: 1260, xl: 1536 }
 
 export const focusRing = {
   outline: `3px solid ${colors.ice500}`,
@@ -114,7 +125,7 @@ export const motion = {
   easing: 'cubic-bezier(0.2, 0.7, 0.2, 1)',
 }
 
-export const navHeight = 72
+export const navHeight = 84
 
 // The navbar floats as a card with this much space above and below it.
 export const navGap = 16
