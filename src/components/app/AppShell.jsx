@@ -62,7 +62,7 @@ export default function AppShell() {
           </Box>
 
           <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-            <Box sx={{ display: { xs: 'flex', md: 'none' }, position: 'sticky', top: 0, zIndex: 1100, alignItems: 'center', justifyContent: 'space-between', px: 2, py: 1, background: gradients.brand, color: '#FFFFFF' }}>
+            <Box sx={{ display: { xs: 'flex', md: 'none' }, position: 'sticky', top: 0, zIndex: 1100, alignItems: 'center', justifyContent: 'space-between', px: 2, py: 1, background: gradients.sidebar, color: '#FFFFFF' }}>
               <Logo onDark size={36} />
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                 <UserMenu onDark />

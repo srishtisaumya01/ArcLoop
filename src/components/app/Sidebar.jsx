@@ -10,7 +10,7 @@ import { useMyChallenges } from '../../hooks/useMyChallenges.js'
 import { useI18n } from '../../hooks/useI18n.js'
 import { APP_NAV, EXPLORE_NAV, ROUTES, appChallengePath } from '../../constants/navigation.js'
 import { noMotion } from '../../theme/animations.js'
-import { colors, gradients, navFontFamily, shadows } from '../../theme/tokens.js'
+import { colors, gradients, navFontFamily } from '../../theme/tokens.js'
 
 const ICONS = {
   profile: UserRound,
@@ -38,19 +38,18 @@ const itemSx = {
   px: 1.75,
   py: 1.25,
   borderRadius: '12px',
-  color: colors.textSecondary,
+  color: 'rgba(255, 255, 255, 0.86)',
   fontFamily: navFontFamily,
   fontWeight: 500,
   fontSize: '1rem',
   textDecoration: 'none',
   transition: 'background-color 160ms ease, color 160ms ease',
-  '&:hover': { background: gradients.sidebarHover, color: colors.textPrimary },
+  '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.1)', color: '#FFFFFF' },
   '&[aria-current="page"]': {
-    background: gradients.sidebarActive,
-    color: colors.blue700,
-    boxShadow: shadows.sm,
+    bgcolor: 'rgba(255, 255, 255, 0.18)',
+    color: '#FFFFFF',
     fontWeight: 600,
-    '&::before': { content: '""', position: 'absolute', left: -12, top: 8, bottom: 8, width: 4, borderRadius: '0 4px 4px 0', background: `linear-gradient(180deg, ${colors.blue600}, ${colors.mint400})` },
+    '&::before': { content: '""', position: 'absolute', left: -12, top: 8, bottom: 8, width: 4, borderRadius: '0 4px 4px 0', bgcolor: colors.mint300 },
   },
 }
 
@@ -62,9 +61,7 @@ function NavList({ items, label, onNavigate }) {
         const Icon = ICONS[item.icon]
         return (
           <Box key={item.to} component={NavLink} to={item.to} end={item.end} onClick={onNavigate} sx={itemSx}>
-            <Box component="span" sx={{ display: 'inline-flex', color: colors.blue600 }}>
-              <Icon size={20} aria-hidden="true" />
-            </Box>
+            <Icon size={20} aria-hidden="true" />
             {t(item.label)}
           </Box>
         )
@@ -86,7 +83,7 @@ function ChallengeMini({ onNavigate }) {
       component={RouterLink}
       to={appChallengePath(challenge.slug)}
       onClick={onNavigate}
-      sx={{ display: 'block', p: 1.75, borderRadius: '14px', background: gradients.brand, color: '#FFFFFF', textDecoration: 'none', boxShadow: shadows.sm, '&:hover': { filter: 'brightness(1.08)' } }}
+      sx={{ display: 'block', p: 1.75, borderRadius: '14px', bgcolor: 'rgba(255, 255, 255, 0.1)', border: '1px solid rgba(255, 255, 255, 0.22)', color: '#FFFFFF', textDecoration: 'none', '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.16)' } }}
     >
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, color: colors.mint300, fontWeight: 700, fontSize: '0.875rem' }}>
         <Flame size={16} aria-hidden="true" />
@@ -122,15 +119,15 @@ export default function Sidebar({ navLabel = 'App', onNavigate }) {
   }
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, minHeight: '100%', p: 2.5, background: gradients.sidebar, color: colors.textPrimary }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, minHeight: '100%', p: 2.5, background: gradients.sidebar, color: '#FFFFFF' }}>
       <Box component={RouterLink} to={ROUTES.app} onClick={onNavigate} aria-label={t('Arcloop home')} sx={{ display: 'inline-flex', alignSelf: 'flex-start', textDecoration: 'none', px: 0.5, pt: 0.5 }}>
-        <Logo size={42} />
+        <Logo onDark size={42} />
       </Box>
 
       <NavList items={APP_NAV} label={navLabel} onNavigate={onNavigate} />
 
       <Box>
-        <Typography variant="overline" component="p" sx={{ color: colors.blue600, px: 1.75, mb: 0.75 }}>
+        <Typography variant="overline" component="p" sx={{ color: colors.mint300, px: 1.75, mb: 0.75 }}>
           {t('Explore')}
         </Typography>
         <NavList items={EXPLORE_NAV} label={t('Explore')} onNavigate={onNavigate} />
@@ -140,8 +137,8 @@ export default function Sidebar({ navLabel = 'App', onNavigate }) {
 
       <Box sx={{ mt: 'auto', display: 'grid', gap: 1.5, pt: 1 }}>
         <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-          <LanguageToggle fullWidth sx={{ flex: 1 }} />
-          <ThemeToggle />
+          <LanguageToggle onDark fullWidth sx={{ flex: 1 }} />
+          <ThemeToggle onDark />
         </Box>
         <Box component={RouterLink} to={ROUTES.home} onClick={onNavigate} sx={{ ...itemSx, py: 1 }}>
           <Home size={20} aria-hidden="true" />
@@ -151,7 +148,7 @@ export default function Sidebar({ navLabel = 'App', onNavigate }) {
           onClick={logOut}
           variant="outlined"
           startIcon={<LogOut size={18} aria-hidden="true" />}
-          sx={{ color: colors.textPrimary, borderColor: colors.border, borderWidth: 1.5, fontFamily: navFontFamily, fontWeight: 600, justifyContent: 'center', '&:hover': { borderWidth: 1.5, borderColor: colors.blue600, background: gradients.sidebarHover } }}
+          sx={{ color: '#FFFFFF', borderColor: 'rgba(255, 255, 255, 0.5)', borderWidth: 1.5, fontFamily: navFontFamily, fontWeight: 600, justifyContent: 'center', '&:hover': { borderWidth: 1.5, borderColor: '#FFFFFF', bgcolor: 'rgba(255, 255, 255, 0.12)' } }}
         >
           {t('Log out')}
         </Button>
