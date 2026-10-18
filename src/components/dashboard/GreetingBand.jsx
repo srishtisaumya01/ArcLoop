@@ -1,6 +1,7 @@
 import { Box, Container, Typography } from '@mui/material'
 import { CalendarDays } from 'lucide-react'
 import TodayRing from './TodayRing.jsx'
+import Typewriter from '../ui/Typewriter.jsx'
 import { useI18n } from '../../hooks/useI18n.js'
 import { enter } from '../../theme/animations.js'
 import { colors, contentWidths, gradients } from '../../theme/tokens.js'
@@ -10,7 +11,7 @@ import { colors, contentWidths, gradients } from '../../theme/tokens.js'
 // The greeting band is as tall as the sidebar's logo block beside it, so the two line up.
 export const BAND_HEIGHT = 176
 
-export default function GreetingBand({ greeting, name, dateLabel, ring, account }) {
+export default function GreetingBand({ greeting, name, dateLabel, ring, account, ready = true }) {
   const { t } = useI18n()
   return (
     <Box component="section" aria-label={t('Greeting')} sx={{ background: gradients.brand, color: colors.textOnDark, pt: { xs: 3, md: '56px' }, pb: { xs: 3, md: 0 }, height: { md: BAND_HEIGHT }, display: { md: 'flex' }, alignItems: 'center', position: 'relative', overflow: 'hidden' }}>
@@ -19,10 +20,13 @@ export default function GreetingBand({ greeting, name, dateLabel, ring, account 
       <Container sx={{ position: 'relative', maxWidth: `${contentWidths.page}px !important`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 3, flexDirection: { xs: 'column', md: 'row' }, textAlign: { xs: 'center', md: 'left' } }}>
         <Box sx={{ minWidth: 0 }}>
           <Typography variant="h1" component="h1" sx={{ fontSize: { xs: '1.75rem', sm: '2.2rem', md: '2.5rem' }, lineHeight: 1.12, mb: 0, overflowWrap: 'anywhere', ...enter(100, 800) }}>
-            {t(greeting)},{' '}
-            <Box component="span" sx={{ background: gradients.accentText, WebkitBackgroundClip: 'text', backgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-              {name}
-            </Box>
+            <Typewriter
+              active={ready}
+              segments={[
+                { text: `${t(greeting)}, ` },
+                { text: name, sx: { background: gradients.accentText, WebkitBackgroundClip: 'text', backgroundClip: 'text', WebkitTextFillColor: 'transparent' } },
+              ]}
+            />
           </Typography>
           <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75, mt: 0.5, color: colors.mint300, fontWeight: 600, fontSize: '0.875rem', ...enter(0, 600) }}>
             <CalendarDays size={15} aria-hidden="true" />

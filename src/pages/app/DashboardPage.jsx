@@ -28,7 +28,7 @@ export default function DashboardPage() {
   const { t, lang } = useI18n()
   usePageMeta(t('Dashboard'))
   const now = useNow(undefined, 60_000)
-  const { displayName } = useAppShell()
+  const { displayName, profileStatus } = useAppShell()
   const { status, data, refresh } = useProgressOverview()
 
   const week = data?.weeks[0] ?? null
@@ -52,6 +52,7 @@ export default function DashboardPage() {
         greeting={greetingFor(now)}
         name={first}
         dateLabel={dateLabel}
+        ready={profileStatus !== 'loading'}
         account={<UserMenu onDark />}
         ring={<TodayRing percent={today?.percent ?? 0} label={t('Today')} size={100} />}
       />
