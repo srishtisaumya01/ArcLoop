@@ -409,6 +409,7 @@ export const hi = {
   "Question about Arcloop": "Arcloop के बारे में सवाल",
   "Questions, answered honestly": "सवाल, ईमानदार जवाब",
   "Questions, problems or feedback: we would like to hear from you.": "सवाल, समस्या या फ़ीडबैक: हम आपसे सुनना चाहेंगे।",
+  "Quote of the day": "आज का विचार",
   "Rank": "रैंक",
   "Rank {rank}: {name}": "रैंक {rank}: {name}",
   "Re-enter your new password.": "अपना नया पासवर्ड दोबारा डालें।",

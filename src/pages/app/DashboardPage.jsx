@@ -2,6 +2,7 @@ import { Link as RouterLink } from 'react-router-dom'
 import { Box, Button, Container, Skeleton } from '@mui/material'
 import { CalendarCheck, CalendarRange, CircleCheck, ListTodo, RefreshCw, TrendingUp, TriangleAlert } from 'lucide-react'
 import UserMenu from '../../components/app/UserMenu.jsx'
+import QuoteCard from '../../components/dashboard/QuoteCard.jsx'
 import GreetingBand from '../../components/dashboard/GreetingBand.jsx'
 import TodayRing from '../../components/dashboard/TodayRing.jsx'
 import KpiTiles from '../../components/dashboard/KpiTiles.jsx'
@@ -57,7 +58,8 @@ export default function DashboardPage() {
         ring={<TodayRing percent={today?.percent ?? 0} label={t('Today')} size={100} />}
       />
 
-      <Container sx={{ maxWidth: `${contentWidths.page}px !important`, py: { xs: 3, md: 5 }, display: 'grid', gap: 3 }}>
+      <Container sx={{ maxWidth: `${contentWidths.page + 120}px !important`, py: { xs: 3, md: 5 }, display: 'grid', gap: 3, alignItems: 'start', gridTemplateColumns: { xs: 'minmax(0, 1fr)', lg: 'minmax(0, 1fr) 290px' } }}>
+        <Box sx={{ display: 'grid', gap: 3, minWidth: 0, order: { xs: 2, lg: 1 } }}>
         <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
         <Button component={RouterLink} to={ROUTES.day} variant="contained" color="primary" startIcon={<CalendarCheck size={18} aria-hidden="true" />}>
           {t('Open My Day')}
@@ -116,6 +118,10 @@ export default function DashboardPage() {
         )}
 
         {brandNew && <ChallengeCard />}
+        </Box>
+        <Box component="aside" aria-label={t('Quote of the day')} sx={{ order: { xs: 1, lg: 2 }, position: { lg: 'sticky' }, top: { lg: 24 } }}>
+          <QuoteCard now={now} />
+        </Box>
       </Container>
     </>
   )
