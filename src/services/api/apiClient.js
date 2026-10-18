@@ -1,12 +1,20 @@
-// The shared client for the Arcloop (Django) API. It owns three things and nothing else: where the API
-// lives, the signed-in session (an opaque bearer token), and turning every failure into an ApiError.
-// Components and services never call fetch or read the token directly.
+// The shared client for the Arcloop (Django) API. It owns three things and nothing else: where the API lives, who is
+// signed in (in memory), and turning every failure into an ApiError. Components and services never call fetch directly.
 //
-// The token is kept in localStorage so a reload keeps the user signed in (the same trade-off the previous
-// provider made). It is sent in an Authorization header, never a cookie, so there is no CSRF surface; the
-// server stores only a hash of it and expires it. Nothing here is a secret: the API URL is public.
+// Authentication is an HttpOnly session cookie set by the server. Script cannot read it, so this client never holds,
+// stores or sends a credential: the browser attaches the cookie to same-origin requests by itself. Because it does,
+// every request that changes data must also prove it came from this app, by echoing the CSRF cookie in a header (the
+// server rejects it otherwise). The API is served from the same origin as the app (`/api/...`), so no CORS is involved.
+//
+// What the client remembers is only `{ user }` after a sign-in or a `/auth/me/` check, so screens can show who is signed
+// in. Nothing is written to localStorage; a reload asks the server (`/auth/me/`) who the cookie belongs to.
 
-const STORAGE_KEY = 'arcloop.session'
+// The names are the server's (config/settings.py); tests/integration/authContract.integration.test.js keeps them in step.
+export const CSRF_COOKIE_NAME = 'arcloop_csrf'
+export const CSRF_HEADER_NAME = 'X-CSRFToken'
+const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS'])
+// The browser-side storage key of the earlier bearer-token design. Removed at start-up so no old token lingers.
+const LEGACY_STORAGE_KEY = 'arcloop.session'
 
 // A failure from the API (or from reaching it). `status` 0 means the request never got an answer.
 export class ApiError extends Error {
@@ -19,77 +27,63 @@ export class ApiError extends Error {
   }
 }
 
-function browserStorage() {
+// The value of one cookie from a `document.cookie`-style string, or null.
+export function readCookie(name, cookieString = globalThis.document?.cookie ?? '') {
+  for (const part of cookieString.split(';')) {
+    const [key, ...value] = part.trim().split('=')
+    if (key === name) return decodeURIComponent(value.join('='))
+  }
+  return null
+}
+
+function forgetLegacyToken() {
   try {
-    return globalThis.localStorage ?? null
+    globalThis.localStorage?.removeItem(LEGACY_STORAGE_KEY)
   } catch {
-    return null // private mode or blocked storage: the session then lasts until the page closes
+    /* storage unavailable: nothing to remove */
   }
 }
 
-export function createApiClient({ baseUrl, fetchImpl, storage = browserStorage() } = {}) {
+// `csrfToken` returns the CSRF secret to echo; the default reads the cookie. Tests that have no browser pass their own.
+export function createApiClient({ baseUrl, fetchImpl, csrfToken = () => readCookie(CSRF_COOKIE_NAME) } = {}) {
   const root = typeof baseUrl === 'string' ? baseUrl.replace(/\/+$/, '') : ''
   const listeners = new Set()
-  let memory = null
-  let loaded = false
+  let session = null // { user: { id, email } }
 
-  const read = () => {
-    if (loaded) return memory
-    loaded = true
-    try {
-      const parsed = JSON.parse(storage?.getItem(STORAGE_KEY) ?? 'null')
-      memory = parsed && typeof parsed.token === 'string' && parsed.user?.id !== undefined && !isExpired(parsed) ? parsed : null
-    } catch {
-      memory = null
-    }
-    return memory
-  }
-  const isExpired = (session) => Boolean(session.expiresAt) && Date.parse(session.expiresAt) <= Date.now()
-  const notify = (event) => listeners.forEach((fn) => fn(event, memory))
-  const persist = () => {
-    try {
-      if (memory) storage?.setItem(STORAGE_KEY, JSON.stringify(memory))
-      else storage?.removeItem(STORAGE_KEY)
-    } catch {
-      /* storage unavailable: keep the in-memory session */
-    }
-  }
+  const notify = (event) => listeners.forEach((fn) => fn(event, session))
 
   function setSession(payload) {
-    memory = { token: payload.token, expiresAt: payload.expires_at ?? null, user: { id: payload.user.id, email: payload.user.email } }
-    loaded = true
-    persist()
+    session = { user: { id: payload.user.id, email: payload.user.email } }
     notify('SIGNED_IN')
   }
 
   function clearSession(event = 'SIGNED_OUT') {
-    const had = read() !== null
-    memory = null
-    loaded = true
-    persist()
+    const had = session !== null
+    session = null
     if (had) notify(event)
   }
 
-  async function request(method, path, { query, body, authenticated = true } = {}) {
+  async function request(method, path, { query, body } = {}) {
     if (!root) throw new ApiError({ code: 'not_configured', message: 'The server address is not configured.' })
     const url = new URL(`${root}${path}`, globalThis.location?.origin)
     for (const [key, value] of Object.entries(query ?? {})) if (value !== undefined && value !== null) url.searchParams.append(key, String(value))
     const headers = { Accept: 'application/json' }
     if (body !== undefined) headers['Content-Type'] = 'application/json'
-    const session = authenticated ? read() : null
-    if (authenticated && !session) throw new ApiError({ status: 401, code: 'unauthenticated', message: 'Please log in again to continue.' })
-    if (session) headers.Authorization = `Bearer ${session.token}`
+    if (!SAFE_METHODS.has(method)) {
+      const token = csrfToken()
+      if (token) headers[CSRF_HEADER_NAME] = token
+    }
 
     let response
     try {
-      response = await (fetchImpl ?? globalThis.fetch)(url, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) })
+      response = await (fetchImpl ?? globalThis.fetch)(url, { method, headers, credentials: 'same-origin', body: body === undefined ? undefined : JSON.stringify(body) })
     } catch {
       throw new ApiError({ status: 0, message: 'We could not reach the server. Check your connection and try again.' })
     }
     const payload = response.status === 204 ? null : await response.json().catch(() => null)
     if (response.ok) return payload
     const error = payload?.error
-    if (response.status === 401 && session) clearSession('SESSION_EXPIRED') // the server no longer accepts this token
+    if (response.status === 401) clearSession('SESSION_EXPIRED') // the server no longer accepts the cookie (a no-op when nobody was signed in)
     throw new ApiError({ status: response.status, code: error?.code, message: error?.message, fields: error?.fields })
   }
 
@@ -99,14 +93,7 @@ export function createApiClient({ baseUrl, fetchImpl, storage = browserStorage()
     post: (path, body, options) => request('POST', path, { ...options, body }),
     patch: (path, body, options) => request('PATCH', path, { ...options, body }),
     delete: (path, options) => request('DELETE', path, options),
-    getSession: () => {
-      const session = read()
-      if (session && isExpired(session)) {
-        clearSession('SESSION_EXPIRED')
-        return null
-      }
-      return session
-    },
+    getSession: () => session,
     setSession,
     clearSession,
     subscribe(listener) {
@@ -116,12 +103,15 @@ export function createApiClient({ baseUrl, fetchImpl, storage = browserStorage()
   }
 }
 
-// In development the API is assumed to be on the address `manage.py runserver` uses, so a fresh checkout works without
-// configuration. Production builds, and tests, must set VITE_API_BASE_URL explicitly.
-// Each variable is read by its static name so the bundler inlines only these two values, never the whole environment.
-const rawBase = import.meta.env?.VITE_API_BASE_URL ?? (import.meta.env?.MODE === 'development' ? 'http://127.0.0.1:8000/api/v1' : undefined)
+// The API is on the same origin as the app: a reverse proxy routes `/api/` to Django in production, and the Vite dev and
+// preview servers do the same in development (vite.config.js). So the default needs no configuration. A build for a
+// different layout can set VITE_API_BASE_URL. In tests (MODE "test") nothing is configured unless a test says so.
+// Each variable is read by its static name so the bundler inlines only these values, never the whole environment.
+const rawBase = import.meta.env?.VITE_API_BASE_URL ?? (import.meta.env?.MODE === 'test' ? undefined : '/api/v1')
 // A value copied from .env.example is a placeholder, not configuration.
-export const isApiConfigured = typeof rawBase === 'string' && /^https?:\/\//.test(rawBase) && !/your-/i.test(rawBase)
+export const isApiConfigured = typeof rawBase === 'string' && /^(https?:\/\/|\/)/.test(rawBase) && !/your-/i.test(rawBase)
+
+forgetLegacyToken()
 
 // The one client the application uses.
 export const api = createApiClient({ baseUrl: isApiConfigured ? rawBase : '' })

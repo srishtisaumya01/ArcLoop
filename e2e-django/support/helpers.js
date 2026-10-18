@@ -3,8 +3,10 @@ import { join, resolve } from 'node:path'
 import { expect } from '@playwright/test'
 
 export const PASSWORD = 'plum-ladder-orbit-42'
-export const API = 'http://127.0.0.1:8100/api/v1'
-export const WEB_ORIGIN = 'http://127.0.0.1:5300'
+export const WEB_ORIGIN = 'http://127.0.0.1:5300' // the app AND the API: `/api/` is proxied to Django on the same origin
+export const OTHER_ORIGIN_API = 'http://127.0.0.1:8100/api/v1' // Django itself, a different origin from the page (a different port)
+export const SESSION_COOKIE = 'arcloop_session' // the server's names: kept in step with the frontend by tests/integration/authContract
+export const CSRF_COOKIE = 'arcloop_csrf'
 const EMAIL_DIR = resolve('e2e-django', '.tmp', 'emails')
 
 let counter = 0
@@ -39,26 +41,38 @@ export async function openNav(page) {
   return page.getByRole('navigation', { name: 'App' })
 }
 
+// A cookie of this browser context, as the browser stores it (including flags the page cannot see), or null.
+export async function cookieOf(context, name) {
+  return (await context.cookies()).find((c) => c.name === name) ?? null
+}
+
 // On a desktop the button is in the header; on a phone it is in the menu drawer. Only one is ever visible.
 export async function logOut(page) {
   const menu = page.getByRole('button', { name: 'Open menu' })
   if (await menu.isVisible()) await menu.click()
   await page.getByRole('button', { name: 'Log out' }).click()
-  await expect.poll(() => tokenOf(page)).toBeNull() // where the app lands afterwards depends on the page it was on
+  await expect.poll(() => cookieOf(page.context(), SESSION_COOKIE)).toBeNull() // where the app lands afterwards depends on the page it was on
 }
 
-// The bearer token the app stored for this browser (the only place the test needs to read it).
-export const tokenOf = (page) =>
-  page.evaluate(() => JSON.parse(localStorage.getItem('arcloop.session') ?? 'null')?.token ?? null)
-
-// Direct API call with a given token, from the test runner (a different origin from the app, like a hostile client).
-export async function apiCall(request, method, path, token, data) {
-  const response = await request.fetch(`${API}${path}`, {
-    method,
-    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-    data,
-  })
-  return { status: response.status(), body: await response.json().catch(() => null) }
+// Direct API calls AS a signed-in browser context: its cookies are sent by the browser's own jar, and (like the app) it
+// echoes the CSRF cookie in the header for writes. `csrf: false` leaves the header out, to show the server refusing it;
+// `headers` adds or overrides any header (for example a hostile Origin).
+export function apiAs(context) {
+  const call = async (method, path, { data, csrf = true, headers = {} } = {}) => {
+    const sent = { ...headers }
+    if (csrf && !['GET', 'HEAD'].includes(method)) {
+      const cookie = await cookieOf(context, CSRF_COOKIE)
+      if (cookie) sent['X-CSRFToken'] = cookie.value
+    }
+    const response = await context.request.fetch(`/api/v1${path}`, { method, headers: sent, data })
+    return { status: response.status(), headers: response.headers(), body: await response.json().catch(() => null) }
+  }
+  return {
+    get: (path, options) => call('GET', path, options),
+    post: (path, data, options) => call('POST', path, { ...options, data }),
+    patch: (path, data, options) => call('PATCH', path, { ...options, data }),
+    delete: (path, options) => call('DELETE', path, options),
+  }
 }
 
 // The password-reset link from the newest email the test server wrote. The email backend writes files, so

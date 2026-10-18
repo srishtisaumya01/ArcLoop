@@ -21,16 +21,17 @@ import {
 } from '../../src/services/authService.js'
 
 const apiError = (status, code, message = 'raw server message', fields) => new ApiError({ status, code, message, fields })
-const session = { token: 'tok', expiresAt: '2999-01-01T00:00:00Z', user: { id: 7, email: 'a@example.com' } }
-const payload = { token: 'tok', expires_at: '2999-01-01T00:00:00Z', user: { id: 7, email: 'a@example.com' } }
+const user = { id: 7, email: 'a@example.com' }
+// What a cookie-transport sign-in answers: no token, because the browser's script must never hold the credential.
+const signedIn = { expires_at: '2999-01-01T00:00:00Z', user }
 
 function fakeApi(overrides = {}) {
   let current = null
   return {
-    post: vi.fn().mockResolvedValue(payload),
-    get: vi.fn().mockResolvedValue({}),
-    setSession: vi.fn((p) => {
-      current = { ...session, token: p.token }
+    post: vi.fn().mockResolvedValue(signedIn),
+    get: vi.fn().mockResolvedValue({ ...user, expires_at: '2999-01-01T00:00:00Z' }),
+    setSession: vi.fn((payload) => {
+      current = { user: { id: payload.user.id, email: payload.user.email } } // like the real client: only id and email are kept
     }),
     clearSession: vi.fn(() => {
       current = null
@@ -46,17 +47,23 @@ beforeEach(() => {
 })
 
 describe('authService', () => {
-  it('signUp trims the email, stores the session the API returns, and never asks for confirmation', async () => {
+  it('signUp trims the email, asks for the cookie transport, and never asks for confirmation', async () => {
     const result = await signUp({ email: '  a@example.com ', password: 'longenough' })
     expect(result).toEqual({ needsConfirmation: false })
-    expect(h.api.post).toHaveBeenCalledWith('/auth/register/', { email: 'a@example.com', password: 'longenough' }, { authenticated: false })
-    expect(h.api.setSession).toHaveBeenCalledWith(payload)
+    expect(h.api.post).toHaveBeenCalledWith('/auth/register/', { email: 'a@example.com', password: 'longenough', transport: 'cookie' })
+    expect(h.api.setSession).toHaveBeenCalledWith(signedIn)
   })
 
-  it('signIn trims the email and stores the session', async () => {
+  it('signIn trims the email, asks for the cookie transport, and remembers who signed in', async () => {
     await signIn({ email: ' a@example.com ', password: 'x' })
-    expect(h.api.post).toHaveBeenCalledWith('/auth/login/', { email: 'a@example.com', password: 'x' }, { authenticated: false })
-    expect(h.api.setSession).toHaveBeenCalled()
+    expect(h.api.post).toHaveBeenCalledWith('/auth/login/', { email: 'a@example.com', password: 'x', transport: 'cookie' })
+    expect(h.api.getSession()).toEqual({ user })
+  })
+
+  it('never asks for, receives or passes on a token', async () => {
+    await signIn({ email: 'a@example.com', password: 'x' })
+    expect(JSON.stringify(h.api.post.mock.calls)).not.toMatch(/token|bearer|authorization/i)
+    expect(JSON.stringify(h.api.setSession.mock.calls)).not.toMatch(/token/i)
   })
 
   it('maps server errors to friendly messages without leaking the raw message', async () => {
@@ -65,6 +72,7 @@ describe('authService', () => {
       [apiError(429, 'rate_limited'), 'rate_limited', /too many attempts/i],
       [apiError(400, 'email_taken'), 'email_taken', /account may already exist/i],
       [apiError(400, 'validation_error', 'raw', { password: 'bad' }), 'weak_password', /too easy to guess/i],
+      [apiError(403, 'csrf_failed'), 'unknown', /could not log you in/i],
       [apiError(0, undefined, 'Failed to fetch'), 'network', /could not reach the server/i],
       [apiError(0, 'not_configured'), 'network', /could not reach the server/i],
     ]
@@ -82,14 +90,14 @@ describe('authService', () => {
     expect(unknown.message).not.toMatch(/10\.0\.0\.5/)
   })
 
-  it('requests a password reset without credentials, trimming the email', async () => {
+  it('requests a password reset, trimming the email', async () => {
     await requestPasswordReset(' who@example.com ')
-    expect(h.api.post).toHaveBeenCalledWith('/auth/password/reset/', { email: 'who@example.com' }, { authenticated: false })
+    expect(h.api.post).toHaveBeenCalledWith('/auth/password/reset/', { email: 'who@example.com' })
   })
 
   it('updatePassword uses the emailed link’s uid and token, or the current password when signed in', async () => {
     await updatePassword('new-pass-1', { reset: { uid: 'MQ', token: 'abc-123' } })
-    expect(h.api.post).toHaveBeenLastCalledWith('/auth/password/reset/confirm/', { uid: 'MQ', token: 'abc-123', password: 'new-pass-1' }, { authenticated: false })
+    expect(h.api.post).toHaveBeenLastCalledWith('/auth/password/reset/confirm/', { uid: 'MQ', token: 'abc-123', password: 'new-pass-1' })
     await updatePassword('new-pass-1', { currentPassword: 'old-pass-1' })
     expect(h.api.post).toHaveBeenLastCalledWith('/auth/password/change/', { current_password: 'old-pass-1', password: 'new-pass-1' })
   })
@@ -128,26 +136,27 @@ describe('authService', () => {
     await expect(deleteAccount({ password: 'pw', confirmation: 'nope' })).rejects.toThrow('Type DELETE to confirm.')
   })
 
-  it('getSession restores a stored session only if the server still accepts it, and survives a brief outage', async () => {
-    expect(await getSession()).toBeNull() // nothing stored: the server is not even asked
-    expect(h.api.get).not.toHaveBeenCalled()
-
-    h.api = fakeApi({ getSession: vi.fn(() => session) })
-    expect(await getSession()).toEqual({ user: session.user })
+  it('getSession asks the server who the cookie belongs to; nothing is signed in until it answers', async () => {
+    expect(h.api.getSession()).toBeNull()
+    expect(await getSession()).toEqual({ user })
     expect(h.api.get).toHaveBeenCalledWith('/auth/me/')
+    expect(h.api.getSession()).toEqual({ user }) // now remembered in memory
+  })
 
-    h.api = fakeApi({ getSession: vi.fn(() => session), get: vi.fn().mockRejectedValue(apiError(401, 'unauthenticated')) })
+  it('getSession returns null for no valid session, and reports an unreachable server instead of pretending', async () => {
+    h.api = fakeApi({ get: vi.fn().mockRejectedValue(apiError(401, 'unauthenticated')) })
     expect(await getSession()).toBeNull()
+    expect(h.api.setSession).not.toHaveBeenCalled()
 
-    h.api = fakeApi({ getSession: vi.fn(() => session), get: vi.fn().mockRejectedValue(new ApiError({ status: 0, message: 'offline' })) })
-    expect(await getSession()).toEqual({ user: session.user }) // kept: an outage is not a sign-out
+    h.api = fakeApi({ get: vi.fn().mockRejectedValue(new ApiError({ status: 0, message: 'offline' })) })
+    await expect(getSession()).rejects.toMatchObject({ code: 'network' })
   })
 
   it('onAuthStateChange passes events with the current session and returns a working unsubscribe', () => {
     const unsubscribe = vi.fn()
     let listener
     h.api = fakeApi({
-      getSession: vi.fn(() => session),
+      getSession: vi.fn(() => ({ user })),
       subscribe: vi.fn((fn) => {
         listener = fn
         return unsubscribe
@@ -156,7 +165,7 @@ describe('authService', () => {
     const seen = vi.fn()
     const stop = onAuthStateChange(seen)
     listener('SIGNED_IN')
-    expect(seen).toHaveBeenCalledWith('SIGNED_IN', { user: session.user })
+    expect(seen).toHaveBeenCalledWith('SIGNED_IN', { user })
     stop()
     expect(unsubscribe).toHaveBeenCalled()
   })

@@ -8,6 +8,7 @@ import {
   editableRange,
   isValidDate,
   occurrencesToCreate,
+  planForRange,
   parseDate,
   planRemoval,
   planTemplateEdit,
@@ -148,12 +149,19 @@ export function createPlannerService({ getClient, clock = () => Date.now() }) {
     return moves
   }
 
+  // The user's repeating tasks that have started by `date` (the only ones that can matter for it). The single read behind
+  // opening a day, previewing one, the Week and the calendar export, so they all start from the same templates.
+  async function fetchTemplatesStartedBy(client, date) {
+    const rows = await fetchAll((a, b) => client.from(T.templates).select(TEMPLATE_COLUMNS).lte('starts_on', date).order('created_at').order('id').range(a, b))
+    return rows.map(templateFromRow)
+  }
+
   // The repeating tasks that opening (or topping up) `planDate` would add: the same rule and the same template read
   // as openDay, so a preview and the action always agree. Empty for dates that cannot be opened.
   async function fetchExpected(client, planDate, day, occurrences, access) {
     if (!['today', 'editable_past', 'future'].includes(access)) return []
-    const rows = await fetchAll((a, b) => client.from(T.templates).select(TEMPLATE_COLUMNS).lte('starts_on', planDate).order('created_at').order('id').range(a, b))
-    return templatesDueOn({ templates: rows.map(templateFromRow), occurrences, day, planDate }).map((t) => expectedTaskView(t, planDate))
+    const templates = await fetchTemplatesStartedBy(client, planDate)
+    return templatesDueOn({ templates, occurrences, day, planDate }).map((t) => expectedTaskView(t, planDate))
   }
 
   async function readPlan(client, planDate, { today, config }) {
@@ -258,9 +266,7 @@ export function createPlannerService({ getClient, clock = () => Date.now() }) {
       let day = await ensureDay(client, userId, planDate)
       for (let attempt = 0; attempt < 2; attempt += 1) {
         const occurrences = await fetchOccurrencesOn(client, planDate)
-        const templateRows = await fetchAll((a, b) =>
-          client.from(T.templates).select(TEMPLATE_COLUMNS).lte('starts_on', planDate).order('created_at').order('id').range(a, b))
-        const drafts = occurrencesToCreate({ templates: templateRows.map(templateFromRow), occurrences, day, planDate }, ctx)
+        const drafts = occurrencesToCreate({ templates: await fetchTemplatesStartedBy(client, planDate), occurrences, day, planDate }, ctx)
         if (drafts.length === 0) break
         const response = await client.from(T.occurrences).insert(drafts.map((d) => occurrenceInsertRow(userId, d))).select('id')
         if (!response.error) break
@@ -554,12 +560,24 @@ export function createPlannerService({ getClient, clock = () => Date.now() }) {
       const dates = weekDates(weekOf ?? today, config.weekStartsOn)
       const { days, occurrences } = await fetchRange(client, dates[0], dates[6])
       // Days after today show what they will hold, so the repeating tasks are needed too (same read as opening a day).
-      const templates = compareDates(dates[6], today) > 0
-        ? (await fetchAll((a, b) => client.from(T.templates).select(TEMPLATE_COLUMNS).lte('starts_on', dates[6]).order('created_at').order('id').range(a, b))).map(templateFromRow)
-        : []
-      return summarizeWeek({ weekOf, templates, days: days.map((day) => ({ day, occurrences: occurrences.filter((o) => o.planDate === day.planDate) })) }, ctx)
+      const templates = compareDates(dates[6], today) > 0 ? await fetchTemplatesStartedBy(client, dates[6]) : []
+      return summarizeWeek({ weekOf, templates, days: recordsFor(days, occurrences) }, ctx)
+    },
+
+    // The plan for the next `days` days (today included) in a form a calendar can take: each date's active tasks and the
+    // repeating tasks it will hold, with the timezone their times are in. Read-only: nothing is created or changed.
+    async getCalendarPlan({ days = 14 } = {}) {
+      const { client, ctx, today, config } = await session()
+      if (!Number.isInteger(days) || days < 1 || days > config.planAheadDays) throw fail(SERVICE_ERROR.VALIDATION, `Choose between 1 and ${config.planAheadDays} days.`)
+      const to = addDays(today, days - 1)
+      const { days: records, occurrences } = await fetchRange(client, today, to)
+      const templates = await fetchTemplatesStartedBy(client, to)
+      return { timeZone: ctx.timeZone, today, from: today, to, days: planForRange({ from: today, to, templates, days: recordsFor(records, occurrences) }, ctx) }
     },
   }
+
+  // Day records paired with their occurrences, the shape the pure planner functions take.
+  const recordsFor = (days, occurrences) => days.map((day) => ({ day, occurrences: occurrences.filter((o) => o.planDate === day.planDate) }))
 
   async function fetchRange(client, from, to) {
     const dayRows = await fetchAll((a, b) =>

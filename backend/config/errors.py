@@ -5,6 +5,9 @@ never contain SQL, stack traces or internals.
 """
 import logging
 
+from .auth_cookies import clear_session_cookies, session_cookie_value
+from .security_log import log_event
+
 from django.core.exceptions import PermissionDenied
 from django.http import Http404
 from rest_framework import exceptions, status
@@ -79,12 +82,17 @@ def api_exception_handler(exc, context):
             body['fields'] = fields
         return Response({'error': body}, status=status.HTTP_400_BAD_REQUEST)
     if isinstance(exc, (exceptions.AuthenticationFailed, exceptions.NotAuthenticated)):
-        return Response({'error': {'code': 'unauthenticated', 'message': 'Please log in again to continue.'}}, status=status.HTTP_401_UNAUTHORIZED)
+        response = Response({'error': {'code': 'unauthenticated', 'message': 'Please log in again to continue.'}}, status=status.HTTP_401_UNAUTHORIZED)
+        request = context.get('request')
+        if request is not None and session_cookie_value(request):
+            clear_session_cookies(response)  # the server no longer accepts this cookie: do not keep sending it
+        return response
     if isinstance(exc, (exceptions.PermissionDenied, PermissionDenied)):
         return Response({'error': {'code': 'permission_denied', 'message': 'You do not have permission to do that.'}}, status=status.HTTP_403_FORBIDDEN)
     if isinstance(exc, (exceptions.NotFound, Http404)):
         return Response({'error': {'code': 'not_found', 'message': 'That could not be found.'}}, status=status.HTTP_404_NOT_FOUND)
     if isinstance(exc, exceptions.Throttled):
+        log_event(context.get('request'), 'rate_limited', logging.WARNING, path=getattr(context.get('request'), 'path', None))
         return Response({'error': {'code': 'rate_limited', 'message': 'Too many attempts. Please wait a moment and try again.'}}, status=status.HTTP_429_TOO_MANY_REQUESTS)
     if isinstance(exc, exceptions.MethodNotAllowed):
         return Response({'error': {'code': 'method_not_allowed', 'message': 'That is not supported.'}}, status=status.HTTP_405_METHOD_NOT_ALLOWED)

@@ -86,9 +86,8 @@ export function localDateOf(now, timeZone) {
 
 const DAY_MS = 86400000
 
-// Local date + 'HH:MM' -> epoch ms, applying the gap/overlap rules above.
-export function zonedDateTimeToInstant(date, time, timeZone) {
-  assertTimeZone(timeZone)
+// Every instant at which the wall clock in `timeZone` shows `date` and `time`: none (a gap), one, or two (an overlap).
+function wallInstants(date, time, timeZone) {
   const { year, month, day } = parseDate(date)
   const minutes = parseTime(time)
   const wall = Date.UTC(year, month - 1, day, Math.floor(minutes / 60), minutes % 60)
@@ -98,13 +97,26 @@ export function zonedDateTimeToInstant(date, time, timeZone) {
   const valid = [...new Set([before, after])]
     .map((offset) => ({ offset, instant: wall - offset * 1000 }))
     .filter(({ offset, instant }) => offsetSeconds(instant, timeZone) === offset)
-  if (valid.length === 0) return wall - before * 1000 // gap: resolve forward
-  return Math.max(...valid.map((v) => v.instant)) // overlap: later instant
+    .map(({ instant }) => instant)
+  return { valid, forward: wall - before * 1000 }
 }
 
-// First instant of a local date (usually 00:00; later if midnight does not exist).
+// Local date + 'HH:MM' -> epoch ms, applying the gap/overlap rules above.
+export function zonedDateTimeToInstant(date, time, timeZone) {
+  assertTimeZone(timeZone)
+  const { valid, forward } = wallInstants(date, time, timeZone)
+  if (valid.length === 0) return forward // gap: resolve forward
+  return Math.max(...valid) // overlap: later instant
+}
+
+// First instant of a local date: 00:00; later if midnight does not exist (a gap); and the EARLIER of the two
+// midnights if midnight happens twice (a fall-back at midnight, as in Havana on 1 November 2026, which is a 25-hour
+// day). A wall-clock TIME that repeats resolves to the later instant, but the start of a day is not a time of day:
+// it is where the date begins, and the date began the first time the clock showed it.
 export function startOfLocalDay(date, timeZone) {
-  return zonedDateTimeToInstant(date, '00:00', timeZone)
+  assertTimeZone(timeZone)
+  const { valid, forward } = wallInstants(date, '00:00', timeZone)
+  return valid.length === 0 ? forward : Math.min(...valid)
 }
 
 // Real length of a local day in minutes: 1380 / 1440 / 1500 around DST changes.

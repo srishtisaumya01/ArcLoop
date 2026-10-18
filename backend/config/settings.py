@@ -44,6 +44,8 @@ if not SECRET_KEY:
     SECRET_KEY = 'insecure-local-development-key-do-not-use-anywhere-else'
 
 ALLOWED_HOSTS = _list('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1' if DEBUG else '')
+if not DEBUG and not ALLOWED_HOSTS:
+    raise ImproperlyConfigured('Set DJANGO_ALLOWED_HOSTS (comma-separated host names) when DJANGO_DEBUG is off.')
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -68,6 +70,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'config.middleware.ApiSecurityHeadersMiddleware',
 ]
 
 # Test-only clock header (see config/middleware.py). It can only be switched on in debug mode.
@@ -130,24 +133,47 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # --- API ---------------------------------------------------------------------------------------
 REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': ['accounts.authentication.BearerTokenAuthentication'],
+    'DEFAULT_AUTHENTICATION_CLASSES': ['accounts.authentication.TokenAuthentication'],
     'DEFAULT_PERMISSION_CLASSES': ['rest_framework.permissions.IsAuthenticated'],
     'DEFAULT_RENDERER_CLASSES': ['rest_framework.renderers.JSONRenderer'],
     'DEFAULT_PARSER_CLASSES': ['rest_framework.parsers.JSONParser'],
     'EXCEPTION_HANDLER': 'config.errors.api_exception_handler',
     'DEFAULT_THROTTLE_CLASSES': [],
-    'DEFAULT_THROTTLE_RATES': {'auth': os.environ.get('DJANGO_AUTH_THROTTLE', '30/min')},
+    'DEFAULT_THROTTLE_RATES': {'auth': os.environ.get('DJANGO_AUTH_THROTTLE', '30/min'), 'csp': os.environ.get('DJANGO_CSP_REPORT_THROTTLE', '60/min')},
     'UNAUTHENTICATED_USER': None,
 }
 
-# Opaque bearer tokens: stored hashed, expire, and can be revoked on logout or password change.
+# Opaque session tokens: stored hashed, expire, and can be revoked on logout or password change. Browsers carry theirs in an
+# HttpOnly cookie, other clients as a bearer header (config/auth_cookies.py, accounts/authentication.py).
 AUTH_TOKEN_LIFETIME_DAYS = int(os.environ.get('DJANGO_TOKEN_LIFETIME_DAYS', '30'))
+AUTH_COOKIE_NAME = 'arcloop_session'
+AUTH_COOKIE_PATH = '/api/'  # sent only to the API, never with page or asset requests
+AUTH_COOKIE_SAMESITE = 'Strict'  # the API is only ever called by the app's own pages, so cross-site requests carry no cookie
+AUTH_COOKIE_SECURE = not DEBUG  # HTTPS only in production; plain HTTP is allowed only for local development
+# CSRF for cookie-authenticated writes: Django's own check. The cookie is readable by the page (it must echo it in a header).
+CSRF_COOKIE_NAME = 'arcloop_csrf'
+CSRF_COOKIE_PATH = '/'  # the page (any path) has to read it
+CSRF_COOKIE_SAMESITE = 'Strict'
+CSRF_COOKIE_HTTPONLY = False
+CSRF_COOKIE_AGE = AUTH_TOKEN_LIFETIME_DAYS * 24 * 3600
 # Links in password-reset emails point at the frontend.
-FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:5173').rstrip('/')
+FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:5173' if DEBUG else '').rstrip('/')
+if not DEBUG and not FRONTEND_URL.startswith('https://'):
+    raise ImproperlyConfigured('Set FRONTEND_URL to the https:// address of the app (it is used in password-reset links).')
 
-# Tokens travel in an Authorization header, never in cookies, so CORS needs no credentials.
-CORS_ALLOWED_ORIGINS = _list('CORS_ALLOWED_ORIGINS', 'http://localhost:5173,http://127.0.0.1:5173' if DEBUG else '')
+# The app and the API are ONE origin (`/api/` is routed to Django by the web server, and by the Vite proxy in development), so
+# browsers make no cross-origin API calls and nothing is allowed by default. Cookie sessions are same-origin only:
+# credentialed cross-origin requests are never allowed. List origins here only for a non-browser client that reads the API
+# from a browser page with a bearer token (no cookies are involved for it).
+CORS_ALLOWED_ORIGINS = _list('CORS_ALLOWED_ORIGINS')
 CORS_ALLOW_CREDENTIALS = False
+
+# Only the Django admin uses cookies and CSRF; API calls are bearer-token calls. List the admin's https origin here if the
+# admin is served from a different origin than the API itself.
+CSRF_TRUSTED_ORIGINS = _list('DJANGO_CSRF_TRUSTED_ORIGINS')
+
+# A password-reset link stops working after this many seconds (Django's default is three days; an hour is enough).
+PASSWORD_RESET_TIMEOUT = int(os.environ.get('DJANGO_PASSWORD_RESET_TIMEOUT', '3600'))
 
 # Email (password-reset links). Nothing is ever sent unless SMTP is configured on purpose:
 #   development (DEBUG)  -> printed to the server console
@@ -187,6 +213,17 @@ if not DEBUG:
     # cookies see the real scheme. Only enable when such a proxy is actually in front: a client could forge the header.
     if _flag('DJANGO_BEHIND_PROXY', False):
         SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+# Logging: everything to the process output (the process manager or platform keeps it). `arcloop.security` carries the
+# security events (failed sign-ins, rate limiting, resets, deletions, CSP reports); no secrets or addresses in it.
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {'plain': {'format': '%(asctime)s %(levelname)s %(name)s %(message)s'}},
+    'handlers': {'console': {'class': 'logging.StreamHandler', 'formatter': 'plain'}},
+    'root': {'handlers': ['console'], 'level': os.environ.get('DJANGO_LOG_LEVEL', 'INFO')},
+    'loggers': {'django.request': {'handlers': ['console'], 'level': 'WARNING', 'propagate': False}},
+}
 
 # `manage.py test` only: a fast password hasher, so the suite is not dominated by PBKDF2. Never active otherwise.
 import sys  # noqa: E402

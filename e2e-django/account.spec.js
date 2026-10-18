@@ -1,10 +1,11 @@
 import { expect, test } from '@playwright/test'
-import { PASSWORD, apiCall, logInViaForm, signUpViaForm, tokenOf, uniqueEmail } from './support/helpers.js'
+import { PASSWORD, SESSION_COOKIE, apiAs, cookieOf, logInViaForm, signUpViaForm, uniqueEmail } from './support/helpers.js'
 
 // Account deletion through the real UI and API. Every account here is created by the test itself.
 
-test('deleting an account needs the password and DELETE, removes everything, and leaves other users alone', async ({ browser, page, request }) => {
-  const other = await (await browser.newContext()).newPage()
+test('deleting an account needs the password and DELETE, removes everything, and leaves other users alone', async ({ browser, page, context, baseURL }) => {
+  test.slow() // two sign-ups and a long journey: comfortable when the dev server is warm, tight when it is cold
+  const other = await (await browser.newContext({ baseURL })).newPage()
   await signUpViaForm(other, uniqueEmail('bystander'))
   await other.goto('/app/day')
   const add = other.getByRole('form', { name: 'Add a task' })
@@ -19,7 +20,8 @@ test('deleting an account needs the password and DELETE, removes everything, and
   await form.getByLabel(/^Task/).fill('Soon gone')
   await form.getByRole('button', { name: 'Add task' }).click()
   await expect(page.getByRole('button', { name: 'Done: Soon gone', exact: true })).toBeVisible()
-  const token = await tokenOf(page)
+  // A copy of this session's cookies, as someone who had stolen them would hold: it must be useless once the account is gone.
+  const stolen = await browser.newContext({ baseURL, storageState: await context.storageState() })
 
   await page.goto('/app/settings')
   await page.getByRole('button', { name: 'Delete account' }).click()
@@ -32,7 +34,7 @@ test('deleting an account needs the password and DELETE, removes everything, and
   await dialog.getByLabel('Type DELETE to confirm').fill('DELETE')
   await confirm.click()
   await expect(dialog.getByRole('alert')).toContainText('Your password is incorrect.')
-  expect((await apiCall(request, 'GET', '/auth/me/', token)).status).toBe(200) // a refused attempt deletes nothing
+  expect((await apiAs(stolen).get('/auth/me/')).status).toBe(200) // a refused attempt deletes nothing
 
   await dialog.getByRole('button', { name: 'Keep my account' }).click()
   await expect(page.getByRole('dialog')).toHaveCount(0)
@@ -44,11 +46,12 @@ test('deleting an account needs the password and DELETE, removes everything, and
   await dialog.getByLabel('Type DELETE to confirm').fill('DELETE')
   await confirm.click()
 
-  // Signed out and sent to the log-in page; the old token and the old credentials are dead; a repeat request is refused.
+  // Signed out and sent to the log-in page; the cookie is gone; the stolen copy and the old credentials are dead; a repeat request is refused.
   await expect(page).toHaveURL(/\/login$/)
-  expect(await tokenOf(page)).toBeNull()
-  expect((await apiCall(request, 'GET', '/auth/me/', token)).status).toBe(401)
-  expect((await apiCall(request, 'POST', '/auth/account/delete/', token, { password: PASSWORD, confirmation: 'DELETE' })).status).toBe(401)
+  expect(await cookieOf(context, SESSION_COOKIE)).toBeNull()
+  expect((await apiAs(stolen).get('/auth/me/')).status).toBe(401)
+  expect((await apiAs(stolen).post('/auth/account/delete/', { password: PASSWORD, confirmation: 'DELETE' })).status).toBe(401)
+  await stolen.close()
   await logInViaForm(page, email)
   await expect(page.getByRole('alert')).toContainText(/incorrect/i)
 

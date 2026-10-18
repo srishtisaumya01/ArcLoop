@@ -4,6 +4,7 @@ import { Box, Button, Checkbox, Container, FormControlLabel, Skeleton, Switch, T
 import { Bell, RefreshCw, TriangleAlert } from 'lucide-react'
 import PageHeader from '../../components/common/PageHeader.jsx'
 import StatePanel from '../../components/common/StatePanel.jsx'
+import CalendarExport from '../../components/reminders/CalendarExport.jsx'
 import { formatDay, weekdayLabel, weekdayName, weekdaysSummary } from '../../components/planner/weekFormat.js'
 import { useAsync } from '../../hooks/useAsync.js'
 import { notifyRemindersChanged } from '../../hooks/reminderEvents.js'
@@ -198,6 +199,8 @@ export default function ReminderSettingsPage() {
                 </Box>
               )}
             </Card>
+
+            <CalendarExport />
           </>
         )}
       </Container>

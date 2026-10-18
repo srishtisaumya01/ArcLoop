@@ -3,7 +3,13 @@
 Backend: Django + SQLite (migrated from Supabase; see `docs/DJANGO_MIGRATION.md`). Nothing is deployed, no real email has been sent, only Chromium has been run.
 
 ## Backend and deployment
-- **Not deployed.** `docs/DEPLOYMENT.md` lists what a deployment needs and its blockers: no Content-Security-Policy (sign-in tokens are in `localStorage`, so injected script could read them), HSTS left off until HTTPS is confirmed, no SMTP provider chosen or tested, no tested backup restore, no monitoring or error reporting, draft privacy policy.
+- **Not deployed, HTTPS unverified.** `docs/DEPLOYMENT.md` lists what a deployment needs and its blockers. A strict Content-Security-Policy now exists (`deploy/securityHeaders.js`) and is verified in Chromium against the production build, **but the frontend host must send it; nothing is deployed, so it is not in force anywhere.** HSTS is available and **off** until HTTPS is confirmed on the real domain. Still open: no SMTP provider chosen or tested, no scheduled or off-machine backups and no recovery drill on a real setup, no monitoring provider or alerting, draft privacy policy.
+- **Cookie sessions are unverified over HTTPS.** Verified in Chromium over HTTP; `Secure`, proxy `Host`/`X-Forwarded-Proto` handling untested. On-page script can still act as the user while a page is open (CSP is the mitigation, not yet deployed). See `docs/AUTH_SECURITY.md`.
+- **Calendar export** was parsed with an independent library but never imported into a real calendar app; apps decide about alerts and may duplicate events on re-import. `docs/CALENDAR_EXPORT.md`.
+- **CSP limits:** tested only in Chromium and only against `vite preview`; Firefox/Safari not tested; it relies on Emotion's production (CSSOM) mode and on allowing the hash of the empty string in `style-src`; extensions and other real-world noise are unknown until a report-only trial on the real site.
+- **Reset-request timing:** a real account's request sends mail so it is slower than an unknown address's; not hidden (would need a background task). The body, status and log are identical.
+- **Backups:** the tooling is verified on disposable databases only (`docs/BACKUP_RESTORE.md`); nothing schedules it; a restore resurrects accounts deleted after the backup and re-signs-in revoked sessions; recovery point = last good backup.
+- **Monitoring:** only a health endpoint, a log convention and `verify_db` exist; no provider, alerting or on-call. Behind a proxy the client address in logs and rate limits is the proxy's unless forwarded.
 - **SQLite is single-writer.** WAL mode and immediate transactions make simultaneous requests queue (up to 20 s) instead of failing; fine for one server, wrong for several instances or ephemeral disks. No replication or point-in-time recovery.
 - **No email confirmation at sign-up.** Registering signs the user in immediately (intended for now). Anyone can register any address; a typo cannot be caught.
 - **Password-reset email delivery has never been exercised.** Development prints it to the API console; the browser tests write it to a file. SMTP is environment-configured and untested.
@@ -17,7 +23,7 @@ Backend: Django + SQLite (migrated from Supabase; see `docs/DJANGO_MIGRATION.md`
 - **Test clock header:** a server started with `ARCLOOP_TEST_CLOCK=1` honours `X-Test-Now`. Settings refuse it unless debug is on; it must never be set in production.
 
 ## Test coverage removed with Supabase
-- Removed (Postgres-specific): RLS, schema, migration-hygiene, profile-RLS, schema-check and PGlite-journey tests, and the JS-vs-PostgreSQL timezone cross-check. Their rules are tested by `backend/tests`. **The JS-vs-server timezone agreement is not cross-checked beyond the Auckland/New York cases.**
+- Removed (Postgres-specific): RLS, schema, migration-hygiene, profile-RLS, schema-check and PGlite-journey tests, and the JS-vs-PostgreSQL timezone cross-check. Their rules are tested by `backend/tests`. The JS-vs-server timezone agreement is now cross-checked on a sample (see Timezones below).
 - Removed and **not ported**: the Postgres-era service integration tests (`plannerService`, `plannerSystem` including the randomised run against independent oracles, `reminders`). Service behaviour is covered by the mocked service tests, the ported screen-level integration tests, the backend suite and the 23-step journey. The "competing tab" race tests no longer exist.
 - Full list and what covers what: `docs/DJANGO_MIGRATION.md`.
 
@@ -26,8 +32,15 @@ Backend: Django + SQLite (migrated from Supabase; see `docs/DJANGO_MIGRATION.md`
 - Integration tests make real HTTP requests, so screens settle more slowly than with an in-process database: they use a `user` helper that waits for a control to be usable and a 15 s Testing Library wait. Three clean repeated runs were made; a rare timing failure would be a test race, not necessarily a product bug.
 - The fast Playwright suite (`npm run test:e2e`) uses an in-memory stand-in for the API (`e2e/support/stubApi.js`) and a pinned clock; it proves the UI, not the server. The real-server suite is `npm run test:e2e:django` (fresh SQLite file per run, ports 8100 and 5300). A cold Vite dev server can be slow on the first page; the login helper waits for it.
 - Playwright uses 2 workers (more made timing-sensitive specs fail randomly on this machine; each passed alone).
-- Firefox, WebKit and physical devices were not run. Headless Chromium reports notification permission as "denied", so the "allowed" state of the Reminders page is covered by component tests only.
+- **Firefox, WebKit/Safari and physical devices were not run; offline behaviour is only the "page didn't load" case; background reminders do not exist.** Headless Chromium reports notification permission as "denied", so the "allowed" state of the Reminders page is covered by component tests only.
 - In development React runs effects twice, so My Day can send two day-creation requests; the second is refused as a duplicate (409) and the service recovers. A 409 line in the console on a first visit is expected.
+
+## Timezones and dates
+- **What is verified, and only that:** server-side boundary tests (local midnight, the 7-date window, DST days, 30- and 45-minute offsets, the date line, a timezone change; `backend/tests/test_timezones.py`); a JS-vs-server cross-check of local date, wall-time round trip and real day length on about 37,000 sampled instants in 16 zones for 2026 (`tests/integration/timezoneAgreement.integration.test.js`); end-to-end boundary tests through the real services (`timezoneBoundaries.integration.test.js`); and the earlier JS unit tests with real DST dates. **This is evidence for the chosen cases, not proof that every zone, year or rule change is handled.**
+- **Not covered:** years other than 2026; future tzdata changes (Python's `tzdata` package and the browser's ICU can differ in version: a disagreement would be a real finding); zones outside the 16 sampled; leap seconds; a device whose clock is wrong (the client uses the device clock to decide what to ask for, the server uses its own and refuses what is out of range); reminders on a real device.
+- **A real bug the cross-check found and that is fixed:** when midnight itself happens twice (Havana, 1 November 2026), the JS "start of day" picked the later midnight, so that day measured 24 hours instead of 25 and the day before 25 instead of 24 (affects "time left today" and day-length figures only in such zones).
+- **Known design choices:** a wall-clock time that does not exist (DST gap) resolves forward; one that happens twice resolves to the later instant; the start of a date is its first instant.
+- **Reminders only while the app is open** (see Reminders and `docs/REMINDERS.md`); options for background delivery are written up and need your decision.
 
 ## Offline and network failure
 - There is **no offline mode.** A dropped connection shows a retry message ("This page didn't load" for pages not yet loaded; each data screen has its own error state with retry). Nothing is cached or queued.
@@ -51,7 +64,7 @@ Backend: Django + SQLite (migrated from Supabase; see `docs/DJANGO_MIGRATION.md`
 - No onboarding step; no groups.
 
 ## Visual and accessibility scope
-- Layout and basic accessibility (one h1 and sensible heading levels, labelled fields, named buttons, visible focus, reduced motion, no horizontal overflow) were inspected in Chromium at 390x844, 768x1024 and 1440x900 for My Day, Week, Progress, Recurring, Reminders, Settings and every public page, against the stub. Contrast was measured numerically for the main text and background pairs, not every state (hover, disabled). The new delete-account dialog was seen at desktop width in a failure screenshot only; not reviewed at phone width.
+- Layout and basic accessibility (one h1 and sensible heading levels, labelled fields, named buttons, visible focus, reduced motion, no horizontal overflow) were inspected in Chromium at 390x844, 768x1024 and 1440x900 for My Day, Week, Progress, Recurring, Reminders, Settings and every public page, against the stub. Contrast was measured numerically for the main text and background pairs, not every state (hover, disabled). The delete-account dialog has its own responsive test and was looked at in screenshots at 1440, 768, 667x375, 390 and 320 px (fits; title and both buttons always visible; buttons stack on a phone; focus trapped and returned). Two layout defects found that way were fixed. Other new screens' phone layouts are covered by the earlier release pass.
 - MUI text-field focus uses MUI's border highlight rather than the global 3px outline used on links and buttons. It is visible but a different style.
 - The landing page FAQ expand animation was confirmed to open and set `aria-expanded`; the animation itself was not reviewed frame by frame.
 - Footer "Product" links use hash/route links; "Groups" is a landing-page anchor, not a page.

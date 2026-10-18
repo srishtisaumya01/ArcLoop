@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { apiCall, signUpViaForm, tokenOf, uniqueEmail } from './support/helpers.js'
+import { apiAs, signUpViaForm, uniqueEmail } from './support/helpers.js'
 
 // One complete planner journey and the privacy boundary, through the real UI and the real API.
 
@@ -73,9 +73,11 @@ test('settings and reminders are saved by the server and survive a reload', asyn
   await expect(page.getByText(/Reminders are on|Reminders are off/).first()).toBeVisible()
 })
 
-test('one user can never read or change another user’s planner data', async ({ browser, request }) => {
-  const a = await (await browser.newContext()).newPage()
-  const b = await (await browser.newContext()).newPage()
+test('one user can never read or change another user’s planner data', async ({ browser, baseURL }) => {
+  const ownerContext = await browser.newContext({ baseURL })
+  const intruderContext = await browser.newContext({ baseURL })
+  const a = await ownerContext.newPage()
+  const b = await intruderContext.newPage()
   await signUpViaForm(a, uniqueEmail('owner'))
   await a.goto('/app/day')
   await addTask(a, 'Private diary entry')
@@ -85,24 +87,24 @@ test('one user can never read or change another user’s planner data', async ({
   // The UI of the second user shows none of it.
   await expect(b.getByText('Private diary entry')).toHaveCount(0)
 
-  // And the API refuses even when the second user asks by exact id, with their own valid token.
-  const tokenA = await tokenOf(a)
-  const tokenB = await tokenOf(b)
-  const mine = await apiCall(request, 'GET', '/task-occurrences/', tokenA)
+  // And the API refuses even when the second user asks by exact id, with their own valid session and CSRF token.
+  const apiA = apiAs(ownerContext)
+  const apiB = apiAs(intruderContext)
+  const mine = await apiA.get('/task-occurrences/')
   expect(mine.body.results).toHaveLength(1)
   const id = mine.body.results[0].id
-  const read = await apiCall(request, 'GET', `/task-occurrences/?id=${id}`, tokenB)
+  const read = await apiB.get(`/task-occurrences/?id=${id}`)
   expect(read.body.results).toEqual([])
-  const change = await apiCall(request, 'PATCH', `/task-occurrences/?id=${id}`, tokenB, { completion: 1 })
+  const change = await apiB.patch(`/task-occurrences/?id=${id}`, { completion: 1 })
   expect(change.body.results).toEqual([])
-  const remove = await apiCall(request, 'DELETE', `/task-occurrences/?id=${id}`, tokenB)
+  const remove = await apiB.delete(`/task-occurrences/?id=${id}`)
   expect(remove.body.results).toEqual([])
-  const days = await apiCall(request, 'GET', '/day-plans/', tokenB)
+  const days = await apiB.get('/day-plans/')
   expect(days.body.results.every((d) => d.user_id !== mine.body.results[0].user_id)).toBe(true)
 
   // Nothing happened to the owner's data.
   await a.reload()
   await expect(a.getByRole('button', { name: 'Done: Private diary entry', exact: true })).toBeVisible()
-  const stillThere = await apiCall(request, 'GET', `/task-occurrences/?id=${id}`, tokenA)
+  const stillThere = await apiA.get(`/task-occurrences/?id=${id}`)
   expect(stillThere.body.results[0].completion).toBe(0)
 })

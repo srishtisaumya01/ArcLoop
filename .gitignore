@@ -19,3 +19,4 @@ __pycache__
 *.pyc
 sent_emails/
 e2e-django/.tmp/
+dist-csp/

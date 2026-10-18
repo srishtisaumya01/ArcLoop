@@ -44,7 +44,9 @@ export default function DeleteAccount() {
         </Button>
       </Box>
       <Dialog open={open} onClose={close} aria-labelledby="delete-account-title" fullWidth maxWidth="xs">
-        <Box component="form" noValidate onSubmit={submit}>
+        {/* The form is a flex column inside the dialog paper, so on a short screen only the middle scrolls: the title and the two
+            buttons stay in view. */}
+        <Box component="form" noValidate onSubmit={submit} sx={{ display: 'flex', flexDirection: 'column', flex: '1 1 auto', minHeight: 0 }}>
           <DialogTitle id="delete-account-title">Delete your account?</DialogTitle>
           <DialogContent sx={{ display: 'grid', gap: 2 }}>
             <DialogContentText>
@@ -54,7 +56,8 @@ export default function DeleteAccount() {
             <TextField label="Type DELETE to confirm" autoComplete="off" value={confirmation} onChange={(e) => setConfirmation(e.target.value)} />
             <FormError message={state.error} />
           </DialogContent>
-          <DialogActions>
+          {/* Stacked on a narrow screen (full-width, easy to hit, no wrapped labels); side by side from `sm` up. */}
+          <DialogActions sx={{ flexDirection: { xs: 'column', sm: 'row' }, alignItems: 'stretch', gap: 1, px: 3, pb: 2, '& > :not(style)': { m: 0 } }}>
             <Button onClick={close} disabled={state.busy}>Keep my account</Button>
             <Button type="submit" variant="contained" color="error" disabled={!ready || state.busy}>
               {state.busy ? 'Deleting…' : 'Delete everything'}

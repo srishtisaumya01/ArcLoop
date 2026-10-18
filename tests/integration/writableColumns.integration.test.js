@@ -1,18 +1,14 @@
 // @vitest-environment node
-import { spawnSync } from 'node:child_process'
-import { existsSync } from 'node:fs'
-import { join, resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { WRITABLE } from '../../src/services/planner/mappers.js'
+import { manage } from './manage.js'
 
 // The client lists which columns it may write (so it can never send a server-maintained one); the server lists
 // which it accepts. They must be the same lists.
-const backendDir = resolve('backend')
-const python = [join(backendDir, '.venv', 'Scripts', 'python.exe'), join(backendDir, '.venv', 'bin', 'python')].find(existsSync)
 const run = () => {
-  const result = spawnSync(python, ['manage.py', 'writable_fields'], { cwd: backendDir, env: { ...process.env, DJANGO_DEBUG: 'true', DJANGO_SECRET_KEY: '' }, encoding: 'utf8' })
+  const result = manage('writable_fields')
   expect(result.status, result.stderr).toBe(0)
-  return JSON.parse(result.stdout)
+  return result.json()
 }
 const sorted = (list) => [...list].sort()
 

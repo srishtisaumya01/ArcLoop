@@ -1,6 +1,6 @@
 // Starts the real Arcloop API for the Django browser tests: a fresh SQLite file inside e2e-django/.tmp (never
-// backend/db.sqlite3), password-reset emails written to files there instead of being sent, and CORS opened
-// only for the test frontend's origin. Playwright runs this as its webServer and stops it afterwards.
+// backend/db.sqlite3) and password-reset emails written to files there instead of being sent. The app reaches it through
+// the Vite proxy on the same origin, so no CORS is configured at all. Playwright runs this as its webServer and stops it.
 import { spawn, spawnSync } from 'node:child_process'
 import { existsSync, mkdirSync, rmSync } from 'node:fs'
 import { join, resolve } from 'node:path'
@@ -25,7 +25,6 @@ const env = {
   DJANGO_EMAIL_BACKEND: 'django.core.mail.backends.filebased.EmailBackend',
   DJANGO_EMAIL_FILE_PATH: join(tmp, 'emails'),
   DJANGO_AUTH_THROTTLE: '10000/min',
-  CORS_ALLOWED_ORIGINS: WEB_ORIGIN, // only the test frontend: a request from anywhere else must be refused
   FRONTEND_URL: WEB_ORIGIN,
 }
 const migrate = spawnSync(python, ['manage.py', 'migrate', '--noinput'], { cwd: backendDir, env, stdio: 'inherit' })

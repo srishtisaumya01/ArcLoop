@@ -36,15 +36,15 @@ function toServiceError(error, fallback) {
   return new AuthServiceError('unknown', fallback)
 }
 
-const sessionOf = () => {
-  const session = api.getSession()
-  return session ? { user: session.user } : null
-}
+const sessionOf = () => api.getSession() // { user } or null
+
+// How the server delivers a new session: in an HttpOnly cookie, so no token ever reaches page script.
+const SESSION_TRANSPORT = 'cookie'
 
 // Resolves { needsConfirmation }. The API signs a new account in, so this is always false.
 export async function signUp({ email, password }) {
   try {
-    api.setSession(await api.post('/auth/register/', { email: email.trim(), password }, { authenticated: false }))
+    api.setSession(await api.post('/auth/register/', { email: email.trim(), password, transport: SESSION_TRANSPORT }))
   } catch (error) {
     throw toServiceError(error, 'We could not create your account. Please try again.')
   }
@@ -53,7 +53,7 @@ export async function signUp({ email, password }) {
 
 export async function signIn({ email, password }) {
   try {
-    api.setSession(await api.post('/auth/login/', { email: email.trim(), password }, { authenticated: false }))
+    api.setSession(await api.post('/auth/login/', { email: email.trim(), password, transport: SESSION_TRANSPORT }))
   } catch (error) {
     throw toServiceError(error, 'We could not log you in. Please try again.')
   }
@@ -75,7 +75,7 @@ export async function signOut() {
 // The API answers the same whether or not the address has an account.
 export async function requestPasswordReset(email) {
   try {
-    await api.post('/auth/password/reset/', { email: email.trim() }, { authenticated: false })
+    await api.post('/auth/password/reset/', { email: email.trim() })
   } catch (error) {
     throw toServiceError(error, 'We could not send the reset email. Please try again.')
   }
@@ -84,7 +84,7 @@ export async function requestPasswordReset(email) {
 // `reset` ({ uid, token }) comes from the emailed link; a signed-in change needs the current password instead.
 export async function updatePassword(password, { reset, currentPassword } = {}) {
   try {
-    if (reset) await api.post('/auth/password/reset/confirm/', { uid: reset.uid, token: reset.token, password }, { authenticated: false })
+    if (reset) await api.post('/auth/password/reset/confirm/', { uid: reset.uid, token: reset.token, password })
     else await api.post('/auth/password/change/', { current_password: currentPassword ?? '', password })
   } catch (error) {
     throw toServiceError(error, 'We could not update your password. Please try again.')
@@ -104,14 +104,15 @@ export async function deleteAccount({ password, confirmation }) {
   api.clearSession()
 }
 
-// Restores the stored session and asks the server whether it is still valid. If the server cannot be reached
-// the stored session is kept, so a brief outage does not sign anyone out.
+// Asks the server who the session cookie belongs to. Nobody is signed in locally until it answers: there is no stored
+// copy to trust. Resolves { user }, or null if there is no valid session. If the server cannot be reached this rejects
+// (the caller shows the signed-out state; reloading when the connection is back restores the session, the cookie is intact).
 export async function getSession() {
-  if (!api.getSession()) return null
   try {
-    await api.get('/auth/me/')
+    api.setSession({ user: await api.get('/auth/me/') })
   } catch (error) {
     if (error instanceof ApiError && error.status === 401) return null
+    throw toServiceError(error, 'We could not check your session.')
   }
   return sessionOf()
 }

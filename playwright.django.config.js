@@ -1,8 +1,9 @@
 import { defineConfig } from '@playwright/test'
 
-// Real-browser tests against the REAL Django API (not a stub): the Vite dev server is built with
-// VITE_BACKEND=django and talks across origins (127.0.0.1:5300 -> 127.0.0.1:8100), so CORS is genuinely
-// exercised. The API runs on a throwaway SQLite file (see e2e-django/support/startDjango.mjs).
+// Real-browser tests against the REAL Django API (not a stub). The app and the API are one origin, as in the
+// recommended deployment: the Vite server proxies `/api` to Django (127.0.0.1:5300 -> 127.0.0.1:8100), so the browser
+// really sets, keeps and sends the HttpOnly session cookie and the CSRF cookie. The API runs on a throwaway SQLite file
+// (see e2e-django/support/startDjango.mjs).
 // Run with `npm run test:e2e:django`. Needs the backend virtualenv and Chromium.
 const WEB = 5300
 const API = 8100
@@ -35,7 +36,7 @@ export default defineConfig({
       url: `http://127.0.0.1:${WEB}/`,
       reuseExistingServer: false,
       timeout: 60000,
-      env: { VITE_BACKEND: 'django', VITE_API_BASE_URL: `http://127.0.0.1:${API}/api/v1` },
+      env: { ARCLOOP_API_PROXY: `http://127.0.0.1:${API}` },
     },
   ],
 })
