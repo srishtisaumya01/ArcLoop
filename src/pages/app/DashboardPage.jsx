@@ -10,7 +10,6 @@ import WeekCard from '../../components/dashboard/WeekCard.jsx'
 import TrendCard from '../../components/dashboard/TrendCard.jsx'
 import HabitsCard from '../../components/dashboard/HabitsCard.jsx'
 import ChallengeCard from '../../components/dashboard/ChallengeCard.jsx'
-import AccountCard from '../../components/dashboard/AccountCard.jsx'
 import FirstSteps from '../../components/dashboard/FirstSteps.jsx'
 import StatePanel from '../../components/common/StatePanel.jsx'
 import { useAppShell } from '../../hooks/useAppShell.js'
@@ -64,12 +63,12 @@ export default function DashboardPage() {
         dateLabel={dateLabel}
         message={todayMessage(t, ready ? 'success' : status, today, brandNew)}
         account={<UserMenu onDark />}
-        ring={<TodayRing percent={today?.percent ?? 0} label={t('Today')} />}
+        ring={<TodayRing percent={today?.percent ?? 0} label={t('Today')} size={112} />}
       >
-        <Button component={RouterLink} to={ROUTES.day} variant="contained" size="large" startIcon={<CalendarCheck size={18} aria-hidden="true" />} sx={onBrandButtons.solid}>
+        <Button component={RouterLink} to={ROUTES.day} variant="contained" size="small" startIcon={<CalendarCheck size={18} aria-hidden="true" />} sx={onBrandButtons.solid}>
           {t('Open My Day')}
         </Button>
-        <Button component={RouterLink} to={ROUTES.week} variant="outlined" size="large" startIcon={<CalendarRange size={18} aria-hidden="true" />} sx={onBrandButtons.glass}>
+        <Button component={RouterLink} to={ROUTES.week} variant="outlined" size="small" startIcon={<CalendarRange size={18} aria-hidden="true" />} sx={onBrandButtons.glass}>
           {t('Plan your week')}
         </Button>
       </GreetingBand>
@@ -125,7 +124,6 @@ export default function DashboardPage() {
         )}
 
         {brandNew && <ChallengeCard />}
-        <AccountCard />
       </Container>
     </>
   )

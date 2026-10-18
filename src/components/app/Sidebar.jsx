@@ -119,9 +119,9 @@ export default function Sidebar({ navLabel = 'App', onNavigate }) {
   }
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, minHeight: '100%', p: 2.5, background: gradients.sidebar, color: '#FFFFFF' }}>
-      <Box component={RouterLink} to={ROUTES.app} onClick={onNavigate} aria-label={t('Arcloop home')} sx={{ display: 'inline-flex', alignSelf: 'flex-start', textDecoration: 'none', px: 0.5, pt: 0.5 }}>
-        <Logo onDark size={42} />
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, minHeight: '100%', px: 2.5, pb: 2.5, pt: { xs: 2.5, md: 0 }, background: gradients.sidebar, color: '#FFFFFF' }}>
+      <Box component={RouterLink} to={ROUTES.app} onClick={onNavigate} aria-label={t('Arcloop home')} sx={{ display: 'flex', alignItems: 'center', alignSelf: 'stretch', height: { xs: 72, md: 176 }, textDecoration: 'none', px: 0.5 }}>
+        <Logo onDark size={60} />
       </Box>
 
       <NavList items={APP_NAV} label={navLabel} onNavigate={onNavigate} />
