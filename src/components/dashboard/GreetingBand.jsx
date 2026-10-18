@@ -1,17 +1,16 @@
 import { Box, Container, Typography } from '@mui/material'
 import { CalendarDays } from 'lucide-react'
-import TodayRing from './TodayRing.jsx'
 import Typewriter from '../ui/Typewriter.jsx'
 import { useI18n } from '../../hooks/useI18n.js'
 import { enter } from '../../theme/animations.js'
 import { colors, contentWidths, gradients } from '../../theme/tokens.js'
 
 // The top of the dashboard: a time-of-day greeting with the person's name, today's date, one line about how today stands,
-// the main buttons, and a ring showing today's progress.
+// the main buttons. and a ring showing today's progress.
 // The greeting band is as tall as the sidebar's logo block beside it, so the two line up.
 export const BAND_HEIGHT = 176
 
-export default function GreetingBand({ greeting, name, dateLabel, ring, account, ready = true }) {
+export default function GreetingBand({ greeting, name, dateLabel, quote, account, ready = true }) {
   const { t } = useI18n()
   return (
     <Box component="section" aria-label={t('Greeting')} sx={{ background: gradients.brand, color: colors.textOnDark, pt: { xs: 3, md: '56px' }, pb: { xs: 3, md: 0 }, height: { md: BAND_HEIGHT }, display: { md: 'flex' }, alignItems: 'center', position: 'relative', overflow: 'hidden' }}>
@@ -33,8 +32,8 @@ export default function GreetingBand({ greeting, name, dateLabel, ring, account,
             {dateLabel}
           </Box>
         </Box>
-        {ring}
       </Container>
+      {quote}
     </Box>
   )
 }

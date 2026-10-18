@@ -1,10 +1,11 @@
 import { Link as RouterLink } from 'react-router-dom'
 import { Box, Button, Container, Skeleton } from '@mui/material'
-import { CalendarCheck, CalendarRange, CircleCheck, ListTodo, RefreshCw, TrendingUp, TriangleAlert } from 'lucide-react'
+import { CalendarCheck, CalendarRange, CircleCheck, ListTodo, RefreshCw, TrendingUp, TriangleAlert, Trophy } from 'lucide-react'
 import UserMenu from '../../components/app/UserMenu.jsx'
 import QuoteCard from '../../components/dashboard/QuoteCard.jsx'
 import GreetingBand from '../../components/dashboard/GreetingBand.jsx'
-import TodayRing from '../../components/dashboard/TodayRing.jsx'
+import StreakCard from '../../components/dashboard/StreakCard.jsx'
+import ChallengeCounts from '../../components/dashboard/ChallengeCounts.jsx'
 import KpiTiles from '../../components/dashboard/KpiTiles.jsx'
 import TodayCard from '../../components/dashboard/TodayCard.jsx'
 import WeekCard from '../../components/dashboard/WeekCard.jsx'
@@ -17,6 +18,7 @@ import { useAppShell } from '../../hooks/useAppShell.js'
 import { useI18n } from '../../hooks/useI18n.js'
 import { useNow } from '../../hooks/useNow.js'
 import { usePageMeta } from '../../hooks/usePageMeta.js'
+import { useMyChallenges } from '../../hooks/useMyChallenges.js'
 import { useProgressOverview } from '../../hooks/useProgressOverview.js'
 import { firstNameOf, greetingFor } from '../../utils/greeting.js'
 import { isBrandNew, summarizeToday, topHabits, trendPoints, weekBars } from '../../utils/dashboard.js'
@@ -31,6 +33,7 @@ export default function DashboardPage() {
   const now = useNow(undefined, 60_000)
   const { displayName, profileStatus } = useAppShell()
   const { status, data, refresh } = useProgressOverview()
+  const mine = useMyChallenges()
 
   const week = data?.weeks[0] ?? null
   const today = summarizeToday(week)
@@ -47,6 +50,9 @@ export default function DashboardPage() {
       ]
     : []
 
+  const quote = (sx) => <QuoteCard now={now} sx={sx} />
+  const goToOngoing = () => document.getElementById('ongoing-challenges')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+
   return (
     <>
       <GreetingBand
@@ -55,23 +61,25 @@ export default function DashboardPage() {
         dateLabel={dateLabel}
         ready={profileStatus !== 'loading'}
         account={<UserMenu onDark />}
-        ring={<TodayRing percent={today?.percent ?? 0} label={t('Today')} size={100} />}
+        quote={quote({ display: { xs: 'none', xl: 'block' }, position: 'absolute', bottom: 16, right: 32, width: 380, flex: 'none', ml: 0, zIndex: 1 })}
       />
 
-      <Box sx={{ position: 'relative' }}>
-        {/* On wide screens the quote sits at the very right edge of the page, level with the buttons. */}
-        <QuoteCard now={now} sx={{ display: { xs: 'none', lg: 'block' }, position: 'absolute', top: 40, right: 32, width: 440, flex: 'none', ml: 0, zIndex: 1 }} />
       <Container sx={{ maxWidth: `${contentWidths.page}px !important`, py: { xs: 3, md: 5 }, display: 'grid', gap: 3 }}>
-        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'stretch', minHeight: { lg: 124 } }}>
-          <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', alignItems: 'flex-start', mt: { lg: '23px' } }}>
-        <Button component={RouterLink} to={ROUTES.day} variant="contained" color="primary" startIcon={<CalendarCheck size={18} aria-hidden="true" />}>
-          {t('Open My Day')}
-        </Button>
-        <Button component={RouterLink} to={ROUTES.week} variant="outlined" color="primary" startIcon={<CalendarRange size={18} aria-hidden="true" />}>
-          {t('Plan your week')}
-        </Button>
-          </Box>
-          <QuoteCard now={now} sx={{ display: { xs: 'block', lg: 'none' } }} />
+        <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', alignItems: 'center' }}>
+          <Button component={RouterLink} to={ROUTES.day} variant="contained" color="primary" startIcon={<CalendarCheck size={18} aria-hidden="true" />}>
+            {t('Open My Day')}
+          </Button>
+          <Button component={RouterLink} to={ROUTES.week} variant="outlined" color="primary" startIcon={<CalendarRange size={18} aria-hidden="true" />}>
+            {t('Plan your week')}
+          </Button>
+          <Button variant="outlined" color="primary" startIcon={<Trophy size={18} aria-hidden="true" />} onClick={goToOngoing}>
+            {mine.status === 'success' ? t('Ongoing challenges ({count})', { count: mine.ongoing.length }) : t('Ongoing challenges')}
+          </Button>
+        </Box>
+        {quote({ display: { xs: 'block', xl: 'none' }, flex: 'none', ml: 0 })}
+        <Box sx={{ display: 'grid', gap: 3, gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: 'repeat(2, minmax(0, 1fr))' } }}>
+          <StreakCard />
+          <ChallengeCounts status={mine.status} items={mine.items} />
         </Box>
         {status === 'loading' && !data && (
           <Box aria-busy="true" aria-label={t('Loading your dashboard')} sx={{ display: 'grid', gap: 3 }}>
@@ -113,7 +121,7 @@ export default function DashboardPage() {
                 <Box sx={{ display: 'grid', gap: 3, gridTemplateColumns: { xs: 'minmax(0, 1fr)', lg: 'minmax(0, 1.5fr) minmax(0, 1fr)' }, alignItems: 'start' }}>
                   <TrendCard points={trendPoints(data.weeks)} />
                   <Box sx={{ display: 'grid', gap: 3 }}>
-                    <ChallengeCard />
+                    <ChallengeCard status={mine.status} ongoing={mine.ongoing} />
                     <HabitsCard habits={topHabits(data.habits.habits)} />
                   </Box>
                 </Box>
@@ -122,9 +130,8 @@ export default function DashboardPage() {
           </>
         )}
 
-        {brandNew && <ChallengeCard />}
+        {brandNew && <ChallengeCard status={mine.status} ongoing={mine.ongoing} />}
       </Container>
-      </Box>
     </>
   )
 }

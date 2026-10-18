@@ -11,4 +11,5 @@ urlpatterns = [
     path('api/v1/', include('planner.urls')),
     path('api/v1/', include('reminders.urls')),
     path('api/v1/', include('challenges.urls')),
+    path('api/v1/', include('checkins.urls')),
 ]

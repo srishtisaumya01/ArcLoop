@@ -4,19 +4,17 @@ import { Plus, Trophy } from 'lucide-react'
 import MyChallengeCard from '../myChallenges/MyChallengeCard.jsx'
 import Reveal from '../ui/Reveal.jsx'
 import { useI18n } from '../../hooks/useI18n.js'
-import { useMyChallenges } from '../../hooks/useMyChallenges.js'
 import { ROUTES } from '../../constants/navigation.js'
 import { colors, radii } from '../../theme/tokens.js'
 
 // The challenges the person has joined or made, on their dashboard. With none, an invitation to find one.
-export default function ChallengeCard() {
+export default function ChallengeCard({ status, ongoing }) {
   const { t } = useI18n()
-  const { status, ongoing } = useMyChallenges()
   if (status === 'loading') return <Skeleton variant="rounded" height={200} />
   if (status === 'error') return null
   return (
     <Reveal delay={60}>
-      <Box sx={{ display: 'grid', gap: 2 }}>
+      <Box id="ongoing-challenges" sx={{ display: 'grid', gap: 2, scrollMarginTop: '16px' }}>
         {ongoing.length === 0 ? (
           <Box sx={{ p: 3, borderRadius: `${radii.lg}px`, border: `1px dashed ${colors.border}`, bgcolor: colors.surface, display: 'grid', gap: 1.5, justifyItems: 'start' }}>
             <Typography variant="h4" component="h2" sx={{ display: 'flex', gap: 1, alignItems: 'center' }}><Trophy size={20} aria-hidden="true" />{t('No ongoing challenge')}</Typography>
