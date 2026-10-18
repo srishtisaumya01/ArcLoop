@@ -8,7 +8,7 @@ import ThemeToggle from '../layout/ThemeToggle.jsx'
 import { useAuth } from '../../hooks/useAuth.js'
 import { useMyChallenges } from '../../hooks/useMyChallenges.js'
 import { useI18n } from '../../hooks/useI18n.js'
-import { APP_NAV, EXPLORE_NAV, ROUTES, appChallengePath } from '../../constants/navigation.js'
+import { APP_NAV, ROUTES, appChallengePath } from '../../constants/navigation.js'
 import { noMotion } from '../../theme/animations.js'
 import { colors, gradients, navFontFamily } from '../../theme/tokens.js'
 
@@ -125,13 +125,6 @@ export default function Sidebar({ navLabel = 'App', onNavigate }) {
       </Box>
 
       <NavList items={APP_NAV} label={navLabel} onNavigate={onNavigate} />
-
-      <Box>
-        <Typography variant="overline" component="p" sx={{ color: colors.mint300, px: 1.75, mb: 0.75 }}>
-          {t('Explore')}
-        </Typography>
-        <NavList items={EXPLORE_NAV} label={t('Explore')} onNavigate={onNavigate} />
-      </Box>
 
       <ChallengeMini onNavigate={onNavigate} />
 
