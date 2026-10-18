@@ -61,7 +61,7 @@ export default function DashboardPage() {
         dateLabel={dateLabel}
         ready={profileStatus !== 'loading'}
         account={<UserMenu onDark />}
-        quote={quote({ display: { xs: 'none', xl: 'block' }, position: 'absolute', bottom: 16, right: 32, width: 380, flex: 'none', ml: 0, zIndex: 1 })}
+        quote={quote({ display: { xs: 'none', xl: 'block' }, position: 'absolute', bottom: 16, right: 32, width: 'fit-content', maxWidth: 560, flex: 'none', ml: 0, zIndex: 1 })}
       />
 
       <Container sx={{ maxWidth: `${contentWidths.page}px !important`, py: { xs: 3, md: 5 }, display: 'grid', gap: 3 }}>

@@ -5,6 +5,7 @@ import { RefreshCw, TriangleAlert } from 'lucide-react'
 import PageHeader from '../../components/common/PageHeader.jsx'
 import StatePanel from '../../components/common/StatePanel.jsx'
 import { weekdaysSummary } from '../../components/planner/weekFormat.js'
+import AttendanceSection from '../../components/settings/AttendanceSection.jsx'
 import PrivacySection from '../../components/settings/PrivacySection.jsx'
 import ProfileSection from '../../components/settings/ProfileSection.jsx'
 import SettingsSection from '../../components/settings/SettingsSection.jsx'
@@ -60,6 +61,7 @@ export default function SettingsPage() {
                 <Button component={RouterLink} to={ROUTES.reminders} variant="outlined" size="small">Manage reminders</Button>
               </Box>
             </SettingsSection>
+            <AttendanceSection />
             <SettingsSection title="Account">
               <Box>
                 <Typography variant="body2" color="text.secondary">Email</Typography>

@@ -1,4 +1,5 @@
 import hashlib
+from datetime import time
 import re
 import secrets
 from datetime import timedelta
@@ -26,6 +27,9 @@ class Profile(models.Model):
     # The sign-in name. Always stored lower-case, so "Ada" and "ada" are the same person.
     username = models.CharField(max_length=30, unique=True, null=True, blank=True)
     display_name = models.CharField(max_length=60, null=True, blank=True)
+    # The person's working hours: check-in opens at the start, and the end is when they plan to check out.
+    shift_start = models.TimeField(default=time(9, 0))
+    shift_end = models.TimeField(default=time(18, 0))
     # When the picture last changed (the picture itself is in ProfileAvatar, so ordinary profile reads never load its bytes).
     avatar_updated_at = models.DateTimeField(null=True, blank=True)
     timezone = models.CharField(max_length=64, default='UTC')

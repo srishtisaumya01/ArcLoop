@@ -1,7 +1,7 @@
 import { Link as RouterLink, NavLink, useNavigate } from 'react-router-dom'
 import { Box, Button, Typography } from '@mui/material'
 import { keyframes } from '@mui/material/styles'
-import { Bell, CalendarCheck, CalendarRange, Flame, Home, LayoutDashboard, LogOut, Repeat, Settings, UserRound, TrendingUp, Trophy, Users } from 'lucide-react'
+import { Bell, CalendarCheck, CalendarRange, Flame, Home, LayoutDashboard, LogOut, Repeat, Settings, UserCheck, UserRound, TrendingUp, Trophy, Users } from 'lucide-react'
 import Logo from '../ui/Logo.jsx'
 import LanguageToggle from '../layout/LanguageToggle.jsx'
 import ThemeToggle from '../layout/ThemeToggle.jsx'
@@ -14,6 +14,7 @@ import { colors, gradients, navFontFamily } from '../../theme/tokens.js'
 
 const ICONS = {
   profile: UserRound,
+  attendance: UserCheck,
   dashboard: LayoutDashboard,
   day: CalendarCheck,
   week: CalendarRange,

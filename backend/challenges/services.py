@@ -26,6 +26,15 @@ def today_for(user):
     return timezone.now().astimezone(zone).date()
 
 
+def local_now(user):
+    """The current moment in this person's own timezone."""
+    try:
+        zone = ZoneInfo(user.profile.timezone)
+    except Exception:  # noqa: BLE001
+        zone = ZoneInfo('UTC')
+    return timezone.now().astimezone(zone)
+
+
 def window_for(challenge, today):
     """The dates a person joining `challenge` today gets: its fixed window, or today for `duration_days` days."""
     if challenge.start_date and challenge.end_date:

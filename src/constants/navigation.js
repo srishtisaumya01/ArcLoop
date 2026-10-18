@@ -18,6 +18,7 @@ export const ROUTES = {
   settings: '/app/settings',
   profile: '/app/profile',
   appChallenges: '/app/challenges',
+  attendance: '/app/attendance',
   privacy: '/privacy',
   terms: '/terms',
   contact: '/contact',
@@ -38,6 +39,7 @@ export const NAV_LINKS = [
 export const APP_NAV = [
   { label: 'Dashboard', to: ROUTES.app, icon: 'dashboard', end: true },
   { label: 'My Day', to: ROUTES.day, icon: 'day' },
+  { label: 'Mark Attendance', to: ROUTES.attendance, icon: 'attendance' },
   { label: 'Week', to: ROUTES.week, icon: 'week' },
   { label: 'Progress', to: ROUTES.progress, icon: 'progress' },
   { label: 'Challenges', to: ROUTES.appChallenges, icon: 'challenges' },

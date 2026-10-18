@@ -105,7 +105,7 @@ class ProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Profile
-        fields = ['id', 'username', 'display_name', 'avatar_version', 'timezone', 'interests', 'profile_visibility', 'progress_visibility', 'created_at']
+        fields = ['id', 'username', 'display_name', 'shift_start', 'shift_end', 'avatar_version', 'timezone', 'interests', 'profile_visibility', 'progress_visibility', 'created_at']
         read_only_fields = ['created_at']
 
     def get_avatar_version(self, profile):

@@ -16,5 +16,15 @@ async function act(path, fallback) {
   }
 }
 
+// The working hours: check-in opens at `start`, and `end` is when the person plans to check out ("HH:MM" each).
+export async function saveShift({ start, end }) {
+  try {
+    await api.patch('/profile/', { shift_start: start, shift_end: end })
+    changed()
+  } catch (error) {
+    throw new Error('We could not save your hours. Please try again.', { cause: error })
+  }
+}
+
 export const checkIn = () => act('/checkin/start/', 'We could not check you in. Please try again.')
 export const checkOut = () => act('/checkin/end/', 'We could not check you out. Please try again.')

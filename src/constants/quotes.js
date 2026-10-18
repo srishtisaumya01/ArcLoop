@@ -1,6 +1,6 @@
 // Quotes of the day: one for each calendar day, in a fixed order, so everyone sees the same quote on the same date and it
 // changes at local midnight. Short, and about showing up, habits and consistency.
-export const QUOTES = [
+const ALL_QUOTES = [
   ['We are what we repeatedly do. Excellence, then, is not an act, but a habit.', 'Will Durant'],
   ['The secret of getting ahead is getting started.', 'Mark Twain'],
   ['It does not matter how slowly you go as long as you do not stop.', 'Confucius'],
@@ -91,6 +91,9 @@ export const QUOTES = [
   ['Don’t stop when you’re tired. Stop when you’re done.', 'Proverb'],
   ['Build the habit, and the results will follow.', 'Arcloop'],
 ]
+
+// The card shows a quote on one line, so only the short ones are used.
+export const QUOTES = ALL_QUOTES.filter(([text]) => text.length <= 78)
 
 // Days since 1 January 1970 for the date on this device (so the quote changes at the person's own midnight).
 export const dayNumber = (date = new Date()) => Math.floor(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / 86_400_000)
