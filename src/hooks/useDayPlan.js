@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { plannerService } from '../services/planner/index.js'
 import { PROFILE_CHANGED } from './profileEvents.js'
 import { classifyDate } from '../utils/planner/index.js'
@@ -14,6 +14,12 @@ export function useDayPlan(date) {
   const [result, setResult] = useState(null)
   const [attempt, setAttempt] = useState(0)
   const [busy, setBusy] = useState(false)
+  // The day the screen shows right now. A change that finishes after the person has moved to another day must not
+  // replace that day's data (the single `result` slot is keyed, so a stale write would leave the new day loading forever).
+  const shown = useRef(key)
+  useEffect(() => {
+    shown.current = key
+  }, [key])
 
   const fetchPlan = useCallback(async ({ open = false } = {}) => {
     const { today } = await plannerService.getToday()
@@ -58,9 +64,9 @@ export function useDayPlan(date) {
       }
       try {
         const data = await fetchPlan({ open })
-        setResult({ key, status: 'success', data, error: null })
+        if (shown.current === key) setResult({ key, status: 'success', data, error: null })
       } catch (error) {
-        setResult((prev) => ({ key, status: 'error', data: prev?.key === key ? prev.data : null, error }))
+        if (shown.current === key) setResult((prev) => ({ key, status: 'error', data: prev?.key === key ? prev.data : null, error }))
       }
       setBusy(false)
       return outcome

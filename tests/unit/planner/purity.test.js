@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 
-// The planner is pure logic: it must not reach for React, Supabase, storage, the
+// The planner is pure logic: it must not reach for React, the API, storage, the
 // network, the DOM, randomness or the system clock. Time arrives as an argument.
 const DIR = join(process.cwd(), 'src', 'utils', 'planner')
 const files = readdirSync(DIR).filter((f) => f.endsWith('.js'))

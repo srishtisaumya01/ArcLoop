@@ -15,6 +15,7 @@ from config.errors import ApiError, validation_error
 
 from .models import AuthToken
 from .serializers import (
+    AccountDeleteSerializer,
     LoginSerializer,
     PasswordChangeSerializer,
     PasswordResetConfirmSerializer,
@@ -137,6 +138,35 @@ class PasswordResetConfirmView(PublicAuthView):
         user.set_password(new_password(data.validated_data['password'], user))  # also retires this link: its token is derived from the password hash
         user.save(update_fields=['password'])
         AuthToken.objects.filter(user=user).delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class AccountDeleteView(APIView):
+    """Permanently deletes the signed-in account and everything it owns.
+
+    Needs the account password again (a stolen token alone cannot do this) and the typed word DELETE.
+    Staff and superuser accounts are refused: they are managed in the admin, never through this endpoint.
+    The user, profile, tokens, task templates, day plans, task occurrences and reminders go together, in one
+    transaction. A repeat request finds no session (the token is gone) and is answered 401.
+    """
+
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'auth'
+    CONFIRMATION = 'DELETE'
+
+    def post(self, request):
+        data = AccountDeleteSerializer(data=request.data)
+        data.is_valid(raise_exception=True)
+        user = request.user
+        if user.is_staff or user.is_superuser:
+            raise ApiError('permission_denied', 'This account cannot be deleted here.', status.HTTP_403_FORBIDDEN)
+        if not user.check_password(data.validated_data['password']):
+            raise validation_error('Your password is incorrect.', {'password': 'That is not your password.'}, 'invalid_credentials')
+        if data.validated_data['confirmation'] != self.CONFIRMATION:
+            message = f'Type {self.CONFIRMATION} to confirm.'
+            raise validation_error(message, {'confirmation': message}, 'confirmation_required')
+        with transaction.atomic():
+            user.delete()  # cascades to the profile, tokens, templates, days, occurrences and reminders
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 

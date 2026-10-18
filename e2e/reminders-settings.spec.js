@@ -1,7 +1,7 @@
 import { TODAY, USER_ID } from './support/stubApi.js'
 import { expect, expectNoHorizontalScroll, test } from './support/fixtures.js'
 
-// Real browser (Chromium), real app and dev server, stubbed Supabase endpoints: see e2e/support/stubApi.js.
+// Real browser (Chromium), real app and dev server, stubbed API endpoints: see e2e/support/stubApi.js.
 // Reminder delivery here is the real in-app scheduler running in the browser; browser notifications use
 // Chromium's real permission state (granted per test where needed).
 
@@ -168,7 +168,12 @@ test.describe('Settings', () => {
     await expect(page.getByText('Reminders are off')).toBeVisible()
     await expect(page.getByText('asha@example.com')).toBeVisible()
     await expect(page.getByRole('link', { name: 'Change password' })).toHaveAttribute('href', '/update-password')
-    await expect(page.getByRole('button', { name: /delete/i })).toHaveCount(0)
+    // Deleting the account is a separate, guarded flow: nothing happens until the password and the word DELETE are given.
+    await page.getByRole('button', { name: 'Delete account' }).click()
+    const dialog = page.getByRole('dialog', { name: 'Delete your account?' })
+    await expect(dialog.getByRole('button', { name: 'Delete everything' })).toBeDisabled()
+    await dialog.getByRole('button', { name: 'Keep my account' }).click()
+    await expect(page.getByRole('dialog')).toHaveCount(0)
     await page.getByRole('link', { name: 'Manage reminders' }).click()
     await expect(page.getByRole('heading', { level: 1, name: 'Reminders' })).toBeVisible()
   })

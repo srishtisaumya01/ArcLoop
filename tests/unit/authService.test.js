@@ -1,15 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { ApiError } from '../../src/services/api/apiClient.js'
 
-const h = vi.hoisted(() => ({ supabase: null }))
-vi.mock('../../src/services/supabaseClient.js', () => ({
-  get supabase() {
-    return h.supabase
-  },
-  isSupabaseConfigured: true,
+// The API client is replaced by a recording fake; the service under test is the real one.
+const h = vi.hoisted(() => ({ api: null }))
+vi.mock('../../src/services/api/apiClient.js', async (importOriginal) => ({
+  ...(await importOriginal()),
+  api: new Proxy({}, { get: (_, key) => h.api[key] }),
 }))
 
 import {
   AuthServiceError,
+  deleteAccount,
+  getSession,
   onAuthStateChange,
   requestPasswordReset,
   signIn,
@@ -18,100 +20,144 @@ import {
   updatePassword,
 } from '../../src/services/authService.js'
 
-function fakeClient(overrides = {}) {
+const apiError = (status, code, message = 'raw server message', fields) => new ApiError({ status, code, message, fields })
+const session = { token: 'tok', expiresAt: '2999-01-01T00:00:00Z', user: { id: 7, email: 'a@example.com' } }
+const payload = { token: 'tok', expires_at: '2999-01-01T00:00:00Z', user: { id: 7, email: 'a@example.com' } }
+
+function fakeApi(overrides = {}) {
+  let current = null
   return {
-    auth: {
-      signUp: vi.fn().mockResolvedValue({ data: { session: null }, error: null }),
-      signInWithPassword: vi.fn().mockResolvedValue({ error: null }),
-      signOut: vi.fn().mockResolvedValue({ error: null }),
-      resetPasswordForEmail: vi.fn().mockResolvedValue({ error: null }),
-      updateUser: vi.fn().mockResolvedValue({ error: null }),
-      getSession: vi.fn().mockResolvedValue({ data: { session: null }, error: null }),
-      onAuthStateChange: vi.fn().mockReturnValue({ data: { subscription: { unsubscribe: vi.fn() } } }),
-      ...overrides,
-    },
+    post: vi.fn().mockResolvedValue(payload),
+    get: vi.fn().mockResolvedValue({}),
+    setSession: vi.fn((p) => {
+      current = { ...session, token: p.token }
+    }),
+    clearSession: vi.fn(() => {
+      current = null
+    }),
+    getSession: vi.fn(() => current),
+    subscribe: vi.fn().mockReturnValue(() => {}),
+    ...overrides,
   }
 }
 
 beforeEach(() => {
-  h.supabase = fakeClient()
+  h.api = fakeApi()
 })
 
-const failWith = (error) => ({ error })
-
 describe('authService', () => {
-  it('signUp trims the email, sets the confirmation redirect, and reports whether confirmation is needed', async () => {
+  it('signUp trims the email, stores the session the API returns, and never asks for confirmation', async () => {
     const result = await signUp({ email: '  a@example.com ', password: 'longenough' })
-    expect(result).toEqual({ needsConfirmation: true })
-    expect(h.supabase.auth.signUp).toHaveBeenCalledWith({
-      email: 'a@example.com',
-      password: 'longenough',
-      options: { emailRedirectTo: `${window.location.origin}/app` },
-    })
-
-    h.supabase = fakeClient({ signUp: vi.fn().mockResolvedValue({ data: { session: { user: {} } }, error: null }) })
-    expect(await signUp({ email: 'a@example.com', password: 'longenough' })).toEqual({ needsConfirmation: false })
+    expect(result).toEqual({ needsConfirmation: false })
+    expect(h.api.post).toHaveBeenCalledWith('/auth/register/', { email: 'a@example.com', password: 'longenough' }, { authenticated: false })
+    expect(h.api.setSession).toHaveBeenCalledWith(payload)
   })
 
-  it('maps provider errors to friendly messages without leaking the raw message', async () => {
-    h.supabase = fakeClient({
-      signInWithPassword: vi.fn().mockResolvedValue(failWith({ code: 'invalid_credentials', message: 'Invalid login credentials' })),
-    })
-    await expect(signIn({ email: 'a@b.co', password: 'x' })).rejects.toMatchObject({
-      code: 'invalid_credentials',
-      message: 'Email or password is incorrect.',
-    })
-
-    h.supabase = fakeClient({
-      signInWithPassword: vi.fn().mockResolvedValue(failWith({ code: 'email_not_confirmed', message: 'raw' })),
-    })
-    await expect(signIn({ email: 'a@b.co', password: 'x' })).rejects.toThrow(/confirm your email/i)
+  it('signIn trims the email and stores the session', async () => {
+    await signIn({ email: ' a@example.com ', password: 'x' })
+    expect(h.api.post).toHaveBeenCalledWith('/auth/login/', { email: 'a@example.com', password: 'x' }, { authenticated: false })
+    expect(h.api.setSession).toHaveBeenCalled()
   })
 
-  it('maps rate limits, network failures and unknown errors', async () => {
-    h.supabase = fakeClient({ signInWithPassword: vi.fn().mockResolvedValue(failWith({ status: 429, message: 'raw' })) })
-    await expect(signIn({ email: 'a@b.co', password: 'x' })).rejects.toThrow(/too many attempts/i)
-
-    h.supabase = fakeClient({ signInWithPassword: vi.fn().mockResolvedValue(failWith({ name: 'AuthRetryableFetchError', status: 0, message: 'raw' })) })
-    await expect(signIn({ email: 'a@b.co', password: 'x' })).rejects.toThrow(/could not reach the server/i)
-
-    h.supabase = fakeClient({ signInWithPassword: vi.fn().mockResolvedValue(failWith({ code: 'something_new', message: 'db exploded at host 10.0.0.5' })) })
-    const err = await signIn({ email: 'a@b.co', password: 'x' }).catch((e) => e)
-    expect(err).toBeInstanceOf(AuthServiceError)
-    expect(err.message).not.toMatch(/10\.0\.0\.5/)
+  it('maps server errors to friendly messages without leaking the raw message', async () => {
+    const cases = [
+      [apiError(401, 'invalid_credentials'), 'invalid_credentials', /email or password is incorrect/i],
+      [apiError(429, 'rate_limited'), 'rate_limited', /too many attempts/i],
+      [apiError(400, 'email_taken'), 'email_taken', /account may already exist/i],
+      [apiError(400, 'validation_error', 'raw', { password: 'bad' }), 'weak_password', /too easy to guess/i],
+      [apiError(0, undefined, 'Failed to fetch'), 'network', /could not reach the server/i],
+      [apiError(0, 'not_configured'), 'network', /could not reach the server/i],
+    ]
+    for (const [failure, code, message] of cases) {
+      h.api = fakeApi({ post: vi.fn().mockRejectedValue(failure) })
+      const error = await signIn({ email: 'a@b.co', password: 'x' }).catch((e) => e)
+      expect(error).toBeInstanceOf(AuthServiceError)
+      expect(error.code).toBe(code)
+      expect(error.message).toMatch(message)
+      expect(error.message).not.toMatch(/raw server message|Failed to fetch/)
+    }
+    h.api = fakeApi({ post: vi.fn().mockRejectedValue(new ApiError({ status: 500, code: 'server_error', message: 'db exploded at host 10.0.0.5' })) })
+    const unknown = await signIn({ email: 'a@b.co', password: 'x' }).catch((e) => e)
+    expect(unknown.code).toBe('unknown')
+    expect(unknown.message).not.toMatch(/10\.0\.0\.5/)
   })
 
-  it('requests password reset with the update-password redirect', async () => {
+  it('requests a password reset without credentials, trimming the email', async () => {
     await requestPasswordReset(' who@example.com ')
-    expect(h.supabase.auth.resetPasswordForEmail).toHaveBeenCalledWith('who@example.com', {
-      redirectTo: `${window.location.origin}/update-password`,
-    })
+    expect(h.api.post).toHaveBeenCalledWith('/auth/password/reset/', { email: 'who@example.com' }, { authenticated: false })
   })
 
-  it('updatePassword maps same_password and weak_password', async () => {
-    h.supabase = fakeClient({ updateUser: vi.fn().mockResolvedValue(failWith({ code: 'same_password', message: 'raw' })) })
-    await expect(updatePassword('x')).rejects.toThrow(/not used before/i)
-    h.supabase = fakeClient({ updateUser: vi.fn().mockResolvedValue(failWith({ code: 'weak_password', message: 'raw' })) })
-    await expect(updatePassword('x')).rejects.toThrow(/too easy to guess/i)
+  it('updatePassword uses the emailed link’s uid and token, or the current password when signed in', async () => {
+    await updatePassword('new-pass-1', { reset: { uid: 'MQ', token: 'abc-123' } })
+    expect(h.api.post).toHaveBeenLastCalledWith('/auth/password/reset/confirm/', { uid: 'MQ', token: 'abc-123', password: 'new-pass-1' }, { authenticated: false })
+    await updatePassword('new-pass-1', { currentPassword: 'old-pass-1' })
+    expect(h.api.post).toHaveBeenLastCalledWith('/auth/password/change/', { current_password: 'old-pass-1', password: 'new-pass-1' })
   })
 
-  it('signOut ends only this device’s session', async () => {
+  it('updatePassword explains a wrong current password, a weak password and a dead reset link', async () => {
+    h.api = fakeApi({ post: vi.fn().mockRejectedValue(apiError(400, 'invalid_credentials', 'raw', { current_password: 'x' })) })
+    await expect(updatePassword('x', { currentPassword: 'y' })).rejects.toThrow(/current password is incorrect/i)
+    h.api = fakeApi({ post: vi.fn().mockRejectedValue(apiError(400, 'weak_password')) })
+    await expect(updatePassword('x', { currentPassword: 'y' })).rejects.toThrow(/too easy to guess/i)
+    h.api = fakeApi({ post: vi.fn().mockRejectedValue(apiError(400, 'invalid_reset_link')) })
+    await expect(updatePassword('x', { reset: { uid: 'a', token: 'b' } })).rejects.toThrow(/invalid or has expired/i)
+  })
+
+  it('signOut ends this device’s session and clears it locally even when the server call fails', async () => {
     await signOut()
-    expect(h.supabase.auth.signOut).toHaveBeenCalledWith({ scope: 'local' })
+    expect(h.api.post).toHaveBeenCalledWith('/auth/logout/')
+    expect(h.api.clearSession).toHaveBeenCalled()
+
+    h.api = fakeApi({ post: vi.fn().mockRejectedValue(new ApiError({ status: 0, message: 'offline' })) })
+    await expect(signOut()).rejects.toMatchObject({ code: 'network' })
+    expect(h.api.clearSession).toHaveBeenCalled() // signed out on this device anyway
+
+    h.api = fakeApi({ post: vi.fn().mockRejectedValue(apiError(401, 'unauthenticated')) })
+    await expect(signOut()).resolves.toBeUndefined() // the server already forgot it: nothing to report
   })
 
-  it('onAuthStateChange returns a working unsubscribe', () => {
+  it('deleteAccount sends the password and confirmation, clears the session, and explains refusals', async () => {
+    await deleteAccount({ password: 'pw-1', confirmation: 'DELETE' })
+    expect(h.api.post).toHaveBeenCalledWith('/auth/account/delete/', { password: 'pw-1', confirmation: 'DELETE' })
+    expect(h.api.clearSession).toHaveBeenCalled()
+
+    h.api = fakeApi({ post: vi.fn().mockRejectedValue(apiError(400, 'invalid_credentials', 'raw', { password: 'x' })) })
+    await expect(deleteAccount({ password: 'bad', confirmation: 'DELETE' })).rejects.toThrow('Your password is incorrect.')
+    expect(h.api.clearSession).not.toHaveBeenCalled() // a refusal must not sign anyone out
+    h.api = fakeApi({ post: vi.fn().mockRejectedValue(apiError(400, 'confirmation_required', 'raw', { confirmation: 'x' })) })
+    await expect(deleteAccount({ password: 'pw', confirmation: 'nope' })).rejects.toThrow('Type DELETE to confirm.')
+  })
+
+  it('getSession restores a stored session only if the server still accepts it, and survives a brief outage', async () => {
+    expect(await getSession()).toBeNull() // nothing stored: the server is not even asked
+    expect(h.api.get).not.toHaveBeenCalled()
+
+    h.api = fakeApi({ getSession: vi.fn(() => session) })
+    expect(await getSession()).toEqual({ user: session.user })
+    expect(h.api.get).toHaveBeenCalledWith('/auth/me/')
+
+    h.api = fakeApi({ getSession: vi.fn(() => session), get: vi.fn().mockRejectedValue(apiError(401, 'unauthenticated')) })
+    expect(await getSession()).toBeNull()
+
+    h.api = fakeApi({ getSession: vi.fn(() => session), get: vi.fn().mockRejectedValue(new ApiError({ status: 0, message: 'offline' })) })
+    expect(await getSession()).toEqual({ user: session.user }) // kept: an outage is not a sign-out
+  })
+
+  it('onAuthStateChange passes events with the current session and returns a working unsubscribe', () => {
     const unsubscribe = vi.fn()
-    h.supabase = fakeClient({ onAuthStateChange: vi.fn().mockReturnValue({ data: { subscription: { unsubscribe } } }) })
-    const stop = onAuthStateChange(() => {})
+    let listener
+    h.api = fakeApi({
+      getSession: vi.fn(() => session),
+      subscribe: vi.fn((fn) => {
+        listener = fn
+        return unsubscribe
+      }),
+    })
+    const seen = vi.fn()
+    const stop = onAuthStateChange(seen)
+    listener('SIGNED_IN')
+    expect(seen).toHaveBeenCalledWith('SIGNED_IN', { user: session.user })
     stop()
     expect(unsubscribe).toHaveBeenCalled()
-  })
-
-  it('refuses to run, with a clear code, when Supabase is not configured', async () => {
-    h.supabase = null
-    await expect(signIn({ email: 'a@b.co', password: 'x' })).rejects.toMatchObject({ code: 'not_configured' })
-    await expect(signUp({ email: 'a@b.co', password: 'x' })).rejects.toMatchObject({ code: 'not_configured' })
-    expect(onAuthStateChange(() => {})).toBeTypeOf('function')
   })
 })

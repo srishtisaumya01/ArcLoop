@@ -3,9 +3,9 @@ import { act, cleanup, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderAt } from './renderRoute.jsx'
 
-// Supabase is configured here, but every network-facing service is mocked.
+// The backend counts as configured here, but every network-facing service is mocked.
 // These tests check the app's behaviour around the services (states, guards,
-// redirects), not Supabase itself.
+// redirects), not the server.
 const h = vi.hoisted(() => ({
   authCallback: null,
   unsubscribe: vi.fn(),
@@ -18,7 +18,7 @@ const h = vi.hoisted(() => ({
   getMyProfile: vi.fn(),
 }))
 
-vi.mock('../../src/services/supabaseClient.js', () => ({ isSupabaseConfigured: true, supabase: {} }))
+vi.mock('../../src/services/backend.js', () => ({ isBackendConfigured: true, dataClient: {} }))
 vi.mock('../../src/services/authService.js', () => ({
   getSession: h.getSession,
   signIn: h.signIn,
@@ -179,7 +179,7 @@ describe('Password reset request', () => {
   })
 })
 
-describe('Update password (reset callback)', () => {
+describe('Update password', () => {
   it('shows a loader while the session is being restored, then the form', async () => {
     const pending = deferred()
     h.getSession.mockReturnValue(pending.promise)
@@ -189,7 +189,7 @@ describe('Update password (reset callback)', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Choose a new password' })).toBeInTheDocument()
   })
 
-  it('validates matching passwords, then updates and confirms', async () => {
+  it('a signed-in change asks for the current password, validates the new one, then updates and confirms', async () => {
     const user = userEvent.setup()
     h.getSession.mockResolvedValue(session)
     h.updatePassword.mockResolvedValue(undefined)
@@ -197,14 +197,36 @@ describe('Update password (reset callback)', () => {
     await user.type(await screen.findByLabelText('New password'), 'brand-new-pass')
     await user.type(screen.getByLabelText('Confirm new password'), 'different-pass')
     await user.click(screen.getByRole('button', { name: 'Update password' }))
+    expect(screen.getByText('Enter your current password.')).toBeInTheDocument()
     expect(screen.getByText('The passwords do not match.')).toBeInTheDocument()
     expect(h.updatePassword).not.toHaveBeenCalled()
 
+    await user.type(screen.getByLabelText('Current password'), 'old-pass-1')
     await user.clear(screen.getByLabelText('Confirm new password'))
     await user.type(screen.getByLabelText('Confirm new password'), 'brand-new-pass')
     await user.click(screen.getByRole('button', { name: 'Update password' }))
-    expect(h.updatePassword).toHaveBeenCalledWith('brand-new-pass')
+    expect(h.updatePassword).toHaveBeenCalledWith('brand-new-pass', { currentPassword: 'old-pass-1' })
     expect(await screen.findByRole('heading', { level: 1, name: 'Password updated' })).toBeInTheDocument()
+  })
+
+  it('the emailed link works without a session, sends its uid and token, and asks for no current password', async () => {
+    const user = userEvent.setup()
+    h.getSession.mockResolvedValue(null)
+    h.updatePassword.mockResolvedValue(undefined)
+    renderAt('/update-password?uid=MQ&token=abc-123')
+    await user.type(await screen.findByLabelText('New password'), 'brand-new-pass')
+    expect(screen.queryByLabelText('Current password')).toBeNull()
+    await user.type(screen.getByLabelText('Confirm new password'), 'brand-new-pass')
+    await user.click(screen.getByRole('button', { name: 'Update password' }))
+    expect(h.updatePassword).toHaveBeenCalledWith('brand-new-pass', { reset: { uid: 'MQ', token: 'abc-123' } })
+    expect(await screen.findByText(/Log in with it to continue/)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Continue' })).toHaveAttribute('href', '/login')
+  })
+
+  it('without a link or a session, says the link has expired', async () => {
+    h.getSession.mockResolvedValue(null)
+    renderAt('/update-password')
+    expect(await screen.findByRole('heading', { level: 1, name: 'This link has expired' })).toBeInTheDocument()
   })
 })
 

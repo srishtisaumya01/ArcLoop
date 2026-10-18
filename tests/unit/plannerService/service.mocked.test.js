@@ -5,10 +5,10 @@ import { WRITABLE } from '../../../src/services/planner/mappers.js'
 import { createFakeClient } from '../../support/fakeClient.js'
 import { createMemoryDb, dayRow, occRow, tplRow, uuid } from '../../support/memoryDb.js'
 
-// MOCKED tests: a fake Supabase client and an in-memory mock database. They prove the service's
+// MOCKED tests: a fake data client and an in-memory mock database. They prove the service's
 // behaviour around the answers it receives (validation, error mapping, ordering, no false
-// success). They do NOT prove RLS or schema behaviour; that is tests/db/plannerService.integration.test.js
-// (PGlite) and, for the policies themselves, tests/db/planner.rls.test.js.
+// success). They do NOT prove server behaviour; that is the backend suite (backend/tests), the integration
+// project (tests/integration) and `npm run verify:django`.
 
 const NOW = '2026-03-10T15:00:00Z' // Tuesday 11:00 in New York; today = 2026-03-10
 const TODAY = '2026-03-10'
@@ -66,7 +66,7 @@ describe('coverage guard', () => {
 })
 
 describe('configuration and authentication', () => {
-  it.each(Object.entries(CALLS))('%s fails with NOT_CONFIGURED when Supabase is not configured', async (name, args) => {
+  it.each(Object.entries(CALLS))('%s fails with NOT_CONFIGURED when the backend is not configured', async (name, args) => {
     const service = createPlannerService({ getClient: () => null })
     const e = await rejection(service[name](...args))
     expect(e.code).toBe(SERVICE_ERROR.NOT_CONFIGURED)

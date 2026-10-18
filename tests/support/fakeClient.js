@@ -1,9 +1,9 @@
 import { createQueryBuilder, shapeResult } from './queryBuilder.js'
 
-// MOCKED Supabase client for unit tests. `handler(state)` returns { rows } or { error }; every
+// MOCKED data client for unit tests. `handler(state)` returns { rows } or { error }; every
 // call is recorded in `calls`. This proves how the service behaves around answers it is given
-// (validation, error mapping, no false success). It proves nothing about RLS or the real schema:
-// see tests/db/plannerService.integration.test.js for that (PGlite).
+// (validation, error mapping, no false success). It proves nothing about the real server:
+// see the backend suite and tests/integration for that.
 export function createFakeClient({ userId = '11111111-1111-4111-8111-111111111111', timeZone = 'America/New_York', handler = () => ({ rows: [] }), sessionError = null, signedOut = false, profileMissing = false } = {}) {
   const calls = []
   return {

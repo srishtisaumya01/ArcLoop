@@ -70,6 +70,14 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
+# Test-only clock header (see config/middleware.py). It can only be switched on in debug mode.
+if _flag('ARCLOOP_TEST_CLOCK', False):
+    if not DEBUG:
+        raise ImproperlyConfigured('ARCLOOP_TEST_CLOCK requires DJANGO_DEBUG=true and must never be set in production.')
+    MIDDLEWARE.append('config.middleware.TestClockMiddleware')
+    # The same test-only server also uses a fast password hasher: its tests create hundreds of accounts.
+    PASSWORD_HASHERS = ['django.contrib.auth.hashers.MD5PasswordHasher']
+
 ROOT_URLCONF = 'config.urls'
 
 TEMPLATES = [
@@ -93,7 +101,15 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': os.environ.get('DJANGO_DB_PATH', str(BASE_DIR / 'db.sqlite3')),
-        'OPTIONS': {'timeout': 20},
+        'OPTIONS': {
+            'timeout': 20,
+            # SQLite allows one writer at a time. IMMEDIATE takes the write lock when a transaction starts, so two
+            # simultaneous requests queue (up to `timeout`) instead of failing with "database is locked"; WAL lets
+            # readers continue while one writer works. (WAL keeps -wal and -shm files beside the database; back up with
+            # `sqlite3 .backup`, see docs/DEPLOYMENT.md.)
+            'transaction_mode': 'IMMEDIATE',
+            'init_command': 'PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL;',
+        },
     }
 }
 
@@ -133,18 +149,44 @@ FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:5173').rstrip('/
 CORS_ALLOWED_ORIGINS = _list('CORS_ALLOWED_ORIGINS', 'http://localhost:5173,http://127.0.0.1:5173' if DEBUG else '')
 CORS_ALLOW_CREDENTIALS = False
 
-# Development prints emails (password reset links) to the console; production must configure SMTP.
+# Email (password-reset links). Nothing is ever sent unless SMTP is configured on purpose:
+#   development (DEBUG)  -> printed to the server console
+#   DJANGO_EMAIL_BACKEND -> may be set to the file backend (with DJANGO_EMAIL_FILE_PATH) for automated tests
+#   production           -> SMTP, configured only through the variables below. Credentials come from the
+#                           environment; they are never in the code or logged.
 EMAIL_BACKEND = os.environ.get(
     'DJANGO_EMAIL_BACKEND',
     'django.core.mail.backends.console.EmailBackend' if DEBUG else 'django.core.mail.backends.smtp.EmailBackend',
 )
+EMAIL_FILE_PATH = os.environ.get('DJANGO_EMAIL_FILE_PATH', str(BASE_DIR / 'sent_emails'))
+EMAIL_HOST = os.environ.get('DJANGO_EMAIL_HOST', 'localhost')
+EMAIL_PORT = int(os.environ.get('DJANGO_EMAIL_PORT', '587'))
+EMAIL_HOST_USER = os.environ.get('DJANGO_EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.environ.get('DJANGO_EMAIL_HOST_PASSWORD', '')
+EMAIL_USE_TLS = _flag('DJANGO_EMAIL_USE_TLS', True)
+EMAIL_USE_SSL = _flag('DJANGO_EMAIL_USE_SSL', False)
+EMAIL_TIMEOUT = 10
 DEFAULT_FROM_EMAIL = os.environ.get('DJANGO_FROM_EMAIL', 'Arcloop <no-reply@localhost>')
+
+if not DEBUG and EMAIL_BACKEND.endswith('smtp.EmailBackend') and EMAIL_HOST in ('', 'localhost'):
+    # A production server with no mail host would fail on the first reset request; say so at start-up.
+    import warnings
+
+    warnings.warn('DJANGO_EMAIL_HOST is not set: password-reset emails cannot be delivered.', stacklevel=1)
 
 if not DEBUG:
     SECURE_CONTENT_TYPE_NOSNIFF = True
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     SECURE_SSL_REDIRECT = _flag('DJANGO_SECURE_SSL_REDIRECT', True)
+    # HSTS tells browsers to use HTTPS only. Off (0) until HTTPS is confirmed to work everywhere, then raise it
+    # (e.g. 31536000); it cannot be undone quickly once browsers have cached it.
+    SECURE_HSTS_SECONDS = int(os.environ.get('DJANGO_HSTS_SECONDS', '0'))
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = _flag('DJANGO_HSTS_INCLUDE_SUBDOMAINS', False)
+    # Behind a TLS-terminating proxy (nginx, a platform router) that sets X-Forwarded-Proto, so redirects and secure
+    # cookies see the real scheme. Only enable when such a proxy is actually in front: a client could forge the header.
+    if _flag('DJANGO_BEHIND_PROXY', False):
+        SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 # `manage.py test` only: a fast password hasher, so the suite is not dominated by PBKDF2. Never active otherwise.
 import sys  # noqa: E402

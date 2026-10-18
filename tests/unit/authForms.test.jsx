@@ -3,7 +3,7 @@ import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderAt } from './renderRoute.jsx'
 
-// Supabase is NOT configured in the test environment, so these cover the
+// The API address is NOT configured in the test environment, so these cover the
 // client-side behaviour that does not depend on a backend. Backend-connected
 // flows are in authFlows.test.jsx (mocked services).
 

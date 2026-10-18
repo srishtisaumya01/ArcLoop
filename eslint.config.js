@@ -19,7 +19,7 @@ export default defineConfig([
     },
   },
   {
-    files: ['*.config.js', 'tests/**/*.{js,jsx}', 'e2e/**/*.js'],
+    files: ['*.config.js', 'tests/**/*.{js,jsx}', 'e2e/**/*.js', 'e2e-django/**/*.{js,mjs}', 'scripts/**/*.mjs'],
     languageOptions: { globals: { ...globals.node, ...globals.browser } },
   },
 ])

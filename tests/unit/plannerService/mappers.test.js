@@ -1,7 +1,5 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest'
-import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
 import {
   WRITABLE,
   dayFromRow,
@@ -18,30 +16,8 @@ import {
 
 const SERVER_ONLY = ['id', 'in_original_plan', 'baseline_at', 'completed_at', 'excluded_at', 'created_at', 'updated_at']
 
-describe('writable columns match the migration\'s column grants', () => {
-  const sql = readFileSync(join(process.cwd(), 'supabase', 'migrations', '20261017100000_create_planner.sql'), 'utf8')
-  // grant insert|update (col, col, ...) on public.<table> to authenticated;
-  const grants = {}
-  for (const m of sql.matchAll(/grant\s+(insert|update)\s*\(([^)]*)\)\s+on\s+public\.(\w+)\s+to\s+authenticated/gi)) {
-    grants[`${m[3]}.${m[1].toLowerCase()}`] = m[2].split(',').map((c) => c.trim()).filter(Boolean).sort()
-  }
-  const sorted = (list) => [...list].sort()
-
-  it('finds all six grants in the migration', () => {
-    expect(Object.keys(grants).sort()).toEqual([
-      'day_plans.insert', 'day_plans.update', 'task_occurrences.insert', 'task_occurrences.update', 'task_templates.insert', 'task_templates.update',
-    ])
-  })
-
-  it('has identical column lists for every insert and update', () => {
-    expect(sorted(WRITABLE.templateInsert)).toEqual(grants['task_templates.insert'])
-    expect(sorted(WRITABLE.templateUpdate)).toEqual(grants['task_templates.update'])
-    expect(sorted(WRITABLE.dayInsert)).toEqual(grants['day_plans.insert'])
-    expect(sorted(WRITABLE.dayUpdate)).toEqual(grants['day_plans.update'])
-    expect(sorted(WRITABLE.occurrenceInsert)).toEqual(grants['task_occurrences.insert'])
-    expect(sorted(WRITABLE.occurrenceUpdate)).toEqual(grants['task_occurrences.update'])
-  })
-
+// The client lists must equal the API's lists: tests/integration/writableColumns.integration.test.js.
+describe('writable columns', () => {
   it('no writable list ever includes a server-maintained column', () => {
     for (const [name, list] of Object.entries(WRITABLE)) {
       expect(list.filter((c) => SERVER_ONLY.includes(c)).filter((c) => !(c === 'archived_at')), name).toEqual([])

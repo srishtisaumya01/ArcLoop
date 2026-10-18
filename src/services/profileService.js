@@ -1,21 +1,21 @@
-import { dataClient as supabase } from './backend.js' // the selected data client (Supabase, or the Django API behind a Supabase-shaped client)
+import { dataClient } from './backend.js'
 import { validateProfileInput } from '../utils/profile.js'
 
-// Reads are scoped to the signed-in user by the backend (RLS on Supabase, the API on Django).
+// Reads are scoped to the signed-in user by the API.
 // The `id` filter is for clarity, not security.
 const PROFILE_COLUMNS = 'id, display_name, timezone, interests, profile_visibility, progress_visibility, created_at'
 
 export async function getMyProfile(userId) {
-  if (!supabase) throw new Error('The backend is not configured.')
-  const { data, error } = await supabase.from('profiles').select(PROFILE_COLUMNS).eq('id', userId).maybeSingle()
+  if (!dataClient) throw new Error('The backend is not configured.')
+  const { data, error } = await dataClient.from('profiles').select(PROFILE_COLUMNS).eq('id', userId).maybeSingle()
   if (error) throw error
   return data
 }
 
 // Just the timezone, for the prompt that offers to fix a default of UTC.
 export async function getMyTimezone() {
-  if (!supabase) throw new Error('The backend is not configured.')
-  const { data, error } = await supabase.from('profiles').select('timezone').maybeSingle()
+  if (!dataClient) throw new Error('The backend is not configured.')
+  const { data, error } = await dataClient.from('profiles').select('timezone').maybeSingle()
   if (error) throw error
   return data?.timezone ?? null
 }
@@ -24,13 +24,13 @@ export async function getMyTimezone() {
 // (RLS, column grants, timezone trigger) is still the authority. Failures carry user-safe messages
 // and, where they belong to one field, `error.fields`.
 export async function updateMyProfile(userId, changes) {
-  if (!supabase) throw new Error('The backend is not configured.')
+  if (!dataClient) throw new Error('The backend is not configured.')
   const checked = validateProfileInput(changes)
   if (!checked.ok) throw Object.assign(new Error('Please check the highlighted details.'), { fields: checked.errors })
   let data
   let error
   try {
-    ;({ data, error } = await supabase.from('profiles').update(checked.value).eq('id', userId).select(PROFILE_COLUMNS))
+    ;({ data, error } = await dataClient.from('profiles').update(checked.value).eq('id', userId).select(PROFILE_COLUMNS))
   } catch {
     error = {} // a thrown failure (network) is reported like any other: with a safe message
   }

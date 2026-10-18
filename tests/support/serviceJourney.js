@@ -1,8 +1,7 @@
 import { addDays } from '../../src/utils/planner/index.js'
 
-// The core journey at the SERVICE level, written once and run in two places:
-//   1. tests/db/serviceJourney.pglite.test.js: against the migrations in PGlite, so the script itself is verified;
-//   2. scripts/verify-supabase.mjs: against a real, dedicated Supabase TEST project with real sign-in.
+// The core journey at the SERVICE level: the real service code and direct client calls, run by
+// scripts/verify-django.mjs (`npm run verify:django`) against a real local Django server with real sign-in.
 // It uses the real service code and direct client calls only; "today" always comes from the service, so it
 // works at any real date and needs no clock tricks. It returns a list of { name, ok, detail } and never throws.
 //

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 
 // UI-ONLY. Simulates a pending request so loading/finished states can be
 // designed. It performs no network call and saves nothing. Replace with real
-// service calls when Supabase is integrated (Phase 3).
+// service calls when the real endpoint exists.
 export function usePrototypeSubmit(delayMs = 800) {
   const [status, setStatus] = useState('idle') // idle | loading | done
   const timer = useRef(null)

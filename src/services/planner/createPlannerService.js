@@ -67,11 +67,11 @@ function assertId(value, label = 'id') {
 
 // Planner services. All authorisation is done by the database (Row Level Security): the
 // service never relies on filtering by user id as a security boundary. It reads the signed-in
-// user from the existing Supabase session, validates input with the pure planner logic before
+// user from the existing session, validates input with the pure planner logic before
 // any write, and turns every failure into a PlannerServiceError. A write that did not take
 // effect (zero rows) is reported as an error, never as success.
 //
-// `getClient` returns the authenticated Supabase client (or null when unconfigured).
+// `getClient` returns the authenticated data client (or null when unconfigured).
 // `clock` returns the current time in ms; inject a fixed one in tests.
 export function createPlannerService({ getClient, clock = () => Date.now() }) {
   async function session() {

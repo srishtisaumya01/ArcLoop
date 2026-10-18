@@ -55,6 +55,11 @@ class PasswordChangeSerializer(serializers.Serializer):
     password = serializers.CharField(max_length=128, trim_whitespace=False)
 
 
+class AccountDeleteSerializer(serializers.Serializer):
+    password = serializers.CharField(max_length=128, trim_whitespace=False)
+    confirmation = serializers.CharField(max_length=20, trim_whitespace=False)
+
+
 class ProfileSerializer(serializers.ModelSerializer):
     id = serializers.IntegerField(source='user_id', read_only=True)
     display_name = serializers.CharField(max_length=60, allow_null=True, required=False, allow_blank=False)

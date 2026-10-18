@@ -1,5 +1,7 @@
 # Daily Planning & Progress Engine: specification
 
+> **Historical note (backend migration).** This specification was written when the planned backend was Supabase/Postgres. The product rules below are unchanged and are what the app implements, but the database wording (sections 8, 15, 16: Row Level Security, triggers, `supabase/migrations`, PGlite, "status" lines) describes the retired design. The backend is now Django + SQLite: the same rules are enforced in `backend/planner/rules.py` and `backend/planner/resources.py`. See `docs/DJANGO_MIGRATION.md`; the retired SQL is in `docs/archive/supabase/`. Implementation status lives in `docs/FEATURE_TRACKER.md`, not in this file.
+
 **Status: requirements and architecture only. Nothing in this document is implemented.** No planner code, migration or UI exists yet. Every requirement below is marked *Spec only* until it is built, and *Implemented* / *Verified* are separate states (see [Status legend](#13-status-legend)). The schema in section 6 is a **proposal for review**, not a migration and not tested.
 
 > **A missed day is an event, not an identity. Progress should help people return, not make them feel guilty.**

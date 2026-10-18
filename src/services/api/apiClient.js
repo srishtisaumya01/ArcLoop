@@ -116,7 +116,10 @@ export function createApiClient({ baseUrl, fetchImpl, storage = browserStorage()
   }
 }
 
-const rawBase = import.meta.env?.VITE_API_BASE_URL
+// In development the API is assumed to be on the address `manage.py runserver` uses, so a fresh checkout works without
+// configuration. Production builds, and tests, must set VITE_API_BASE_URL explicitly.
+// Each variable is read by its static name so the bundler inlines only these two values, never the whole environment.
+const rawBase = import.meta.env?.VITE_API_BASE_URL ?? (import.meta.env?.MODE === 'development' ? 'http://127.0.0.1:8000/api/v1' : undefined)
 // A value copied from .env.example is a placeholder, not configuration.
 export const isApiConfigured = typeof rawBase === 'string' && /^https?:\/\//.test(rawBase) && !/your-/i.test(rawBase)
 

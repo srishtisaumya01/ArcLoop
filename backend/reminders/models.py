@@ -1,4 +1,4 @@
-"""Reminder tables, mirroring supabase/migrations/20261018000000_create_reminders.sql.
+"""Reminder tables, ported from the archived Postgres design (docs/archive/supabase/20261018000000_create_reminders.sql).
 
 Only preferences and per-task reminder times are stored. Delivery happens in the open app; there is no
 server-side scheduler or push service (see docs/KNOWN_ISSUES.md).

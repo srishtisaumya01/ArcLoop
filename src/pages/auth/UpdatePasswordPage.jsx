@@ -11,13 +11,12 @@ import { useAuth } from '../../hooks/useAuth.js'
 import { useForm } from '../../hooks/useForm.js'
 import { usePageMeta } from '../../hooks/usePageMeta.js'
 import { updatePassword } from '../../services/authService.js'
-import { isDjango } from '../../services/backend.js'
 import { ROUTES } from '../../constants/navigation.js'
 import { PASSWORD_MIN_LENGTH, validateNewPassword } from '../../utils/validation.js'
 import { colors } from '../../theme/tokens.js'
 
 // useAsyncSubmit passes one value, so the password and its options travel together.
-const changePassword = ({ password, options }) => (options ? updatePassword(password, options) : updatePassword(password))
+const changePassword = ({ password, options }) => updatePassword(password, options)
 
 const validate = ({ password, confirm, currentPassword, needsCurrent }) => ({
   currentPassword: needsCurrent && !currentPassword ? 'Enter your current password.' : undefined,
@@ -26,15 +25,14 @@ const validate = ({ password, confirm, currentPassword, needsCurrent }) => ({
 })
 
 // Landing page for the password-reset email link, and the "change password" page for signed-in users.
-// Supabase: its client turns the link into a session; without one the link is invalid or expired.
-// Django: the link carries `uid` and `token`, which are sent with the new password; a signed-in user
-// without a link must give their current password instead.
+// The emailed link carries `uid` and `token`, which are sent with the new password (it works in any browser and
+// only once); a signed-in user without a link must give their current password instead.
 export default function UpdatePasswordPage() {
   usePageMeta('Choose a new password')
   const { status: authStatus } = useAuth()
   const [params] = useSearchParams()
-  const reset = isDjango && params.get('uid') && params.get('token') ? { uid: params.get('uid'), token: params.get('token') } : null
-  const needsCurrent = isDjango && !reset
+  const reset = params.get('uid') && params.get('token') ? { uid: params.get('uid'), token: params.get('token') } : null
+  const needsCurrent = !reset
   const { status, error, submit } = useAsyncSubmit(changePassword)
   const { values, errors, onChange, onBlur, handleSubmit } = useForm({ initialValues: { password: '', confirm: '', currentPassword: '' }, validate: (v) => validate({ ...v, needsCurrent }) })
 
@@ -82,7 +80,7 @@ export default function UpdatePasswordPage() {
         </Typography>
       }
     >
-      <Box component="form" noValidate onSubmit={handleSubmit(({ password, currentPassword }) => submit({ password, options: isDjango ? { reset, currentPassword } : undefined }))} sx={{ display: 'grid', gap: 2.5 }}>
+      <Box component="form" noValidate onSubmit={handleSubmit(({ password, currentPassword }) => submit({ password, options: reset ? { reset } : { currentPassword } }))} sx={{ display: 'grid', gap: 2.5 }}>
         {needsCurrent && (
           <PasswordField name="currentPassword" label="Current password" value={values.currentPassword} onChange={onChange} onBlur={onBlur} error={errors.currentPassword} autoComplete="current-password" />
         )}

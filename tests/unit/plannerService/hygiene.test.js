@@ -23,10 +23,12 @@ describe('planner services', () => {
     expect(plannerServiceFiles.filter((f) => forbidden.test(strip(readFileSync(f, 'utf8'))))).toEqual([])
   })
 
-  it('only the factory\'s entry point touches the shared Supabase client, and it does so lazily', () => {
-    const importers = plannerServiceFiles.filter((f) => /supabaseClient\.js/.test(strip(readFileSync(f, 'utf8'))))
+  it('only the factory\'s entry point touches the shared data client (through the backend module), and it does so lazily', () => {
+    const importers = plannerServiceFiles.filter((f) => /backend\.js|api\/(apiClient|djangoClient)\.js/.test(strip(readFileSync(f, 'utf8'))))
     expect(importers.map((f) => relative(SRC, f).replace(/\\/g, '/'))).toEqual(['services/planner/index.js'])
-    expect(strip(readFileSync(join(SRC, 'services/planner/index.js'), 'utf8'))).toMatch(/getClient:\s*\(\)\s*=>\s*supabase/)
+    const entry = strip(readFileSync(join(SRC, 'services/planner/index.js'), 'utf8'))
+    expect(entry).toMatch(/from\s+['"]\.\.\/backend\.js['"]/) // never the API client directly: one module creates it
+    expect(entry).toMatch(/getClient:\s*\(\)\s*=>\s*dataClient/)
   })
 
   it('never use a service-role key or a database password', () => {
@@ -35,14 +37,18 @@ describe('planner services', () => {
 })
 
 describe('database access stays inside the services layer', () => {
-  it('no component, page, hook or context imports the Supabase client object (only the isSupabaseConfigured flag is allowed)', () => {
+  it('no component, page, hook or context imports a client object (only the configuration flags are allowed)', () => {
     const outside = files.filter((f) => !relative(SRC, f).replace(/\\/g, '/').startsWith('services/'))
+    const flags = new Set(['isBackendConfigured'])
     const offenders = []
     for (const f of outside) {
-      for (const m of strip(readFileSync(f, 'utf8')).matchAll(/import\s*\{([^}]*)\}\s*from\s*['"][^'"]*supabaseClient\.js['"]/g)) {
+      const text = strip(readFileSync(f, 'utf8'))
+      for (const m of text.matchAll(/import\s*\{([^}]*)\}\s*from\s*['"][^'"]*backend\.js['"]/g)) {
         const names = m[1].split(',').map((s) => s.trim().split(/\s+as\s+/)[0]).filter(Boolean)
-        if (names.some((n) => n !== 'isSupabaseConfigured')) offenders.push(`${relative(SRC, f)}: ${names.join(', ')}`)
+        if (names.some((n) => !flags.has(n))) offenders.push(`${relative(SRC, f)}: ${names.join(', ')}`)
       }
+      // The API client and the Django adapter are reached only through the services.
+      if (/from\s*['"][^'"]*services\/api\//.test(text)) offenders.push(`${relative(SRC, f)}: services/api`)
     }
     expect(offenders).toEqual([])
   })

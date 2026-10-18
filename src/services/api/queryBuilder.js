@@ -1,7 +1,6 @@
-// A minimal query builder in the shape of supabase-js / PostgREST, covering exactly the calls the planner
-// and reminder services use. It only collects the query; an `execute(state)` function supplied by the
-// caller decides what happens (a scripted answer in unit tests, real SQL in the PGlite adapter, HTTP
-// requests to the Django API in the Django client).
+// A minimal query builder (`from(table).select().eq()...`) covering exactly the calls the planner and reminder
+// services use. It only collects the query; an `execute(state)` function supplied by the caller decides what
+// happens (a scripted answer in unit tests, HTTP requests to the API in the Django client).
 
 export function createQueryBuilder(table, execute) {
   const state = { table, op: 'select', columns: '*', filters: [], order: [], limit: null, range: null, payload: null, returning: false, single: null }

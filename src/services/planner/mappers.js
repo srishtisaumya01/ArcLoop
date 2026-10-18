@@ -1,8 +1,8 @@
 // Row <-> domain mapping for the planner tables (database snake_case <-> the pure
 // planner's camelCase). Writes are built ONLY from the column lists below, which
-// mirror the column-level GRANTs in supabase/migrations/20261017100000_create_planner.sql
-// (a test compares them with the migration), so the service can never try to write a
-// server-maintained column such as in_original_plan, baseline_at or completed_at.
+// mirror the columns the API lets a client write (backend/planner/resources.py; a test
+// compares them), so the service can never try to write a server-maintained column
+// such as in_original_plan, baseline_at or completed_at.
 
 export const TEMPLATE_COLUMNS =
   'id, title, description, category, is_priority, planned_start, planned_end, estimated_minutes, recurrence, weekdays, starts_on, ends_on, archived_at, created_at'

@@ -3,6 +3,7 @@
 Kept in one place and free of HTTP concerns. ``now()`` is the only place the clock is read, so tests can
 substitute a fixed one (``planner.rules.now`` is looked up at call time).
 """
+import contextvars
 import datetime as dt
 from zoneinfo import ZoneInfo
 
@@ -20,11 +21,15 @@ RECURRENCES = ('once', 'daily', 'weekly')
 DAY_MODES = ('normal', 'busy', 'rest')
 PLAN_STATES = ('active', 'excluded')
 EXCLUDED_REASONS = ('rescheduled', 'busy_day', 'rest_day', 'removed')
-COMPLETIONS = ('0', '0.0', '0.5', '1', '1.0')
+
+
+# Set per request by config.middleware.TestClockMiddleware, which exists only when the server is started for
+# automated tests (DEBUG plus ARCLOOP_TEST_CLOCK=1). Otherwise it is always None and ``now()`` is the real time.
+test_now = contextvars.ContextVar('planner_test_now', default=None)
 
 
 def now():
-    return timezone.now()
+    return test_now.get() or timezone.now()
 
 
 def today_for(user):

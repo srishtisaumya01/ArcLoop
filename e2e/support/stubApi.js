@@ -1,10 +1,10 @@
-// In-memory stand-in for the Supabase REST (PostgREST) and auth endpoints, used by the browser tests.
-// It understands the query shapes supabase-js sends (filters, order, object/array accept headers),
-// stores inserts, updates and deletes per test, enforces the two unique rules the migrations have,
-// and imitates the two server-set timestamps the app reads back (completed_at, baseline_at).
-// It is NOT Supabase: nothing here proves hosted RLS, PostgREST or the auth service.
-export const API = 'http://127.0.0.1:54321'
-export const USER_ID = '11111111-1111-4111-8111-000000000001'
+// In-memory stand-in for the Arcloop (Django) API, used by the browser tests that run without a server.
+// It understands the collection URLs the app sends (`/api/v1/<name>/` with `col`, `col__op`, order, limit and offset),
+// stores creates, updates and deletes per test, enforces the two unique rules the models have, and imitates the
+// server-set values the app reads back (completed_at, excluded_at, baseline_at, in_original_plan).
+// It is NOT the real API: the real one is exercised by the e2e-django suite (npm run test:e2e:django).
+export const API = 'http://127.0.0.1:54321/api/v1'
+export const USER_ID = 1
 export const EMAIL = 'asha@example.com'
 export const TODAY = '2026-03-10' // a Tuesday; the browser clock is pinned to 11:00 New York
 export const NOW_ISO = '2026-03-10T15:00:00.000Z'
@@ -48,13 +48,19 @@ export function seedData() {
   }
 }
 
+// The session the app stores after sign-in (see src/services/api/apiClient.js).
 export function sessionFor(userId = USER_ID, email = EMAIL) {
-  const b64 = (o) => btoa(JSON.stringify(o)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
-  const accessToken = `${b64({ alg: 'HS256', typ: 'JWT' })}.${b64({ sub: userId, role: 'authenticated', exp: 4102444800 })}.e2e-signature`
-  const user = { id: userId, email, aud: 'authenticated', role: 'authenticated', app_metadata: {}, user_metadata: {}, created_at: '2026-01-01T00:00:00Z' }
-  return { access_token: accessToken, refresh_token: 'e2e-refresh', token_type: 'bearer', expires_in: 3600, expires_at: 4102444800, user }
+  return { token: 'e2e-stub-token', expiresAt: '2999-01-01T00:00:00Z', user: { id: userId, email } }
 }
-export const STORAGE_KEY = 'sb-127-auth-token' // supabase-js derives it from the API host
+export const STORAGE_KEY = 'arcloop.session'
+
+const RESOURCES = {
+  'task-templates': 'task_templates',
+  'day-plans': 'day_plans',
+  'task-occurrences': 'task_occurrences',
+  'reminder-preferences': 'reminder_preferences',
+  'task-reminders': 'task_reminders',
+}
 
 const DEFAULTS = {
   task_templates: () => ({ id: null, description: null, category: null, is_priority: false, planned_start: null, planned_end: null, estimated_minutes: null, weekdays: null, ends_on: null, archived_at: null, created_at: NOW_ISO }),
@@ -64,22 +70,16 @@ const DEFAULTS = {
   task_reminders: () => ({ id: null, plan_date: null, notified_at: null, created_at: NOW_ISO }),
 }
 
-function parseIn(value) {
-  return value.replace(/^\(|\)$/g, '').split(',').map((v) => v.trim().replace(/^"|"$/g, ''))
-}
-function matches(row, key, spec) {
-  const dot = spec.indexOf('.')
-  const op = spec.slice(0, dot)
-  const value = spec.slice(dot + 1)
-  const actual = row[key]
-  if (op === 'eq') return String(actual) === value
+function matchesFilter(row, column, op, value) {
+  const actual = row[column]
+  if (op === '') return String(actual) === value
   if (op === 'neq') return String(actual) !== value
   if (op === 'gte') return String(actual) >= value
   if (op === 'lte') return String(actual) <= value
   if (op === 'gt') return String(actual) > value
   if (op === 'lt') return String(actual) < value
-  if (op === 'is') return value === 'null' ? actual == null : String(actual) === value
-  if (op === 'in') return parseIn(value).includes(String(actual))
+  if (op === 'isnull') return (actual == null) === (value === 'true')
+  if (op === 'in') return value.split(',').includes(String(actual))
   return true
 }
 
@@ -91,35 +91,39 @@ export function createStubApi({ seed = seedData(), mode = 'normal' } = {}) {
 
   const headers = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': '*', 'access-control-expose-headers': '*' }
   const json = (route, status, body) => route.fulfill({ status, contentType: 'application/json', headers, body: JSON.stringify(body) })
+  const error = (route, status, code, message) => json(route, status, { error: { code, message } })
 
   function auth(route, req, url) {
-    const path = url.pathname.replace('/auth/v1', '')
-    if (path === '/token') {
-      const body = JSON.parse(req.postData() || '{}')
-      const grant = url.searchParams.get('grant_type')
-      if (grant === 'password' && body.email === EMAIL && body.password === 'correct-horse-battery') return json(route, 200, sessionFor())
-      // The shape the hosted auth service returns, which supabase-js turns into an error with code 'invalid_credentials'.
-      if (grant === 'password') return json(route, 400, { code: 400, error_code: 'invalid_credentials', msg: 'Invalid login credentials' })
-      if (grant === 'refresh_token') return json(route, 200, sessionFor())
+    const path = url.pathname.replace('/api/v1/auth', '')
+    const body = JSON.parse(req.postData() || '{}')
+    if (path === '/login/') {
+      if (body.email === EMAIL && body.password === 'correct-horse-battery') return json(route, 200, { token: sessionFor().token, expires_at: sessionFor().expiresAt, user: sessionFor().user })
+      return error(route, 401, 'invalid_credentials', 'Email or password is incorrect.')
     }
-    if (path === '/logout') return route.fulfill({ status: 204, headers })
-    if (path === '/user') return json(route, 200, sessionFor().user)
+    if (path === '/me/') return json(route, 200, { id: USER_ID, email: EMAIL, expires_at: sessionFor().expiresAt })
+    if (path === '/logout/' || path.startsWith('/password/') || path === '/account/delete/') return route.fulfill({ status: 204, headers })
     return json(route, 200, {})
   }
 
-  function rest(route, req, url) {
-    const table = url.pathname.split('/').pop()
+  function profile(route, req) {
+    const row = tables.profiles[0]
+    state.log.push({ method: req.method(), table: 'profiles', search: '', body: req.method() === 'GET' ? null : JSON.parse(req.postData() || 'null') })
+    if (req.method() === 'PATCH') Object.assign(row, JSON.parse(req.postData() || '{}'))
+    return json(route, 200, row)
+  }
+
+  function collection(route, req, url, table) {
     const rows = tables[table]
-    if (!rows) return json(route, 404, { code: '42P01', message: `relation "public.${table}" does not exist` })
     const method = req.method()
-    const filters = [...url.searchParams].filter(([k]) => !['select', 'order', 'limit', 'offset'].includes(k))
-    const matching = () => rows.filter((row) => filters.every(([k, spec]) => matches(row, k, spec)))
-    const wantsObject = (req.headers().accept ?? '').includes('vnd.pgrst.object+json')
-    const respond = (status, list) => {
-      if (!wantsObject) return json(route, status, list)
-      if (list.length === 1) return json(route, status, list[0])
-      return json(route, 406, { code: 'PGRST116', message: 'JSON object requested, multiple (or no) rows returned', details: `The result contains ${list.length} rows`, hint: null })
-    }
+    const filters = [...url.searchParams]
+      .filter(([k]) => !['order', 'limit', 'offset'].includes(k))
+      .map(([k, value]) => {
+        const [column, op = ''] = k.split('__')
+        return { column, op, value }
+      })
+    const matching = () => rows.filter((row) => filters.every((f) => matchesFilter(row, f.column, f.op, f.value)))
+    const respond = (status, list) => json(route, status, { results: list })
+    const conflict = () => error(route, 409, 'conflict', 'That already exists.')
     state.log.push({ method, table, search: url.search, body: method === 'GET' ? null : JSON.parse(req.postData() || 'null') })
 
     if (method === 'GET') {
@@ -127,7 +131,7 @@ export function createStubApi({ seed = seedData(), mode = 'normal' } = {}) {
       let list = matching()
       const order = url.searchParams.get('order')
       if (order) {
-        const keys = order.split(',').map((part) => part.split('.'))
+        const keys = order.split(',').map((part) => (part.startsWith('-') ? [part.slice(1), 'desc'] : [part, 'asc']))
         list = [...list].sort((a, b) => {
           for (const [col, dir] of keys) {
             const x = String(a[col] ?? '')
@@ -137,18 +141,20 @@ export function createStubApi({ seed = seedData(), mode = 'normal' } = {}) {
           return 0
         })
       }
-      return respond(200, list)
+      const offset = Number(url.searchParams.get('offset') ?? 0)
+      const limit = Number(url.searchParams.get('limit') ?? 1000)
+      return respond(200, list.slice(offset, offset + limit))
     }
     if (method === 'POST') {
       const body = JSON.parse(req.postData() || '[]')
       const incoming = (Array.isArray(body) ? body : [body]).map((r) => ({ ...DEFAULTS[table](), ...r }))
       for (const row of incoming) {
         if ('id' in row && !row.id) row.id = uid((counter += 1))
-        if (table === 'day_plans' && rows.some((e) => e.plan_date === row.plan_date)) return json(route, 409, { code: '23505', message: 'duplicate key value violates unique constraint "day_plans_pkey"', details: null, hint: null })
+        if (table === 'day_plans' && rows.some((e) => e.plan_date === row.plan_date)) return conflict()
         if (table === 'task_occurrences') {
-          if (row.template_id && rows.some((e) => e.template_id === row.template_id && e.plan_date === row.plan_date)) return json(route, 409, { code: '23505', message: 'duplicate key value violates unique constraint "task_occurrences_template_date_key"', details: null, hint: null })
+          if (row.template_id && rows.some((e) => e.template_id === row.template_id && e.plan_date === row.plan_date)) return conflict()
           const day = tables.day_plans.find((d) => d.plan_date === row.plan_date)
-          row.in_original_plan = !day || day.baseline_at === null // what the trigger does
+          row.in_original_plan = !day || day.baseline_at === null // what the server does
         }
         if (table === 'task_reminders') row.plan_date = tables.task_occurrences.find((o) => o.id === row.occurrence_id)?.plan_date ?? null
         rows.push(row)
@@ -161,7 +167,7 @@ export function createStubApi({ seed = seedData(), mode = 'normal' } = {}) {
       for (const row of targets) {
         Object.assign(row, patch)
         if (table === 'task_occurrences') {
-          // The two server-set timestamps and the baseline rule, as the migration's triggers set them.
+          // The server-set timestamps and the baseline rule.
           if ('completion' in patch) row.completed_at = Number(patch.completion) > 0 ? NOW_ISO : null
           if (patch.plan_state === 'excluded') row.excluded_at = NOW_ISO
           if (patch.plan_state === 'active') row.excluded_at = null
@@ -179,23 +185,27 @@ export function createStubApi({ seed = seedData(), mode = 'normal' } = {}) {
       if (table === 'task_occurrences') tables.task_reminders = tables.task_reminders.filter((r) => !targets.some((t) => t.id === r.occurrence_id))
       return respond(200, targets)
     }
-    return json(route, 405, { message: 'method not allowed' })
+    return error(route, 405, 'method_not_allowed', 'That is not supported.')
   }
 
   async function handle(route) {
     const req = route.request()
     const url = new URL(req.url())
     if (req.method() === 'OPTIONS') return route.fulfill({ status: 204, headers })
-    if (url.pathname.startsWith('/auth/v1/')) return auth(route, req, url)
-    if (!url.pathname.startsWith('/rest/v1/')) return json(route, 404, {})
+    if (!url.pathname.startsWith('/api/v1/')) return json(route, 404, {})
+    if (url.pathname.startsWith('/api/v1/auth/')) return auth(route, req, url)
+    const slug = url.pathname.replace('/api/v1/', '').replace(/\/$/, '')
+    const isProfile = slug === 'profile'
+    const table = RESOURCES[slug]
+    if (!isProfile && !table) return error(route, 404, 'not_found', 'That could not be found.')
     // Error and slow modes affect the reads each screen loads first: planner days and tasks, reminder settings, and the
-    // full profile that Settings reads (the timezone-only profile read every service makes is left alone).
-    const table = url.pathname.split('/').pop()
-    const screenRead = req.method() === 'GET' && (['day_plans', 'task_occurrences', 'reminder_preferences', 'task_reminders'].includes(table) || (table === 'profiles' && (url.searchParams.get('select') ?? '').includes('display_name')))
-    if (state.mode === 'error' && screenRead) return json(route, 500, { message: 'stubbed failure' })
+    // profile that Settings reads (every other page's profile read, for the timezone, is left alone).
+    const onSettings = (req.frame()?.url() ?? '').includes('/app/settings')
+    const screenRead = req.method() === 'GET' && (['day_plans', 'task_occurrences', 'reminder_preferences', 'task_reminders'].includes(table) || (isProfile && onSettings))
+    if (state.mode === 'error' && screenRead) return error(route, 500, 'server_error', 'stubbed failure')
     // Slow mode delays only day reads, so the loading state is visible without every one of a page's reads being slow.
     if (state.mode === 'slow' && screenRead && table !== 'task_occurrences') await new Promise((r) => setTimeout(r, 2000))
-    return rest(route, req, url)
+    return isProfile ? profile(route, req) : collection(route, req, url, table)
   }
 
   return {

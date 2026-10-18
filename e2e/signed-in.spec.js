@@ -1,7 +1,7 @@
 import { TODAY } from './support/stubApi.js'
 import { expect, expectNoHorizontalScroll, isMobile, openNav, test } from './support/fixtures.js'
 
-// Real browser (Chromium), real app and dev server, stubbed Supabase endpoints: see e2e/support/stubApi.js.
+// Real browser (Chromium), real app and dev server, stubbed API endpoints: see e2e/support/stubApi.js.
 
 test.describe('sign-in', () => {
   test.use({ signedIn: false })

@@ -5,11 +5,11 @@ import { renderAt } from './renderRoute.jsx'
 import { summarizeWeek } from '../../src/utils/planner/index.js'
 import { ctx, makeDay, makeOcc } from './planner/fixtures.js'
 
-// Supabase auth and the planner service are mocked; the week data itself is produced by the real
+// Auth and the planner service are mocked; the week data itself is produced by the real
 // pure summarizeWeek, so these tests check the screen against genuine data shapes.
 const h = vi.hoisted(() => ({ getSession: vi.fn(), getWeekSummary: vi.fn() }))
 
-vi.mock('../../src/services/supabaseClient.js', () => ({ isSupabaseConfigured: true, supabase: {} }))
+vi.mock('../../src/services/backend.js', () => ({ isBackendConfigured: true, dataClient: {} }))
 vi.mock('../../src/services/authService.js', () => ({
   getSession: h.getSession,
   signIn: vi.fn(),

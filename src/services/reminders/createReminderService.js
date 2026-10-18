@@ -10,8 +10,8 @@ import {
   validateReminderTime,
 } from '../../utils/planner/index.js'
 
-// Reminder preferences and per-task reminders. Like the planner service: the database (RLS) is the
-// security boundary, the signed-in user comes from the Supabase session, input is validated with the
+// Reminder preferences and per-task reminders. Like the planner service: the server is the
+// security boundary, the signed-in user comes from the session, input is validated with the
 // pure logic before any write, and every failure is a PlannerServiceError.
 //
 // This service only stores and reads reminders and records that one was delivered. It does not

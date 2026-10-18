@@ -2,7 +2,7 @@ import { expect, openNav, test } from './support/fixtures.js'
 
 // Release-readiness checks in a real browser: heading structure on every signed-in screen, and what a person sees
 // when a page cannot be loaded because the connection dropped. Arcloop has no offline mode; this only proves the
-// failure is explained calmly. Stubbed Supabase endpoints, so nothing here touches a hosted project.
+// failure is explained calmly. Stubbed API endpoints (e2e/support/stubApi.js), so nothing here touches a real server.
 
 const SCREENS = ['/app/day', '/app/week', '/app/progress', '/app/recurring', '/app/reminders', '/app/settings']
 

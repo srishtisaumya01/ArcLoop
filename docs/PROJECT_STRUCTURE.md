@@ -1,41 +1,59 @@
 # Project structure
 
-React + Vite (JavaScript/JSX), MUI + Emotion, React Router 7, Lucide icons. No backend yet.
+Frontend: React + Vite (JavaScript/JSX), MUI + Emotion, React Router 7, Lucide icons. Backend: Django 5.2 + Django REST Framework + SQLite (`backend/`).
 
 ```
 src/
-  app/            App.jsx (theme + router provider), router.jsx (lazy routes)
+  app/            App.jsx (theme + router provider), router.jsx (lazy routes, route error element)
   components/
     auth/         AuthLayout, TextInput, PasswordField, SubmitButton, FormError, CheckInboxPanel, RouteGuards
     challenges/   ChallengeCard, FeaturedChallengeCard, JoinPanel (prototype), ProgressPreview
-    common/       PageHeader, StatePanel (empty/error), PageLoader, LegalDocument
+    common/       PageHeader, StatePanel (empty/error), PageLoader, RouteError, LegalDocument
     landing/      Landing page sections
     layout/       AppLayout (skip link, scroll handling), Navbar, Footer
+    planner/      My Day, Week, Recurring Tasks building blocks (TaskRow, TemplateCard, DayCard, ...)
+    profile/ reminders/ settings/   TimezonePrompt, ReminderNotifier, settings sections, DeleteAccount
     ui/           Logo, Section/SectionHeading, DemoBadge
   context/        authContext.js, AuthProvider.jsx (session restore, auth-state listener)
   constants/      navigation (ROUTES), demoChallenges (DEMO DATA), landingContent,
-                  legalContent (DRAFT text), siteConfig (placeholders)
-  hooks/          useAuth, useAsync, useAsyncSubmit, useForm, usePageMeta, usePrototypeSubmit (contact form only)
-  pages/          public/, auth/, challenges/  (one file per route)
-  services/       supabaseClient (only place the client is created), authService, profileService,
-                  challengeService (still demo data)
-  services/planner/  createPlannerService (factory: all planner operations, injectable client + clock),
-                     errors (PlannerServiceError, SERVICE_ERROR), mappers (rows <-> domain, writable columns),
-                     index (wired to the shared client). Not used by any UI yet
+                  legalContent (DRAFT text), siteConfig (placeholders), copy for recovery notes and day modes
+  hooks/          useAuth, useAsync, useAsyncSubmit, useForm, usePageMeta, useDayPlan, useWeekOverview,
+                  useProgressOverview, useRecurringTasks, useRecoveryStatus, useDayReminders, ...
+  pages/          public/, auth/, challenges/, app/  (one file per route)
+  services/
+    api/          apiClient (the one place that knows the API address and holds the session token),
+                  djangoClient (a `from(table).select()...` client over the API), queryBuilder
+    backend.js    creates the data client once; exports the configuration flag screens read
+    authService, profileService, challengeService (still demo data)
+    planner/      createPlannerService (all planner operations, injectable client + clock), errors, mappers
+    reminders/    createReminderService
   theme/          tokens.js (single source of design values), theme.js (MUI theme)
-  utils/          validation, challengeFilters
-tests/unit/       Vitest + Testing Library; planner/ (pure logic), plannerService/ (MOCKED service tests)
-tests/support/    test helpers: queryBuilder, fakeClient, memoryDb (mocks), pgliteSupabase (adapter that runs
-                  service queries as SQL in PGlite under the real RLS; not PostgREST)
-supabase/         migrations/ (SQL, applied in filename order): create_profiles, create_planner; functions/ (empty)
-tests/db/         SQL/RLS tests run in PGlite (harness.js stubs Supabase roles/auth.uid and can fix the clock);
-                  profiles.rls, planner.schema, planner.rls, migrations.hygiene, planner.timezones; plannerSeed.js helpers
-docs/             this folder
+  utils/          planner/ (pure logic), validation, profile, challengeFilters
+
+backend/
+  config/         settings.py (everything environment-specific comes from env vars), errors.py (one error shape),
+                  resources.py (the generic user-scoped collection view), middleware.py (test-only clock), urls.py
+  accounts/       Profile, hashed expiring AuthToken, register/login/logout/password/reset/delete endpoints
+  planner/        TaskTemplate, DayPlan, TaskOccurrence; rules.py (the ported trigger/RLS rules), resources.py
+  reminders/      ReminderPreference, TaskReminder
+  tests/          63 Django tests
+
+tests/
+  unit/           Vitest + Testing Library (node-only; no server needed): planner/ (pure logic),
+                  plannerService/ (mocked), api/ (client and adapter), screens with mocked services
+  integration/    Vitest project that starts a real Django server on a temporary SQLite file: real screens and
+                  services against the real API (harness.js, globalSetup.js, user.js)
+  support/        queryBuilder (re-export), fakeClient and memoryDb (mocks), serviceJourney, plannerSeed
+e2e/              Playwright against the real dev server with an in-memory stub of the API (UI behaviour,
+                  loading/empty/error states, pinned clock)
+e2e-django/       Playwright against the real Django server and a real SQLite file (auth, CORS, planner, deletion)
+scripts/          verify-django.mjs (23-step journey), test-backend.mjs
+docs/             this folder; archive/supabase/ holds the retired Postgres design for reference
 ```
 
 ## Daily Planning & Progress Engine
 
-**Built (pure logic, no UI or database):** `src/utils/planner/`, documented in `docs/DAILY_PLANNING_SPEC.md` section 14.
+Pure logic, no UI or network: `src/utils/planner/`, documented in `docs/DAILY_PLANNING_SPEC.md` section 14.
 
 ```
 src/utils/planner/
@@ -49,41 +67,31 @@ src/utils/planner/
   weekly.js workload.js               Monday-Sunday metrics, remaining effort and fit
   index.js                            re-exports everything
 tests/unit/planner/                   unit tests (fixtures.js holds the fixed clock and builders)
-tests/db/planner.timezones.test.js    JS vs PostgreSQL (PGlite) timezone cross-check
 ```
 
-**Planned, NOT built.** Proposed locations only; none of these files exist:
-
-```
-src/constants/           plannerCopy (approved neutral messages), plannerCategories (suggestions)
-src/services/            taskService, dayPlanService (all database access; no direct calls from components)
-src/hooks/               useDayPlan (load/ensure a day, mutate tasks, refresh)
-src/components/planner/  TaskRow, TaskForm, DayModeSelector, ProgressSummary, SetAsideList
-src/pages/app/           MyDayPage, MyGrowthPage (history, weekly summary)
-supabase/migrations/     task_templates, day_plans, task_occurrences (+ triggers, RLS)
-tests/db/                planner RLS/constraint tests in PGlite
-```
+The server re-enforces the rules that protect data (window, ownership, baseline, caps) in `backend/planner/rules.py`; the client logic decides what to show and what to ask for.
 
 ## Routes
 
 | Path | Page | Data |
 | --- | --- | --- |
 | `/` | Landing | Static copy + labelled sample data |
-| `/challenges` | Explore challenges | Demo data via `challengeService` |
-| `/challenges/:slug` | Challenge details | Demo data; join/leave is a UI prototype |
-| `/login`, `/signup`, `/forgot-password` | Auth pages (guest-only: signed-in users are redirected) | Supabase Auth via `authService` |
-| `/update-password` | Password-reset email landing; also "change password" | Needs a session from the email link |
-| `/app` | Signed-in home (requires auth) | Reads own profile via RLS |
+| `/challenges`, `/challenges/:slug` | Explore, details | Demo data via `challengeService`; join/leave is a UI prototype |
+| `/login`, `/signup`, `/forgot-password` | Auth pages (guest-only) | The API via `authService` |
+| `/update-password` | Reset-link landing (`?uid=&token=`) and signed-in "change password" | The API |
+| `/app` | Signed-in home | Own profile |
+| `/app/day`, `/app/week`, `/app/progress`, `/app/recurring`, `/app/reminders`, `/app/settings` | Planner and settings screens | The API via the services |
 | `/privacy`, `/terms` | Draft legal pages | Draft text, not reviewed |
-| `/contact` | Support | Placeholder contact details; form does not send |
+| `/contact` | Support | Placeholder details; form does not send |
 | `*` | Not found | n/a |
 
-All pages except `/` and the 404 are lazy-loaded (`lazyPage` in `router.jsx`).
+All pages except `/` and the 404 are lazy-loaded (`lazyPage` in `router.jsx`); a page that cannot be loaded shows `RouteError` ("This page didn't load") with a retry.
 
 ## Conventions
 
 - Visual values come from `src/theme/tokens.js`; avoid hardcoded colours or spacing in components.
 - Sample content must live in `constants/` and be labelled with `DemoBadge` or an explicit notice in the UI.
-- Components do not import demo constants for listing/detail data; they call `services/` so Phase 5 can swap the implementation.
+- Components do not call the API or the client directly: screens use hooks, hooks use `services/`. A test enforces it.
+- Read `import.meta.env` variables by static name only (`import.meta.env?.VITE_API_BASE_URL`); a test enforces it.
 - Fields used with `useForm` need id `field-<name>` so the first invalid field can be focused.
-- Static notices use `Alert` (theme default `role="note"`); only real errors use `role="alert"`.
+- Static notices use `Alert` (theme default `role="note"`); only real errors use `role="alert"` (use `FormError`).
