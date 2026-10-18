@@ -7,10 +7,10 @@ import LanguageToggle from '../layout/LanguageToggle.jsx'
 import ThemeToggle from '../layout/ThemeToggle.jsx'
 import { useAuth } from '../../hooks/useAuth.js'
 import { useAppShell } from '../../hooks/useAppShell.js'
-import { useChallengeClock } from '../../hooks/useChallengeClock.js'
+import { useMyChallenges } from '../../hooks/useMyChallenges.js'
 import { useI18n } from '../../hooks/useI18n.js'
 import UserAvatar from './UserAvatar.jsx'
-import { APP_NAV, EXPLORE_NAV, ROUTES, challengePath } from '../../constants/navigation.js'
+import { APP_NAV, EXPLORE_NAV, ROUTES, appChallengePath } from '../../constants/navigation.js'
 import { noMotion } from '../../theme/animations.js'
 import { colors, gradients, navFontFamily } from '../../theme/tokens.js'
 
@@ -74,13 +74,15 @@ function NavList({ items, label, onNavigate }) {
 // A small card for the featured challenge: today's day number and how far through it is.
 function ChallengeMini({ onNavigate }) {
   const { t } = useI18n()
-  const live = useChallengeClock()
-  if (!live || live.clock.status !== 'live') return null
-  const { challenge, clock } = live
+  const { ongoing } = useMyChallenges()
+  const current = ongoing.find((c) => c.clock.status === 'live') // the live challenge that finishes soonest
+  if (!current) return null
+  const { clock } = current
+  const challenge = current
   return (
     <Box
       component={RouterLink}
-      to={challengePath(challenge.slug)}
+      to={appChallengePath(challenge.slug)}
       onClick={onNavigate}
       sx={{ display: 'block', p: 1.75, borderRadius: '14px', bgcolor: 'rgba(255, 255, 255, 0.1)', border: '1px solid rgba(255, 255, 255, 0.22)', color: '#FFFFFF', textDecoration: 'none', '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.16)' } }}
     >

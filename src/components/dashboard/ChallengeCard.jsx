@@ -1,37 +1,34 @@
 import { Link as RouterLink } from 'react-router-dom'
-import { Box, Button, Typography } from '@mui/material'
-import { ArrowRight, Flame } from 'lucide-react'
+import { Box, Button, Skeleton, Typography } from '@mui/material'
+import { Plus, Trophy } from 'lucide-react'
+import MyChallengeCard from '../myChallenges/MyChallengeCard.jsx'
 import Reveal from '../ui/Reveal.jsx'
-import { useChallengeClock } from '../../hooks/useChallengeClock.js'
 import { useI18n } from '../../hooks/useI18n.js'
-import { challengePath } from '../../constants/navigation.js'
-import { colors, gradients, onBrandButtons, radii, shadows } from '../../theme/tokens.js'
+import { useMyChallenges } from '../../hooks/useMyChallenges.js'
+import { ROUTES } from '../../constants/navigation.js'
+import { colors, radii } from '../../theme/tokens.js'
 
-// Where the featured challenge stands today: day number, how far through it is, and what is left.
+// The challenges the person has joined or made, on their dashboard. With none, an invitation to find one.
 export default function ChallengeCard() {
   const { t } = useI18n()
-  const live = useChallengeClock()
-  if (!live || live.clock.status === 'ended') return null
-  const { challenge, clock } = live
+  const { status, ongoing } = useMyChallenges()
+  if (status === 'loading') return <Skeleton variant="rounded" height={200} />
+  if (status === 'error') return null
   return (
     <Reveal delay={60}>
-      <Box sx={{ p: { xs: 2.5, md: 3 }, borderRadius: `${radii.lg}px`, background: gradients.brand, color: colors.textOnDark, boxShadow: shadows.md }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, color: colors.mint300, fontWeight: 700, mb: 1 }}>
-          <Flame size={18} aria-hidden="true" />
-          {t(challenge.title)}
-        </Box>
-        <Typography component="p" sx={{ fontSize: '1.75rem', fontWeight: 800, lineHeight: 1.15 }}>
-          {clock.status === 'live' ? t('Day {day} of {total}', { day: clock.dayNumber, total: clock.totalDays }) : t('Starts soon')}
-        </Typography>
-        <Box aria-hidden="true" sx={{ mt: 1.5, height: 8, borderRadius: 4, bgcolor: 'rgba(255, 255, 255, 0.22)', overflow: 'hidden' }}>
-          <Box sx={{ width: `${Math.round(clock.progress * 100)}%`, height: '100%', borderRadius: 4, background: gradients.accentText }} />
-        </Box>
-        <Typography sx={{ mt: 1, mb: 2, color: 'rgba(255, 255, 255, 0.9)' }}>
-          {clock.daysLeft === 0 ? t('Last day today') : t('{count} days left', { count: clock.daysLeft })}
-        </Typography>
-        <Button component={RouterLink} to={challengePath(challenge.slug)} variant="contained" size="small" endIcon={<ArrowRight size={16} aria-hidden="true" />} sx={onBrandButtons.solid}>
-          {t('View challenge')}
-        </Button>
+      <Box sx={{ display: 'grid', gap: 2 }}>
+        {ongoing.length === 0 ? (
+          <Box sx={{ p: 3, borderRadius: `${radii.lg}px`, border: `1px dashed ${colors.border}`, bgcolor: colors.surface, display: 'grid', gap: 1.5, justifyItems: 'start' }}>
+            <Typography variant="h4" component="h2" sx={{ display: 'flex', gap: 1, alignItems: 'center' }}><Trophy size={20} aria-hidden="true" />{t('No ongoing challenge')}</Typography>
+            <Typography color="text.secondary">{t('Join a challenge, do it with friends, or create your own. It will show up here.')}</Typography>
+            <Button component={RouterLink} to={ROUTES.appChallenges} variant="contained" size="small" startIcon={<Plus size={16} aria-hidden="true" />}>{t('Browse challenges')}</Button>
+          </Box>
+        ) : (
+          <>
+            {ongoing.slice(0, 3).map((item) => <MyChallengeCard key={item.slug} item={item} />)}
+            {ongoing.length > 3 && <Button component={RouterLink} to={ROUTES.appChallenges} size="small">{t('See all {count} challenges', { count: ongoing.length })}</Button>}
+          </>
+        )}
       </Box>
     </Reveal>
   )

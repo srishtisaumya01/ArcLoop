@@ -38,7 +38,7 @@ export default function UserMenu({ onDark = false }) {
         aria-expanded={Boolean(anchor)}
         aria-controls="user-menu"
         onClick={(e) => setAnchor(e.currentTarget)}
-        sx={{ gap: 1, pl: 0.5, pr: { xs: 0.5, sm: 1.25 }, py: 0.5, borderRadius: '999px', color: textColor, border: `1px solid ${onDark ? 'rgba(255,255,255,0.35)' : colors.border}`, bgcolor: onDark ? 'rgba(255,255,255,0.08)' : colors.surface, fontFamily: navFontFamily }}
+        sx={{ gap: 1, pl: 0.5, pr: { xs: 0.5, sm: 1.25 }, py: 0.5, borderRadius: '999px', color: textColor, border: `1px solid ${onDark ? 'rgba(255,255,255,0.55)' : colors.border}`, bgcolor: onDark ? '#1B5BC8' : colors.surface, '&:hover': onDark ? { bgcolor: '#144AA6' } : undefined, boxShadow: onDark ? '0 6px 18px rgba(8, 24, 80, 0.35)' : 'none', fontFamily: navFontFamily }}
       >
         <UserAvatar name={displayName} version={profile?.avatar_version} size={34} />
         <Typography component="span" sx={{ display: { xs: 'none', sm: 'inline' }, fontWeight: 600, fontSize: '0.95rem', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>

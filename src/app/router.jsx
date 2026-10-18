@@ -58,6 +58,8 @@ export const routes = [
         children: [
           { path: ROUTES.app, ...lazyPage(() => import('../pages/app/DashboardPage.jsx')) },
           { path: ROUTES.day, ...lazyPage(() => import('../pages/app/MyDayPage.jsx')) },
+          { path: ROUTES.appChallenges, ...lazyPage(() => import('../pages/app/ChallengesHubPage.jsx')) },
+          { path: `${ROUTES.appChallenges}/:slug`, ...lazyPage(() => import('../pages/app/AppChallengePage.jsx')) },
           { path: ROUTES.profile, ...lazyPage(() => import('../pages/app/ProfilePage.jsx')) },
           { path: ROUTES.settings, ...lazyPage(() => import('../pages/app/SettingsPage.jsx')) },
           { path: ROUTES.progress, ...lazyPage(() => import('../pages/app/ProgressPage.jsx')) },

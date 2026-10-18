@@ -20,6 +20,8 @@ from config.security_log import log_event
 from django.http import HttpResponse
 from django.utils import timezone
 
+from challenges.services import link_pending_memberships
+
 from .models import AuthToken, Profile
 from .serializers import (
     AccountDeleteSerializer,
@@ -74,19 +76,20 @@ class RegisterView(PublicAuthView):
         data = RegisterSerializer(data=request.data)
         data.is_valid(raise_exception=True)
         email, password = data.validated_data['email'], data.validated_data['password']
+        chosen = data.validated_data.get('username')
+        if chosen and Profile.objects.filter(username=chosen).exists():
+            raise validation_error('That username is taken. Try another.', {'username': 'That username is taken. Try another.'}, 'username_taken')
         try:
             with transaction.atomic():
                 if User.objects.filter(username__iexact=email).exists():
                     raise IntegrityError
                 user = User.objects.create_user(username=email, email=email, password=password)
+                if chosen:
+                    Profile.objects.filter(pk=user.pk).update(username=chosen)
         except IntegrityError:
             raise validation_error('An account may already exist for that email. Try logging in or resetting your password.', {'email': 'Try another email, or log in.'}, 'email_taken')
-            chosen = data.validated_data.get('username')
-            if chosen:
-                if Profile.objects.filter(username=chosen).exclude(pk=user.pk).exists():
-                    raise validation_error('That username is taken. Try another.', {'username': 'That username is taken. Try another.'}, 'username_taken')
-                Profile.objects.filter(pk=user.pk).update(username=chosen)
-                user.profile.username = chosen
+        user.refresh_from_db()
+        link_pending_memberships(user)  # friends who named this username or email in a group are put in it
         log_event(request, 'registered', user=user.pk)
         return start_session(request, user, data.validated_data['transport'], status.HTTP_201_CREATED)
 
@@ -155,6 +158,7 @@ class EmailChangeView(APIView):
             raise validation_error('That email is already used by another account.', {'email': 'Try another email.'}, 'email_taken')
         user.username = user.email = email  # the email is also the account's sign-in name inside Django
         user.save(update_fields=['username', 'email'])
+        link_pending_memberships(user)
         log_event(request, 'email_changed', user=user.pk)
         return Response(user_body(user))
 
@@ -291,4 +295,6 @@ class ProfileView(APIView):
         data = ProfileSerializer(profile, data=request.data, partial=True)
         data.is_valid(raise_exception=True)
         data.save()
+        if 'username' in data.validated_data:
+            link_pending_memberships(request.user)
         return Response(ProfileSerializer(profile).data)

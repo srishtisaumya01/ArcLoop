@@ -10,4 +10,5 @@ urlpatterns = [
     path('api/v1/', include('accounts.urls')),
     path('api/v1/', include('planner.urls')),
     path('api/v1/', include('reminders.urls')),
+    path('api/v1/', include('challenges.urls')),
 ]

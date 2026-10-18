@@ -17,11 +17,13 @@ export const ROUTES = {
   progress: '/app/progress',
   settings: '/app/settings',
   profile: '/app/profile',
+  appChallenges: '/app/challenges',
   privacy: '/privacy',
   terms: '/terms',
   contact: '/contact',
 }
 
+export const appChallengePath = (slug) => `${ROUTES.appChallenges}/${slug}`
 export const challengePath = (slug) => `${ROUTES.challenges}/${slug}`
 
 // Primary navigation. `hash` entries scroll within the landing page.
@@ -38,6 +40,7 @@ export const APP_NAV = [
   { label: 'My Day', to: ROUTES.day, icon: 'day' },
   { label: 'Week', to: ROUTES.week, icon: 'week' },
   { label: 'Progress', to: ROUTES.progress, icon: 'progress' },
+  { label: 'Challenges', to: ROUTES.appChallenges, icon: 'challenges' },
   { label: 'Recurring Tasks', to: ROUTES.recurring, icon: 'recurring' },
   { label: 'Reminders', to: ROUTES.reminders, icon: 'reminders' },
   { label: 'Settings', to: ROUTES.settings, icon: 'settings' },
@@ -45,7 +48,6 @@ export const APP_NAV = [
 
 // Public pages worth a shortcut from the sidebar.
 export const EXPLORE_NAV = [
-  { label: 'Challenges', to: ROUTES.challenges, icon: 'challenges' },
   { label: 'Participants', to: ROUTES.participants, icon: 'participants' },
 ]
 
