@@ -46,30 +46,3 @@ export const DEMO_PREVIEW_HABITS = [
   { name: 'Strength session', note: '3 days a week', done: false },
   { name: 'Weekly review', note: 'Sundays', done: false },
 ]
-
-export const FAQS = [
-  {
-    q: 'Is Arcloop available yet?',
-    a: 'Arcloop is in early development. This page describes what we are building. Accounts and the core app are being added in stages, so a feature described here may not be live yet, and sample content is always labelled as such.',
-  },
-  {
-    q: 'Is Arcloop only for students or fitness?',
-    a: 'No. Arcloop is for any habit or goal: health, learning, creative work, career, or personal growth. Winter Arc 90 is our first campaign, not the whole product.',
-  },
-  {
-    q: 'What happens if I miss a day?',
-    a: 'Nothing bad. Arcloop focuses on consistency over time rather than a perfect chain, and we avoid shaming language by design.',
-  },
-  {
-    q: 'Who can see my habits?',
-    a: 'You decide. The plan is for profile and progress visibility to be controlled by you, enforced in the database, and for private habit names never to appear on shared leaderboards.',
-  },
-  {
-    q: 'Will it cost anything?',
-    a: 'There are no payments or subscriptions planned for the first beta. If that changes we will say so clearly beforehand.',
-  },
-  {
-    q: 'Can I create my own challenge?',
-    a: 'Custom challenges with your own name, duration, rules and visibility are part of the beta plan. They are not available yet.',
-  },
-]

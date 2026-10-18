@@ -18,7 +18,7 @@ import { WELCOME_BACK } from '../../constants/recoveryCopy.js'
 import { usePageMeta } from '../../hooks/usePageMeta.js'
 import { ROUTES } from '../../constants/navigation.js'
 import { PLANNER_CONFIG, addDays, diffDays, isValidDate, startOfWeek } from '../../utils/planner/index.js'
-import { colors, contentWidths } from '../../theme/tokens.js'
+import { colors, contentWidths, onBrandButtons } from '../../theme/tokens.js'
 
 const MODES = [
   { value: 'normal', label: 'Normal' },
@@ -85,7 +85,7 @@ export default function MyDayPage() {
   return (
     <>
       <PageHeader eyebrow="My Day" title={target ? `${weekdayName(target)}, ${formatDay(target)}` : 'My Day'} description="Check things off as you go. Partly done counts, and a missed day is just a day. Progress, not perfection.">
-        <Button component={RouterLink} to={target ? `${ROUTES.week}?week=${startOfWeek(target)}&day=${target}` : ROUTES.week} variant="outlined" size="small">
+        <Button component={RouterLink} to={target ? `${ROUTES.week}?week=${startOfWeek(target)}&day=${target}` : ROUTES.week} variant="outlined" size="small" sx={onBrandButtons.glass}>
           Back to your week
         </Button>
       </PageHeader>

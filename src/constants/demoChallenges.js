@@ -21,9 +21,9 @@ export const DEMO_CHALLENGES = [
     durationLabel: '90 days',
     visibility: 'public',
     organizer: { name: 'Arcloop', role: 'Official campaign' },
-    startDate: null,
-    endDate: null,
-    scheduleLabel: 'Dates to be announced',
+    startDate: '2026-10-01',
+    endDate: '2026-12-29',
+    scheduleLabel: '1 October to 29 December 2026',
     summary:
       'Ninety days to build a few habits that stick through the colder, darker months. Pick your own habits, check in, and grow alongside others.',
     description:

@@ -18,7 +18,7 @@ export default function StatePanel({ icon: Icon, title, text, action, tone = 'ne
       }}
     >
       {Icon && (
-        <Box sx={{ width: 56, height: 56, mx: 'auto', mb: 2, borderRadius: '50%', display: 'grid', placeItems: 'center', bgcolor: isError ? '#FDECEA' : colors.bgAlt, color: isError ? colors.error : colors.blue600 }}>
+        <Box sx={{ width: 56, height: 56, mx: 'auto', mb: 2, borderRadius: '50%', display: 'grid', placeItems: 'center', bgcolor: isError ? colors.errorBg : colors.bgAlt, color: isError ? colors.error : colors.blue600 }}>
           <Icon size={26} aria-hidden="true" />
         </Box>
       )}

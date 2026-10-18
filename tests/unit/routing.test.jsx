@@ -17,6 +17,8 @@ describe('routing', () => {
   const pages = [
     ['/challenges', 'Explore challenges'],
     ['/challenges/winter-arc-90', 'Winter Arc 90'],
+    ['/participants', 'Top participants this week'],
+    ['/how-it-works', 'From your first log-in to a steady streak'],
     ['/login', 'Welcome back'],
     ['/signup', 'Create your account'],
     ['/forgot-password', 'Reset your password'],

@@ -1,72 +1,53 @@
-import { Box, Typography } from '@mui/material'
-import { Check, Lock } from 'lucide-react'
+import { Link as RouterLink } from 'react-router-dom'
+import { Box, Button, Typography } from '@mui/material'
+import { ArrowRight, Check } from 'lucide-react'
 import { Section, SectionHeading } from '../ui/Section.jsx'
-import DemoBadge from '../ui/DemoBadge.jsx'
+import Reveal from '../ui/Reveal.jsx'
+import GroupPlan from './GroupPlan.jsx'
+import { useI18n } from '../../hooks/useI18n.js'
 import { GROUP_POINTS } from '../../constants/landingContent.js'
-import { colors, radii } from '../../theme/tokens.js'
+import { ROUTES } from '../../constants/navigation.js'
+import { colors, onBrandButtons } from '../../theme/tokens.js'
 
-const SAMPLE_MEMBERS = [
-  { name: 'Member A', shared: '5 check-ins this week' },
-  { name: 'Member B', shared: '3 check-ins this week' },
-  { name: 'Member C', shared: 'Progress hidden', hidden: true },
-]
-
+// Friends and groups: why do a challenge together, and the plan for joining one as a group.
 export default function GroupsSection() {
+  const { t } = useI18n()
   return (
     <Section tone="dark" id="groups">
-      <Box sx={{ display: 'grid', gap: { xs: 6, md: 8 }, alignItems: 'center', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' } }}>
+      <Box sx={{ display: 'grid', gap: { xs: 6, md: 8 }, alignItems: 'center', gridTemplateColumns: { xs: '1fr', md: '1fr 1.05fr' } }}>
         <Box>
-          <SectionHeading
-            onDark
-            eyebrow="Friends and groups"
-            title="Accountability that respects your privacy"
-            description="Habits stick better with people around you. Arcloop is designed so you can be encouraged without being exposed."
-          />
+          <Reveal>
+            <SectionHeading
+              eyebrow={t('Friends and groups')}
+              title={t('Take a challenge on together')}
+              description={t('Habits stick better with people around you. Create a group for a challenge, add your friends by name and username, and check in side by side, sharing only what you choose.')}
+            />
+          </Reveal>
           <Box component="ul" sx={{ listStyle: 'none', m: 0, p: 0, display: 'grid', gap: 2, mt: -2 }}>
-            {GROUP_POINTS.map((p) => (
-              <Box component="li" key={p} sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start' }}>
-                <Box sx={{ mt: '3px', color: colors.ice400, flexShrink: 0 }}>
+            {GROUP_POINTS.map((p, i) => (
+              <Reveal as="li" key={p} delay={i * 110} sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start' }}>
+                <Box sx={{ mt: '3px', color: colors.mint300, flexShrink: 0 }}>
                   <Check size={20} aria-hidden="true" />
                 </Box>
-                <Typography sx={{ color: colors.textOnDarkMuted }}>{p}</Typography>
-              </Box>
+                <Typography sx={{ color: colors.textOnDarkMuted }}>{t(p)}</Typography>
+              </Reveal>
             ))}
           </Box>
+          <Reveal delay={300}>
+            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mt: 4 }}>
+              <Button component={RouterLink} to={ROUTES.howItWorks} variant="contained" size="large" endIcon={<ArrowRight size={18} />} sx={onBrandButtons.solid}>
+                {t('See how joining works')}
+              </Button>
+              <Button component={RouterLink} to={ROUTES.challenges} variant="outlined" size="large" sx={onBrandButtons.glass}>
+                {t('Browse challenges')}
+              </Button>
+            </Box>
+          </Reveal>
         </Box>
 
-        <Box
-          role="img"
-          aria-label="Illustrative preview of a group's shared progress using sample data, where one member has chosen to hide their progress"
-          sx={{ bgcolor: colors.navy800, border: '1px solid rgba(255,255,255,0.12)', borderRadius: `${radii.lg}px`, p: { xs: 2.5, md: 3.5 } }}
-        >
-          <Box aria-hidden="true">
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2.5, gap: 1, flexWrap: 'wrap' }}>
-              <Typography variant="h4" component="p">
-                Sample group
-              </Typography>
-              <DemoBadge onDark />
-            </Box>
-            <Box sx={{ display: 'grid', gap: 1.25 }}>
-              {SAMPLE_MEMBERS.map((m) => (
-                <Box key={m.name} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, p: 1.75, borderRadius: `${radii.md}px`, bgcolor: 'rgba(255,255,255,0.06)' }}>
-                  <Box sx={{ width: 36, height: 36, borderRadius: '50%', display: 'grid', placeItems: 'center', bgcolor: colors.ice400, color: colors.navy900, fontWeight: 800 }}>
-                    {m.name.slice(-1)}
-                  </Box>
-                  <Box sx={{ flex: 1, minWidth: 0 }}>
-                    <Typography sx={{ fontWeight: 700 }}>{m.name}</Typography>
-                    <Typography variant="body2" sx={{ color: colors.textOnDarkMuted, display: 'flex', alignItems: 'center', gap: 0.75 }}>
-                      {m.hidden && <Lock size={14} />}
-                      {m.shared}
-                    </Typography>
-                  </Box>
-                </Box>
-              ))}
-            </Box>
-            <Typography variant="body2" sx={{ mt: 2.5, color: colors.textOnDarkMuted }}>
-              Habit names are never shown to the group unless you choose to share them.
-            </Typography>
-          </Box>
-        </Box>
+        <Reveal delay={150}>
+          <GroupPlan />
+        </Reveal>
       </Box>
     </Section>
   )

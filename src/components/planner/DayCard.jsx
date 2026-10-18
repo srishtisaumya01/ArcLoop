@@ -26,7 +26,7 @@ export default function DayCard({ entry, isToday, selected, onSelect }) {
       </Typography>
       {/* A badge on the card's edge, so marking today never makes the date line wrap and misalign the card. */}
       {isToday && (
-        <Box component="span" aria-hidden="true" sx={{ position: 'absolute', top: -11, right: 10, px: 1, py: '1px', borderRadius: '10px', bgcolor: colors.navy900, color: '#fff', fontSize: '0.6875rem', fontWeight: 700, lineHeight: 1.6 }}>
+        <Box component="span" aria-hidden="true" sx={{ position: 'absolute', top: -11, right: 10, px: 1, py: '1px', borderRadius: '10px', bgcolor: colors.ink, color: colors.onInk, fontSize: '0.6875rem', fontWeight: 700, lineHeight: 1.6 }}>
           Today
         </Box>
       )}
