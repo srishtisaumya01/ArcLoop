@@ -16,7 +16,7 @@ const navLinkSx = {
   fontWeight: 500,
   fontSize: '1rem',
   letterSpacing: '0.01em',
-  px: 1.5,
+  px: 1.25,
   py: 1,
   whiteSpace: 'nowrap',
   borderRadius: 2,
@@ -25,7 +25,7 @@ const navLinkSx = {
   '&[aria-current="page"]': { color: colors.textPrimary, bgcolor: colors.bgAlt },
 }
 
-const navButtonSx = { whiteSpace: 'nowrap', fontFamily: navFontFamily, fontWeight: 600, fontSize: '0.9375rem', letterSpacing: '0.01em', minHeight: 40, px: 2.25, py: '6px' }
+const navButtonSx = { whiteSpace: 'nowrap', fontFamily: navFontFamily, fontWeight: 600, fontSize: '0.9375rem', letterSpacing: '0.01em', minHeight: 40, px: 2, py: '6px' }
 
 export default function Navbar() {
   const [open, setOpen] = useState(false)
@@ -51,13 +51,13 @@ export default function Navbar() {
 
   return (
     <AppBar position="sticky" color="transparent" elevation={0} sx={{ py: `${navGap}px`, boxShadow: 'none', pointerEvents: 'none' }}>
-      <Container sx={{ maxWidth: `${contentWidths.page + 240}px !important`, pointerEvents: 'auto' }}>
+      <Container sx={{ maxWidth: `${contentWidths.page}px !important`, pointerEvents: 'auto' }}>
         <Toolbar
           disableGutters
           sx={{
             minHeight: `${navHeight}px !important`,
-            gap: 2,
-            px: { xs: 2, md: 3 },
+            gap: 1.5,
+            px: { xs: 2, md: 2.5 },
             bgcolor: colors.surface,
             borderRadius: '20px',
             border: `1px solid ${colors.border}`,
@@ -65,10 +65,10 @@ export default function Navbar() {
           }}
         >
           <Box component={RouterLink} to={ROUTES.home} aria-label={t('Arcloop home')} sx={{ textDecoration: 'none', borderRadius: 1, flexShrink: 0 }}>
-            <Logo size={46} />
+            <Logo size={40} />
           </Box>
 
-          <Box component="nav" aria-label={signedIn ? 'App' : 'Primary'} sx={{ display: { xs: 'none', nav: 'flex' }, gap: 0.5, ml: 2 }}>
+          <Box component="nav" aria-label={signedIn ? 'App' : 'Primary'} sx={{ display: { xs: 'none', nav: 'flex' }, gap: 0.25, ml: 1.5 }}>
             {links.map((l) => (
               <Box key={l.label} component={linkComponent} to={l.to} sx={navLinkSx}>
                 {signedIn ? l.label : t(l.label)}
