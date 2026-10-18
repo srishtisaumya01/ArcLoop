@@ -93,7 +93,7 @@ export default function JoinFlow() {
         <Box sx={{ width: '100%', p: { xs: 2.5, md: 3 }, borderRadius: `${radii.lg}px`, bgcolor: colors.bgAlt, border: `1px solid ${colors.border}`, textAlign: 'center' }}>
           <Typography sx={{ fontWeight: 800, mb: 0.5 }}>Then, every day</Typography>
           <Typography color="text.secondary">
-            Check in on your scheduled days. n8n sends your reminder, nudges you kindly after a missed day, and every Sunday you get
+            Check in on your scheduled days. You get a reminder each morning, a kind nudge after a missed day, and every Sunday you get
             your weekly report and the top participants list is refreshed.
           </Typography>
         </Box>

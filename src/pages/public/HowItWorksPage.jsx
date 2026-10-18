@@ -3,14 +3,14 @@ import PageHeader from '../../components/common/PageHeader.jsx'
 import { Section, SectionHeading } from '../../components/ui/Section.jsx'
 import JoinFlow from '../../components/community/JoinFlow.jsx'
 import JoinRules from '../../components/community/JoinRules.jsx'
-import N8nArchitecture from '../../components/community/N8nArchitecture.jsx'
+import AutomationFlow from '../../components/community/AutomationFlow.jsx'
 import AutomationCards from '../../components/community/AutomationCards.jsx'
 import FinalCta from '../../components/landing/FinalCta.jsx'
 import { usePageMeta } from '../../hooks/usePageMeta.js'
 import { colors } from '../../theme/tokens.js'
 
 export default function HowItWorksPage() {
-  usePageMeta('How it works', 'How to join an Arcloop challenge solo, as a friend or as a group, the rules for each, and how n8n automation supports every step.')
+  usePageMeta('How it works', 'How to join an Arcloop challenge solo, as a friend or as a group, the rules for each, and how automation supports every step.')
   return (
     <>
       <PageHeader
@@ -41,10 +41,10 @@ export default function HowItWorksPage() {
       <Section id="automation">
         <SectionHeading
           eyebrow="Under the hood"
-          title="How n8n automation powers each step"
-          description="The Arcloop API raises an event when something happens, or n8n runs on a schedule. Each workflow then sends the right message at the right time."
+          title="How automation powers each step"
+          description="The Arcloop API raises an event when something happens, or the system runs on a schedule. Each workflow then sends the right message at the right time."
         />
-        <N8nArchitecture />
+        <AutomationFlow />
         <Typography variant="h3" component="h3" sx={{ mt: { xs: 6, md: 8 }, mb: 1 }}>
           The workflows, one by one
         </Typography>

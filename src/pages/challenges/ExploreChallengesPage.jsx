@@ -14,7 +14,7 @@ import { listChallenges } from '../../services/challengeService.js'
 import { useAsync } from '../../hooks/useAsync.js'
 import { usePageMeta } from '../../hooks/usePageMeta.js'
 import { CHALLENGE_CATEGORIES, VISIBILITY_OPTIONS } from '../../constants/demoChallenges.js'
-import { COMMUNITY_GROWTH, COMMUNITY_STATS, N8N_WORKFLOWS, WEEK_LABELS } from '../../constants/communityDemo.js'
+import { COMMUNITY_GROWTH, COMMUNITY_STATS, AUTOMATIONS, WEEK_LABELS } from '../../constants/communityDemo.js'
 import { ROUTES } from '../../constants/navigation.js'
 import { ALL, filterChallenges, hasActiveFilters } from '../../utils/challengeFilters.js'
 import { chart, colors, contentWidths, gradients, onBrandButtons, shadows } from '../../theme/tokens.js'
@@ -72,7 +72,7 @@ export default function ExploreChallengesPage() {
             eyebrow="Community growth"
             titleId="community-growth-title"
             title="More people show up every week"
-            description="Active participants across all challenges, and what n8n automation does for you once you join."
+            description="Active participants across all challenges, and the automation that supports you once you join."
           />
           <Box sx={{ mb: 3 }}>
             <StatTiles stats={COMMUNITY_STATS} />
@@ -91,14 +91,14 @@ export default function ExploreChallengesPage() {
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                 <Workflow size={20} aria-hidden="true" />
                 <Typography variant="overline" component="p" sx={{ color: colors.mint300 }}>
-                  When you join · powered by n8n
+                  When you join
                 </Typography>
               </Box>
               <Typography variant="h3" component="h3" sx={{ mb: 2.5 }}>
                 Automation that keeps you going
               </Typography>
               <Box component="ul" sx={{ listStyle: 'none', m: 0, p: 0, display: 'grid', gap: 1.75, mb: 3 }}>
-                {N8N_WORKFLOWS.map((w) => (
+                {AUTOMATIONS.map((w) => (
                   <Box component="li" key={w.key} sx={{ display: 'flex', gap: 1.25 }}>
                     <Box sx={{ color: colors.mint300, mt: '3px', flexShrink: 0 }}>
                       <Check size={18} aria-hidden="true" />

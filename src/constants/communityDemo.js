@@ -1,6 +1,6 @@
 // DEMO DATA. Illustrative community numbers, participants and feedback for previewing the Challenges, Participants and
 // How it works pages. None of it is real activity, and every screen that shows it labels it as sample data.
-// The n8n automations describe the planned design; they are not running yet.
+// The automations describe the planned design; they are not running yet.
 
 export const WEEK_LABELS = ['W1', 'W2', 'W3', 'W4', 'W5', 'W6', 'W7', 'W8', 'W9', 'W10', 'W11', 'W12']
 
@@ -14,7 +14,7 @@ export const COMMUNITY_STATS = [
   { label: 'Groups running', value: '86', note: '2 to 10 members each' },
 ]
 
-// Average weekly consistency (% of scheduled check-ins kept) for participants with and without the n8n nudges.
+// Average weekly consistency (% of scheduled check-ins kept) for participants with and without the automated nudges.
 export const AUTOMATION_WEEKS = ['W1', 'W2', 'W3', 'W4', 'W5', 'W6', 'W7', 'W8']
 export const AUTOMATION_IMPACT = {
   withNudges: [62, 66, 69, 72, 74, 76, 78, 79],
@@ -55,8 +55,8 @@ export const TOP_FEEDBACK = [
   },
 ]
 
-// Planned n8n workflows. `trigger` is what starts the workflow; `action` is what the participant receives.
-export const N8N_WORKFLOWS = [
+// Planned automation workflows. `trigger` is what starts the workflow; `action` is what the participant receives.
+export const AUTOMATIONS = [
   {
     key: 'welcome',
     title: 'Welcome & rules',
@@ -107,7 +107,7 @@ export const JOIN_BRANCHES = {
     title: 'Create a group',
     steps: [
       'Name the group, then add each member with their name and Arcloop username.',
-      'Each member gets an invite (sent by the n8n group workflow) and accepts it.',
+      'Each member gets an invite (sent automatically) and accepts it.',
       'The group challenge is created, and everyone checks in for themselves.',
     ],
   },

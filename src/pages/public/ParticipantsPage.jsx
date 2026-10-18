@@ -152,7 +152,7 @@ const HELPS = [
 ]
 
 export default function ParticipantsPage() {
-  usePageMeta('Top participants', 'This week’s most consistent Arcloop participants, how n8n automation helps them, and what they say.')
+  usePageMeta('Top participants', 'This week’s most consistent Arcloop participants, how automated reminders help them, and what they say.')
   const podium = TOP_PARTICIPANTS.slice(0, 3)
   const rest = TOP_PARTICIPANTS.slice(3)
 
@@ -180,21 +180,21 @@ export default function ParticipantsPage() {
 
       <Section tone="alt" id="growth">
         <SectionHeading
-          eyebrow="Growth with n8n"
+          eyebrow="Growth"
           title="Automation keeps people coming back"
-          description="Participants who receive the n8n reminders and nudges keep more of their scheduled days, week after week."
+          description="Participants who receive the reminders and nudges keep more of their scheduled days, week after week."
         />
         <Box sx={{ display: 'grid', gap: 3, gridTemplateColumns: { xs: '1fr', lg: '1.5fr 1fr' }, alignItems: 'start' }}>
           <ChartCard title="Weekly consistency" subtitle="Average share of scheduled check-ins kept, by week since joining">
             <LineChart
-              ariaLabel="Line chart of weekly consistency over 8 weeks. With n8n reminders and nudges it rises from 62% to 79%. Without them it falls from 58% to 49%."
+              ariaLabel="Line chart of weekly consistency over 8 weeks. With reminders and nudges it rises from 62% to 79%. Without them it falls from 58% to 49%."
               labels={AUTOMATION_WEEKS}
               yMin={40}
               yMax={90}
               yStep={10}
               format={(v) => `${v}%`}
               series={[
-                { key: 'with', label: 'With n8n nudges', color: chart.series1, values: AUTOMATION_IMPACT.withNudges },
+                { key: 'with', label: 'With nudges', color: chart.series1, values: AUTOMATION_IMPACT.withNudges },
                 { key: 'without', label: 'Without nudges', color: chart.series2, values: AUTOMATION_IMPACT.withoutNudges },
               ]}
             />

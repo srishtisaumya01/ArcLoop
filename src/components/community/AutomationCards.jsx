@@ -1,15 +1,15 @@
 import { Box, Card, CardContent, Typography } from '@mui/material'
 import { AlarmClock, ChartColumn, HeartHandshake, MailOpen, Users, Zap } from 'lucide-react'
-import { N8N_WORKFLOWS } from '../../constants/communityDemo.js'
+import { AUTOMATIONS } from '../../constants/communityDemo.js'
 import { colors, gradients } from '../../theme/tokens.js'
 
 const ICONS = { welcome: MailOpen, reminder: AlarmClock, nudge: HeartHandshake, group: Users, report: ChartColumn }
 
-// The planned n8n workflows, one card each: what starts it and what the participant gets.
+// The planned automation workflows, one card each: what starts it and what the participant gets.
 export default function AutomationCards({ columns = 3 }) {
   return (
     <Box component="ul" sx={{ listStyle: 'none', m: 0, p: 0, display: 'grid', gap: 2.5, gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', lg: `repeat(${columns}, 1fr)` } }}>
-      {N8N_WORKFLOWS.map((w) => {
+      {AUTOMATIONS.map((w) => {
         const Icon = ICONS[w.key] ?? Zap
         return (
           <li key={w.key}>

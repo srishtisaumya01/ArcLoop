@@ -1,6 +1,6 @@
 import { Box, Typography } from '@mui/material'
 import { ArrowDown, ArrowRight, BellRing, CalendarClock, Database, Mail, MonitorSmartphone, Server, Trophy, Webhook, Workflow } from 'lucide-react'
-import { N8N_WORKFLOWS } from '../../constants/communityDemo.js'
+import { AUTOMATIONS } from '../../constants/communityDemo.js'
 import { colors, gradients, radii, shadows } from '../../theme/tokens.js'
 
 function Node({ icon: Icon, title, sub, tone = 'light' }) {
@@ -70,13 +70,13 @@ function Column({ title, children, onDark }) {
 
 const row = { display: 'flex', flexDirection: { xs: 'column', md: 'row' }, alignItems: { xs: 'stretch', md: 'center' }, gap: { xs: 0.5, md: 1.5 } }
 
-// Planned architecture: the app and API raise events, n8n runs the workflows, participants get messages and the
+// Planned architecture: the app and API raise events, the automation engine runs the workflows, participants get messages and the
 // leaderboard is written back through the API.
-export default function N8nArchitecture() {
+export default function AutomationFlow() {
   return (
     <Box
       role="figure"
-      aria-label="Planned architecture. The Arcloop web app on Vercel calls the Django API on Render, which stores data in Neon Postgres. The API sends events to n8n by webhook, and n8n also runs on a schedule. n8n workflows send email and in-app notifications and update the leaderboard through the API."
+      aria-label="Planned architecture. The Arcloop web app on Vercel calls the Django API on Render, which stores data in Neon Postgres. The API sends events to the automation engine by webhook, which also runs on a schedule. Its workflows send email and in-app notifications and update the leaderboard through the API."
     >
       <Box aria-hidden="true">
         <Typography variant="overline" component="p" sx={{ color: colors.blue600, mb: 1.25 }}>
@@ -100,7 +100,7 @@ export default function N8nArchitecture() {
         <Box sx={{ borderRadius: `${radii.lg}px`, background: gradients.brand, color: colors.textOnDark, p: { xs: 2.5, md: 3.5 }, boxShadow: shadows.lg }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, mb: 2.5 }}>
             <Workflow size={22} aria-hidden="true" />
-            <Typography sx={{ fontWeight: 800, fontSize: '1.125rem' }}>n8n automation</Typography>
+            <Typography sx={{ fontWeight: 800, fontSize: '1.125rem' }}>Automation</Typography>
             <Box sx={{ ml: 'auto', px: 1.25, py: 0.25, borderRadius: '999px', border: '1px dashed rgba(255, 255, 255, 0.5)', fontSize: '0.8125rem', fontWeight: 600 }}>
               Planned
             </Box>
@@ -114,7 +114,7 @@ export default function N8nArchitecture() {
               <Arrow onDark />
             </Box>
             <Column title="Workflows" onDark>
-              {N8N_WORKFLOWS.map((w) => (
+              {AUTOMATIONS.map((w) => (
                 <Box key={w.key} sx={{ px: 1.5, py: 1, borderRadius: '10px', bgcolor: 'rgba(255, 255, 255, 0.12)', fontWeight: 600, fontSize: '0.9375rem' }}>
                   {w.title}
                 </Box>

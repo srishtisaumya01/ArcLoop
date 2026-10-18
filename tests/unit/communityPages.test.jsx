@@ -23,13 +23,13 @@ describe('Participants page', () => {
     renderAt('/participants')
     await screen.findByRole('heading', { level: 1, name: 'Top participants this week' })
     const legend = screen.getByRole('list', { name: 'Legend' })
-    expect(within(legend).getAllByRole('listitem').map((li) => li.textContent)).toEqual(['With n8n nudges', 'Without nudges'])
+    expect(within(legend).getAllByRole('listitem').map((li) => li.textContent)).toEqual(['With nudges', 'Without nudges'])
     expect(screen.getByText('View as table')).toBeInTheDocument()
   })
 })
 
 describe('How it works page', () => {
-  it('explains the solo/group choice, the rules for each way to join, and the n8n architecture', async () => {
+  it('explains the solo/group choice, the rules for each way to join, and the automation flow', async () => {
     renderAt('/how-it-works')
     await screen.findByRole('heading', { level: 1, name: 'From your first log-in to a steady streak' })
     expect(screen.getByText('Join solo, or create a group?')).toBeInTheDocument()
