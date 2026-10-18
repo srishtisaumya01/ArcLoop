@@ -26,9 +26,7 @@ class Profile(models.Model):
     # The sign-in name. Always stored lower-case, so "Ada" and "ada" are the same person.
     username = models.CharField(max_length=30, unique=True, null=True, blank=True)
     display_name = models.CharField(max_length=60, null=True, blank=True)
-    # A small profile picture, kept in the database (the host's disk is not permanent). Served by /profile/avatar/.
-    avatar = models.BinaryField(null=True, blank=True, editable=False)
-    avatar_type = models.CharField(max_length=20, blank=True, default='')
+    # When the picture last changed (the picture itself is in ProfileAvatar, so ordinary profile reads never load its bytes).
     avatar_updated_at = models.DateTimeField(null=True, blank=True)
     timezone = models.CharField(max_length=64, default='UTC')
     interests = models.JSONField(default=list)
@@ -42,6 +40,15 @@ class Profile(models.Model):
             models.CheckConstraint(condition=models.Q(profile_visibility__in=['private', 'public']), name='profile_visibility_valid'),
             models.CheckConstraint(condition=models.Q(progress_visibility__in=['private', 'public']), name='progress_visibility_valid'),
         ]
+
+
+class ProfileAvatar(models.Model):
+    """The profile picture: one small image per person, kept in the database (the host's disk is not permanent). It lives in
+    its own table so that reading a profile never drags the image along. Served by /profile/avatar/."""
+
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, primary_key=True, on_delete=models.CASCADE, related_name='avatar_image')
+    data = models.BinaryField()
+    content_type = models.CharField(max_length=20)
 
 
 USERNAME_PATTERN = re.compile(r'^[a-z0-9_.]{3,30}$')
@@ -79,6 +86,15 @@ class AuthToken(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     last_used_at = models.DateTimeField(null=True, blank=True)
     expires_at = models.DateTimeField()
+
+    MAX_PER_USER = 5  # logins kept per person (devices); the oldest beyond this are dropped
+
+    @classmethod
+    def prune(cls, user):
+        """Deletes this person's expired logins and any beyond the newest few (room for the one about to be issued)."""
+        cls.objects.filter(user=user, expires_at__lte=timezone.now()).delete()
+        keep = list(cls.objects.filter(user=user).order_by('-created_at').values_list('pk', flat=True)[: cls.MAX_PER_USER - 1])
+        cls.objects.filter(user=user).exclude(pk__in=keep).delete()
 
     @classmethod
     def issue(cls, user):

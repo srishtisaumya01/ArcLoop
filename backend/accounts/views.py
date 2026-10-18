@@ -22,7 +22,7 @@ from django.utils import timezone
 
 from challenges.services import link_pending_memberships
 
-from .models import AuthToken, Profile
+from .models import AuthToken, Profile, ProfileAvatar
 from .serializers import (
     AccountDeleteSerializer,
     EmailChangeSerializer,
@@ -46,6 +46,7 @@ def user_body(user):
 def start_session(request, user, transport, status_code):
     """Issues a session for `user` and answers in the requested transport. The cookie transport never puts the token in
     the body: the browser's script must not hold the credential."""
+    AuthToken.prune(user)  # old and surplus logins are removed as new ones are made, so the table cannot grow without bound
     raw, token = AuthToken.issue(user)
     body = {'expires_at': token.expires_at.isoformat(), 'user': user_body(user)}
     if transport == 'cookie':
@@ -163,7 +164,7 @@ class EmailChangeView(APIView):
         return Response(user_body(user))
 
 
-MAX_AVATAR_BYTES = 300_000
+MAX_AVATAR_BYTES = 60_000  # the app sends a ~192 px JPEG of 10-25 KB; the database has little room
 IMAGE_SIGNATURES = [(b'\xff\xd8\xff', 'image/jpeg'), (b'\x89PNG\r\n\x1a\n', 'image/png')]
 
 
@@ -181,10 +182,10 @@ class AvatarView(APIView):
     """The signed-in person's profile picture: GET it, PUT a new one (the raw image bytes), DELETE it."""
 
     def get(self, request):
-        profile = request.user.profile
-        if not profile.avatar:
+        image = ProfileAvatar.objects.filter(user=request.user).first()
+        if image is None:
             raise ApiError('not_found', 'No profile picture.', status.HTTP_404_NOT_FOUND)
-        response = HttpResponse(bytes(profile.avatar), content_type=profile.avatar_type)
+        response = HttpResponse(bytes(image.data), content_type=image.content_type)
         response['Cache-Control'] = 'private, max-age=86400'
         response['X-Content-Type-Options'] = 'nosniff'
         return response
@@ -192,19 +193,21 @@ class AvatarView(APIView):
     def put(self, request):
         raw = request.body
         if not raw or len(raw) > MAX_AVATAR_BYTES:
-            raise validation_error('Choose a picture under 300 KB.', {'avatar': 'Choose a picture under 300 KB.'}, 'avatar_too_large')
+            raise validation_error('Choose a smaller picture (under 60 KB).', {'avatar': 'Choose a smaller picture (under 60 KB).'}, 'avatar_too_large')
         kind = sniff_image(raw)
         if kind is None:
             raise validation_error('Use a JPEG, PNG or WebP picture.', {'avatar': 'Use a JPEG, PNG or WebP picture.'}, 'avatar_type')
+        ProfileAvatar.objects.update_or_create(user=request.user, defaults={'data': raw, 'content_type': kind})
         profile = request.user.profile
-        profile.avatar, profile.avatar_type, profile.avatar_updated_at = raw, kind, timezone.now()
-        profile.save(update_fields=['avatar', 'avatar_type', 'avatar_updated_at'])
+        profile.avatar_updated_at = timezone.now()
+        profile.save(update_fields=['avatar_updated_at'])
         return Response(ProfileSerializer(profile).data)
 
     def delete(self, request):
+        ProfileAvatar.objects.filter(user=request.user).delete()
         profile = request.user.profile
-        profile.avatar, profile.avatar_type, profile.avatar_updated_at = None, '', None
-        profile.save(update_fields=['avatar', 'avatar_type', 'avatar_updated_at'])
+        profile.avatar_updated_at = None
+        profile.save(update_fields=['avatar_updated_at'])
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 

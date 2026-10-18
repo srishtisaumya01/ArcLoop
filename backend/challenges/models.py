@@ -42,8 +42,8 @@ class GroupMember(models.Model):
     """Someone the creator named: a username and an email. `user` stays empty until that person has an account."""
 
     group = models.ForeignKey(ChallengeGroup, on_delete=models.CASCADE, related_name='members')
-    username = models.CharField(max_length=30)  # lower-case
-    email = models.CharField(max_length=150)  # lower-case
+    username = models.CharField(max_length=30, db_index=True)  # lower-case; looked up when someone signs up
+    email = models.CharField(max_length=150, db_index=True)  # lower-case
     user = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='group_memberships')
     created_at = models.DateTimeField(auto_now_add=True)
 
