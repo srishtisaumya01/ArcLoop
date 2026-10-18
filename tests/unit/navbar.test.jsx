@@ -3,11 +3,11 @@ import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderAt } from './renderRoute.jsx'
 
-// Supabase is "configured" but every network-facing service is mocked: these tests check which
+// The backend is "configured" but every network-facing service is mocked: these tests check which
 // navigation each kind of visitor sees, not any backend.
 const h = vi.hoisted(() => ({ getSession: vi.fn(), getMyProfile: vi.fn() }))
 
-vi.mock('../../src/services/supabaseClient.js', () => ({ isSupabaseConfigured: true, supabase: {} }))
+vi.mock('../../src/services/backend.js', () => ({ isBackendConfigured: true, dataClient: {} }))
 vi.mock('../../src/services/authService.js', () => ({
   getSession: h.getSession,
   signIn: vi.fn(),

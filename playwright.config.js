@@ -1,12 +1,11 @@
 import { defineConfig } from '@playwright/test'
 
-// Real-browser tests for the signed-in screens. They run the real app in Chromium against the real dev
-// server; sign-in and data come from an in-memory stub of the Supabase REST and auth endpoints
-// (e2e/support/stubApi.js), so they prove the UI, routing, forms and client behaviour in a browser,
-// NOT a hosted Supabase project. The two VITE_ values below are fake and only make the app treat
-// Supabase as configured; they are never real credentials.
+// Real-browser tests for the signed-in screens. They run the real app (built for the Django backend) in Chromium against
+// the real dev server; sign-in and data come from an in-memory stub of the Arcloop API (e2e/support/stubApi.js) with the
+// browser clock pinned, so they prove the UI, routing, forms, loading/empty/error states and client behaviour, NOT the
+// server. The real API, real database and real CORS are covered by `npm run test:e2e:django` (playwright.django.config.js).
 const PORT = 5200
-const API = 'http://127.0.0.1:54321'
+const API = 'http://127.0.0.1:54321/api/v1'
 
 export default defineConfig({
   testDir: 'e2e',
@@ -30,6 +29,6 @@ export default defineConfig({
     url: `http://127.0.0.1:${PORT}/`,
     reuseExistingServer: false,
     timeout: 60000,
-    env: { VITE_SUPABASE_URL: API, VITE_SUPABASE_ANON_KEY: 'e2e-fake-public-key-not-a-credential' },
+    env: { VITE_BACKEND: 'django', VITE_API_BASE_URL: API },
   },
 })

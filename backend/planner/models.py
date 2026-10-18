@@ -1,4 +1,4 @@
-"""Planner tables, mirroring supabase/migrations/20261017100000_create_planner.sql.
+"""Planner tables, ported from the archived Postgres design (docs/archive/supabase/20261017100000_create_planner.sql).
 
 The Postgres version enforced much of its integrity in triggers and Row Level Security. Here the same
 rules live in ``planner/rules.py`` and the resource layer (``planner/resources.py``); the database keeps

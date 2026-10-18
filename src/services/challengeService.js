@@ -1,7 +1,7 @@
 import { DEMO_CHALLENGES } from '../constants/demoChallenges.js'
 
 // DEMO IMPLEMENTATION. Reads sample data from constants. Phase 5 replaces the
-// bodies with Supabase queries; the function signatures are the contract the UI
+// bodies with API calls; the function signatures are the contract the UI
 // depends on. The short delay lets loading states behave as they will with a
 // real network.
 const LATENCY_MS = 350

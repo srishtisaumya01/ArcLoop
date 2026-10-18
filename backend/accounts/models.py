@@ -17,7 +17,7 @@ def valid_timezones():
 
 
 class Profile(models.Model):
-    """One row per user, created with the user. Visibility defaults to private, as in the Supabase schema."""
+    """One row per user, created with the user. Visibility defaults to private: nothing is shared yet."""
 
     VISIBILITY = [('private', 'private'), ('public', 'public')]
 

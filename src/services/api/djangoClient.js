@@ -60,7 +60,8 @@ function project(rows, columns) {
   return rows.map((row) => Object.fromEntries(wanted.map((c) => [c, row[c] ?? null])))
 }
 
-export function createDjangoClient(api) {
+// `before(state)` is an optional hook that runs before each query is sent (tests use it to simulate a competing write).
+export function createDjangoClient(api, { before } = {}) {
   async function run(state) {
     const { table } = state
     if (table === 'profiles') return runProfile(state)
@@ -104,6 +105,7 @@ export function createDjangoClient(api) {
   }
 
   async function execute(state) {
+    if (before) await before(state)
     try {
       return shapeResult(project(await run(state), state.columns), state)
     } catch (error) {

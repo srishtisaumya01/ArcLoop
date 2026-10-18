@@ -13,7 +13,7 @@ export const PRIVACY_DRAFT = {
       title: 'Status of this draft',
       paragraphs: [
         'This document has not been reviewed by a lawyer and is not in effect. It does not claim compliance with any specific privacy law.',
-        'At the time of writing, sign-up and login are implemented using Supabase Authentication and a profiles table, but the service has not launched. The contact form is a layout only and does not send or store anything. Public marketing pages do not use analytics or tracking in the current code.',
+        'At the time of writing, sign-up and login are implemented by Arcloop’s own server and database (accounts, profiles, plans and reminders), but the service has not launched. The contact form is a layout only and does not send or store anything. Public marketing pages do not use analytics or tracking in the current code.',
       ],
     },
     {

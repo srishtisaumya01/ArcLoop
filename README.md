@@ -1,36 +1,67 @@
 # Arcloop
 
-Build habits. Keep growing. A personal growth platform for planning your days, building habits, tracking honest progress, and growing with others (React + Vite + MUI, Supabase Auth + Postgres).
+Build habits. Keep growing. A personal growth platform for planning your days, building habits, tracking honest progress, and growing with others. React + Vite + MUI on the front; Django + Django REST Framework + SQLite on the back.
 
 **Core principle: progress, not perfection. A missed day is an event, not an identity. Progress should help people return, not make them feel guilty.**
 
-The foundation feature is the **Daily Planning & Progress Engine**: users build their own daily plans (tasks, recurrence, rest and busy days), see one documented progress calculation, and can revise plans without losing history. It is **specified but not built yet**. See [docs/DAILY_PLANNING_SPEC.md](docs/DAILY_PLANNING_SPEC.md).
+The foundation feature is the **Daily Planning & Progress Engine**: people build their own daily plans (tasks, recurrence, rest and busy days), see one documented progress calculation, and revise plans without losing history. See [docs/DAILY_PLANNING_SPEC.md](docs/DAILY_PLANNING_SPEC.md).
 
 ## Getting started
 
+You need Node 20+ and Python 3.12+. Two servers run side by side: the API (Django) and the app (Vite).
+
 ```bash
+# 1. Frontend dependencies
 npm install
-cp .env.example .env   # add your Supabase project URL + anon key (see docs/SUPABASE_SETUP.md)
-npm run dev
+
+# 2. Backend: virtualenv, dependencies, database
+cd backend
+python -m venv .venv
+.venv/Scripts/activate            # Windows. macOS/Linux: source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env              # backend/.env; DJANGO_DEBUG=true is enough for local development
+python manage.py migrate          # creates backend/db.sqlite3
+python manage.py runserver        # API at http://127.0.0.1:8000/api/v1/
+
+# 3. In a second terminal, from the repository root
+npm run dev                       # app at http://localhost:5173
 ```
+
+In development the app talks to `http://127.0.0.1:8000/api/v1` without any configuration. To point it elsewhere, copy the root `.env.example` to `.env` and set `VITE_API_BASE_URL`; production builds must set it.
+
+Password-reset emails are printed to the API's console in debug mode (nothing is sent). `python manage.py createsuperuser` gives access to the admin at `/admin/`.
+
+The virtualenv, `backend/db.sqlite3`, `backend/.env` and `.env` are git-ignored. Never commit them.
 
 ## Scripts
 
 | Script | Purpose |
 | --- | --- |
-| `npm run dev` | Start the Vite dev server |
-| `npm run build` | Production build into `dist/` |
-| `npm run preview` | Serve the production build |
+| `npm run dev` / `build` / `preview` | Vite dev server, production build into `dist/`, serve the build |
 | `npm run lint` | ESLint |
-| `npm test` | Vitest: unit, component and PGlite database tests (use `npx vitest run --maxWorkers=4` on low memory) |
-| `npm run test:e2e` | Playwright in Chromium (desktop 1440 and mobile 390) against the real dev server with an in-memory stand-in for Supabase. Needs `npx playwright install chromium` once. Proves the UI, not a hosted project |
+| `npm test` | Both Vitest projects: `unit` (no server) and `integration` (starts a real Django server on a temporary SQLite file, so it needs the backend virtualenv) |
+| `npm run test:unit` / `test:integration` | Just one of those |
+| `npm run test:backend` | The Django test suite (63 tests: sign-in, planner rules, reminders, isolation, errors, account deletion) |
+| `npm run test:e2e` | Playwright in Chromium (desktop 1440 and mobile 390) against the real dev server with an **in-memory stand-in for the API** and a pinned clock. UI behaviour, loading/empty/error states. Needs `npx playwright install chromium` once |
+| `npm run test:e2e:django` | Playwright against the **real Django server and a real SQLite file**: sign-up, sign-in, logout, password reset by emailed link, CORS, a planner journey, persistence after reload, two users, account deletion |
+| `npm run verify:django` | Starts a real server on a temporary database and runs a 23-step journey through the real services. Deletes the database afterwards |
 
-### Known limitations
+Both Playwright configs start their own servers on their own ports and temporary databases; none of the tests touch `backend/db.sqlite3` or your `.env`.
 
-- There is no offline mode. If the connection drops, pages that are not loaded yet show a calm "This page didn't load" message with a retry; data screens show their error state with retry. Nothing is cached for offline use.
+## Email and sign-up behaviour
+
+- **Registering signs the user in immediately.** There is no email-confirmation step: this is the intended behaviour for now (the project specification does not require one), and it is documented as a decision to revisit before launch (anyone can register any address). See [docs/DJANGO_MIGRATION.md](docs/DJANGO_MIGRATION.md).
+- **Password reset** sends an email with a single-use link to the app. In development the email goes to the API console; the browser tests use a file backend. For real delivery, set the `DJANGO_EMAIL_*` variables in the API's environment (see `backend/.env.example` and [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)). **No real email has ever been sent**, and no SMTP credentials are in the repository.
+- **Deleting an account** (Settings, "Delete account") needs the password and the word `DELETE`, and permanently removes the account and everything it owns.
+
+## Known limitations
+
+- There is no offline mode. If the connection drops, pages not yet loaded show a calm "This page didn't load" message with a retry; data screens show their error state with a retry. Nothing is cached for offline use.
 - Reminders are delivered only while Arcloop is open in a browser tab.
-- Only Chromium has been run for browser tests. See `docs/KNOWN_ISSUES.md` for the full list.
-- Hosted Supabase checks (migrations, schema check, service journey) are documented in `docs/SUPABASE_SETUP.md` and have not been run against a real project.
+- Only Chromium has been run for browser tests.
+- SQLite suits one API server on one machine; see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for its limits, backups and the list of blockers before real users. **Nothing has been deployed.**
+- Sign-in tokens live in `localStorage`; a Content-Security-Policy at the host is required before launch.
+- Full list: [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md).
 
 ## Design system
 
@@ -40,13 +71,9 @@ Sample or illustrative content is kept in `src/constants/landingContent.js` (`DE
 
 ## Status
 
-- Phase 1 (foundation): complete.
-- Phase 2 (design system + landing page): complete.
-- Phase 2B (public page layouts): complete. Explore and Challenge details use labelled demo data; login, sign-up and password reset were UI-only layouts (now wired to Supabase in Phase 3); the contact form is still a layout only (nothing is sent or saved); Privacy and Terms are unreviewed drafts. Contact and legal identity details are placeholders in `src/constants/siteConfig.js`.
-- Phase 3 (auth + database foundation): code complete, **not yet verified against a real Supabase project**. See [docs/SUPABASE_SETUP.md](docs/SUPABASE_SETUP.md). Without credentials the app runs and the auth pages show an "Accounts are not available" notice.
-- Daily Planning & Progress Engine: **pure planner logic implemented and unit-tested** in `src/utils/planner/` (progress, recurrence, local dates and DST, rescheduling, day modes, snapshots, weekly metrics). It is **not connected to any UI, database or migration yet**, so users cannot use it. The earlier "habits / habit check-ins" plan is superseded by it.
-- Planner database: migration `20261017100000_create_planner.sql` (tasks, day plans, task occurrences, with RLS) is **written and tested in PGlite but not applied to a real Supabase project**. The app's planner screens use it (see below). See `docs/DAILY_PLANNING_SPEC.md` section 15.
-- Planner services: `src/services/planner/` (day plans, tasks, templates, completion, rescheduling, day modes, snapshots, weekly summary) is implemented and tested with mocks and in PGlite, but **not run against a real Supabase project**. The signed-in screens (My Day, Week, Recurring Tasks, Progress, Reminders, Settings) are built on it; their tests run against PGlite, not a real backend or a physical device. See `docs/DAILY_PLANNING_SPEC.md` section 16.
-- Groups, challenge membership, onboarding, `DEPLOYMENT.md` come in later phases.
+- Public pages, design system, auth pages: built.
+- Backend: **Django + SQLite, migrated from Supabase.** Accounts, profiles, the planner tables and reminders, with the rules the earlier Postgres triggers and Row Level Security enforced now in Python. The Supabase code, dependencies, PGlite tests and scripts are removed; the retired SQL is kept for reference in `docs/archive/supabase/`. See [docs/DJANGO_MIGRATION.md](docs/DJANGO_MIGRATION.md) for what moved, what was removed and where its coverage went.
+- Signed-in screens: My Day, Week, Progress, Recurring Tasks, Reminders, Settings (with account deletion). Verified in the browser against the real server on Chromium (see the evidence table in the migration doc).
+- Not yet: deployment, an email provider, email confirmation, groups, challenge membership, onboarding. Challenge data is sample data.
 
-See [docs/](docs/): `DAILY_PLANNING_SPEC.md`, `SUPABASE_SETUP.md`, `SECURITY.md`, `PROJECT_STRUCTURE.md`, `FEATURE_TRACKER.md`, `DEVELOPMENT_LOG.md`, `KNOWN_ISSUES.md`.
+See [docs/](docs/): `DAILY_PLANNING_SPEC.md`, `DJANGO_MIGRATION.md`, `DEPLOYMENT.md`, `SECURITY.md`, `PROJECT_STRUCTURE.md`, `FEATURE_TRACKER.md`, `DEVELOPMENT_LOG.md`, `KNOWN_ISSUES.md`.

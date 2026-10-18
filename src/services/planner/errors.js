@@ -12,7 +12,7 @@ export const SERVICE_ERROR = Object.freeze({
   NOT_FOUND: 'NOT_FOUND', // missing, or not visible to this user (the two are indistinguishable by design)
   CONFLICT: 'CONFLICT', // duplicate or conflicting operation, or a state that blocks this action
   NETWORK: 'NETWORK', // could not reach the server; safe to retry
-  NOT_CONFIGURED: 'NOT_CONFIGURED', // Supabase is not configured in this build
+  NOT_CONFIGURED: 'NOT_CONFIGURED', // the API address is not configured in this build
   UNKNOWN: 'UNKNOWN', // anything else
 })
 
@@ -42,7 +42,8 @@ const CONFLICT_LOGIC = new Set([
 
 const NETWORK_PATTERN = /failed to fetch|network|timeout|timed out|econn|enotfound|socket|aborted|load failed/i
 
-// Postgres / PostgREST / supabase-js errors -> service categories. Only the SQLSTATE
+// Data-client errors -> service categories. The API client maps the API's error codes onto the SQLSTATE-style
+// codes below (see src/services/api/djangoClient.js), and network failures carry no code. Only the SQLSTATE
 // code is kept in `details`; messages, details and hints from the database are dropped.
 export function toServiceError(error) {
   if (error instanceof PlannerServiceError) return error

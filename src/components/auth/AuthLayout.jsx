@@ -28,9 +28,8 @@ export default function AuthLayout({ title, subtitle, children, footer }) {
                 {import.meta.env.DEV && (
                   <>
                     {' '}
-                    Developer note: the backend is not configured. Copy <code>.env.example</code> to <code>.env</code> and set either
-                    <code>VITE_BACKEND=django</code> with <code>VITE_API_BASE_URL</code> (see the README), or the Supabase project URL
-                    and anon key (see <code>docs/SUPABASE_SETUP.md</code>), then restart the dev server.
+                    Developer note: the API address is not configured. Set <code>VITE_API_BASE_URL</code> in <code>.env</code> (see the
+                    README, "Backend (Django)"), then restart the dev server.
                   </>
                 )}
               </Alert>

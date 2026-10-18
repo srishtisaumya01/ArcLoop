@@ -1,4 +1,4 @@
-// Pure planner logic: no React, storage, Supabase or network. See docs/DAILY_PLANNING_SPEC.md.
+// Pure planner logic: no React, storage or network. See docs/DAILY_PLANNING_SPEC.md.
 export * from './constants.js'
 export * from './errors.js'
 export * from './localDates.js'

@@ -12,6 +12,7 @@ import { useAsync } from '../../hooks/useAsync.js'
 import { useAuth } from '../../hooks/useAuth.js'
 import { usePageMeta } from '../../hooks/usePageMeta.js'
 import { getMyProfile } from '../../services/profileService.js'
+import DeleteAccount from '../../components/settings/DeleteAccount.jsx'
 import { reminderService } from '../../services/reminders/index.js'
 import { ROUTES } from '../../constants/navigation.js'
 import { contentWidths } from '../../theme/tokens.js'
@@ -67,7 +68,7 @@ export default function SettingsPage() {
               <Box>
                 <Button component={RouterLink} to={ROUTES.updatePassword} variant="outlined" size="small">Change password</Button>
               </Box>
-              <Typography variant="body2" color="text.secondary">Deleting an account is not available yet.</Typography>
+              <DeleteAccount />
             </SettingsSection>
           </>
         )}

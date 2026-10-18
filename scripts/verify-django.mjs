@@ -1,5 +1,5 @@
-// Runs the service-level journey (tests/support/serviceJourney.js, the same script the Supabase verification
-// uses) against a REAL running Arcloop Django API, through the real planner and reminder services and the
+// Runs the service-level journey (tests/support/serviceJourney.js, the same 23-step script written for the
+// earlier Supabase plan) against a REAL running Arcloop Django API, through the real planner and reminder services and the
 // Django client. Two users are registered over HTTP, so authentication, token handling, per-user isolation
 // and every server-side planner rule are exercised end to end.
 //
