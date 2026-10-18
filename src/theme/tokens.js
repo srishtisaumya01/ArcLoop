@@ -80,7 +80,9 @@ export const gradients = {
   // The footer: the brand gradient, kept dark all the way across so white link text stays readable.
   footer: `linear-gradient(120deg, ${colors.royal900} 0%, ${colors.royal800} 40%, ${colors.teal700} 78%, #14806E 100%)`,
   // The signed-in sidebar.
-  sidebar: `linear-gradient(185deg, ${colors.bgAlt} 0%, ${colors.surface} 48%, ${colors.bgAlt} 100%)`,
+  sidebar: themed('sidebar', 'linear-gradient(185deg, #A9C7F2 0%, #A7DAEA 48%, #9EE0C2 100%)'),
+  sidebarActive: themed('sidebar-active', '#FFFFFF'),
+  sidebarHover: themed('sidebar-hover', 'rgba(255, 255, 255, 0.5)'),
   // A saturated pastel of the same blue-to-mint brand gradient, for sections that keep dark text.
   tint: themed('tint', 'linear-gradient(135deg, #D2E2F8 0%, #CBE9EE 50%, #C4EBD7 100%)'),
 }

@@ -44,10 +44,11 @@ const itemSx = {
   fontSize: '1rem',
   textDecoration: 'none',
   transition: 'background-color 160ms ease, color 160ms ease',
-  '&:hover': { bgcolor: colors.bgAlt, color: colors.textPrimary },
+  '&:hover': { background: gradients.sidebarHover, color: colors.textPrimary },
   '&[aria-current="page"]': {
-    background: gradients.tint,
+    background: gradients.sidebarActive,
     color: colors.blue700,
+    boxShadow: shadows.sm,
     fontWeight: 600,
     '&::before': { content: '""', position: 'absolute', left: -12, top: 8, bottom: 8, width: 4, borderRadius: '0 4px 4px 0', background: `linear-gradient(180deg, ${colors.blue600}, ${colors.mint400})` },
   },
@@ -150,7 +151,7 @@ export default function Sidebar({ navLabel = 'App', onNavigate }) {
           onClick={logOut}
           variant="outlined"
           startIcon={<LogOut size={18} aria-hidden="true" />}
-          sx={{ color: colors.textPrimary, borderColor: colors.border, borderWidth: 1.5, fontFamily: navFontFamily, fontWeight: 600, justifyContent: 'center', '&:hover': { borderWidth: 1.5, borderColor: colors.blue600, bgcolor: colors.bgAlt } }}
+          sx={{ color: colors.textPrimary, borderColor: colors.border, borderWidth: 1.5, fontFamily: navFontFamily, fontWeight: 600, justifyContent: 'center', '&:hover': { borderWidth: 1.5, borderColor: colors.blue600, background: gradients.sidebarHover } }}
         >
           {t('Log out')}
         </Button>
