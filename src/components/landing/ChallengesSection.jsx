@@ -12,7 +12,7 @@ export default function ChallengesSection() {
     <Section id="challenges">
       <SectionHeading
         eyebrow="Challenges"
-        title="Join a campaign, or make your own"
+        title="Join a campaign. Create your own challenge soon."
         description="Winter Arc 90 is where we begin. The challenge system is designed to be configurable, so other campaigns and custom challenges can follow."
       />
       <Box sx={{ mb: 6 }}>
