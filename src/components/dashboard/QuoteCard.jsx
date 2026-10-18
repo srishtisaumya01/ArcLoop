@@ -5,7 +5,7 @@ import { quoteOfTheDay } from '../../constants/quotes.js'
 import { radii, shadows } from '../../theme/tokens.js'
 
 // A small card with the quote of the day, typed out letter by letter, on mixed theme colours. It changes every day.
-export default function QuoteCard({ now = new Date() }) {
+export default function QuoteCard({ now = new Date(), sx }) {
   const { t } = useI18n()
   const { text, author } = quoteOfTheDay(now)
   return (
@@ -22,6 +22,7 @@ export default function QuoteCard({ now = new Date() }) {
         borderRadius: `${radii.md}px`,
         color: '#FFFFFF',
         boxShadow: shadows.sm,
+        ...sx,
         background: 'radial-gradient(200px 140px at 100% 0%, rgba(124, 92, 255, 0.55), transparent 70%), radial-gradient(220px 160px at 0% 100%, rgba(46, 214, 139, 0.5), transparent 70%), linear-gradient(160deg, #0A1F66 0%, #17698F 100%)',
       }}
     >
