@@ -19,6 +19,10 @@ Test names: backend = `npm run test:backend` (103), unit = `vitest --project uni
 | Auth | Account deletion (Settings): password + typed `DELETE`, deletes the account and everything it owns, all sessions end, staff refused, repeat request refused | Verified | backend (7 tests incl. other users untouched and re-registration), unit (dialog gating), e2e-django (full flow, wrong password keeps the account), e2e (dialog offered). Backups still hold the data until they expire |
 | Auth | Same-origin `/api/`; no CORS granted; hostile origins refused | Verified (Chromium, HTTP) | e2e-django (real cross-origin requests and form POST) |
 | Auth | HttpOnly cookie session + CSRF; bearer kept server-side for non-browser clients | Verified (Chromium, HTTP); HTTPS unverified | `docs/AUTH_SECURITY.md`, `e2e-django/auth.spec.js`, `backend/tests/test_cookie_auth.py` |
+| Auth | Session lifetime 7 days (fixed, server-side authoritative, cookies derived) | Verified (Django tests, real-browser cookie check) | `docs/AUTH_SECURITY.md` |
+| Auth | Rate-limit/log client address no longer trusts a client-sent `X-Forwarded-For` | Verified (tests + local nginx rehearsal) | `docs/DEPLOYMENT.md` |
+| Operations | `deploy/nginx.example.conf` + `csp:print --nginx`; production verification checklist | Syntax checked with nginx 1.28.0; **production verification pending** | `docs/DEPLOYMENT.md` section 10 |
+| Auth | Verified email before shared features/invitations/groups/public sign-up | Requirement documented, **not built** | `docs/AUTH_SECURITY.md` section 6 |
 | Reminders | Calendar export (.ics): dates, timezones, repeating tasks, optional alert request | Verified by parser/browser; real calendar apps untested; no notification guaranteed | `docs/CALENDAR_EXPORT.md` |
 | Auth | Rate limiting on public auth endpoints | Verified | backend. Per client address; no account lockout |
 | Auth | Signed-in `/app` home | Minimal placeholder | |

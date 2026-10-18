@@ -15,7 +15,9 @@ test.describe('registration and sessions', () => {
 
     const session = await cookieOf(context, SESSION_COOKIE)
     expect(session).toMatchObject({ httpOnly: true, sameSite: 'Strict', path: '/api/', secure: false }) // secure only in production (https); see docs
-    expect(session.expires).toBeGreaterThan(Date.now() / 1000 + 29 * 24 * 3600) // persists for the token's lifetime, not just this tab
+    const days = (session.expires - Date.now() / 1000) / 86400
+    expect(days).toBeGreaterThan(6.9) // persists for the token's lifetime (seven days), not just this tab
+    expect(days).toBeLessThanOrEqual(7)
     // Page script cannot see the credential: not in document.cookie, not in any storage.
     const visible = await page.evaluate(() => ({ cookie: document.cookie, local: { ...localStorage }, session: { ...sessionStorage } }))
     expect(visible.cookie).not.toContain(SESSION_COOKIE)

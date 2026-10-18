@@ -4,7 +4,7 @@ Nothing here changes behaviour. Registering still signs the user in immediately 
 
 ## 1. Decision (recorded): sign in at once for the private beta; revisit before sharing features
 
-**Decided:** registration keeps signing the person in immediately; no mandatory email confirmation yet. Reminders stay in-app and calendar export is the priority (`CALENDAR_EXPORT.md`); no email delivery, web push or native app in this phase. Revisit confirmation before adding anything shared between users or opening sign-up publicly. The analysis below still applies.
+**Decided:** registration keeps signing the person in immediately; no mandatory email confirmation yet. Reminders stay in-app and calendar export is the priority (`CALENDAR_EXPORT.md`); no email delivery, web push or native app in this phase. Revisit confirmation before adding anything shared between users or opening sign-up publicly. **Requirement for later:** verified email is mandatory before shared features, invitations, groups or public sign-up (reasons and the build list: `AUTH_SECURITY.md` section 6). Not built in this phase; no SMTP credentials were added and no email was sent. The analysis below still applies.
 
 
 | | Immediate sign-in (today) | Confirm the address first |

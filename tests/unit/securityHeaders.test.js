@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { EMPTY_STYLE_HASH, buildCsp, originOf, securityHeaders } from '../../deploy/securityHeaders.js'
+import { EMPTY_STYLE_HASH, buildCsp, originOf, securityHeaders, toNginx } from '../../deploy/securityHeaders.js'
 import { createHash } from 'node:crypto'
 
 describe('frontend security headers', () => {
@@ -47,5 +47,13 @@ describe('frontend security headers', () => {
     expect(Object.keys(enforced)).toContain('Content-Security-Policy')
     expect(Object.keys(enforced)).not.toContain('Content-Security-Policy-Report-Only')
     expect(enforced['X-Content-Type-Options']).toBe('nosniff')
+  })
+
+  it('prints nginx add_header lines that carry every header, quote-safe', () => {
+    const headers = securityHeaders({ httpsOnly: true })
+    const lines = toNginx(headers).split('\n')
+    expect(lines).toHaveLength(Object.keys(headers).length)
+    for (const [line, [name, value]] of lines.map((l, i) => [l, Object.entries(headers)[i]])) expect(line).toBe(`add_header ${name} "${value}" always;`)
+    expect(Object.values(headers).join('')).not.toMatch(/["$]/)
   })
 })

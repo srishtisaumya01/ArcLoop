@@ -8,7 +8,7 @@ import logging
 from .auth_cookies import clear_session_cookies, session_cookie_value
 from .security_log import log_event
 
-from django.core.exceptions import PermissionDenied
+from django.core.exceptions import PermissionDenied, RequestDataTooBig
 from django.http import Http404
 from rest_framework import exceptions, status
 from rest_framework.response import Response
@@ -98,6 +98,8 @@ def api_exception_handler(exc, context):
         return Response({'error': {'code': 'method_not_allowed', 'message': 'That is not supported.'}}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
     if isinstance(exc, exceptions.ParseError):
         return Response({'error': {'code': 'validation_error', 'message': 'The request could not be read.'}}, status=status.HTTP_400_BAD_REQUEST)
+    if isinstance(exc, RequestDataTooBig):  # DRF >= 3.17.2 enforces Django's DATA_UPLOAD_MAX_MEMORY_SIZE on request.data
+        return Response({'error': {'code': 'too_large', 'message': 'That request is too large.'}}, status=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE)
     if isinstance(exc, exceptions.UnsupportedMediaType):
         return Response({'error': {'code': 'validation_error', 'message': 'Send JSON.'}}, status=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE)
     logger.exception('Unhandled API error', exc_info=exc)

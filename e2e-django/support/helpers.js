@@ -9,9 +9,7 @@ export const SESSION_COOKIE = 'arcloop_session' // the server's names: kept in s
 export const CSRF_COOKIE = 'arcloop_csrf'
 const EMAIL_DIR = resolve('e2e-django', '.tmp', 'emails')
 
-let counter = 0
-// Unique per run and per call, so tests never collide on one shared database.
-export const uniqueEmail = (label) => `${label}-${Date.now().toString(36)}${(counter += 1)}@example.com`
+export { uniqueEmail } from '../../tests/support/uniqueEmail.js'
 
 // Registers through the real sign-up form. Registration signs the user in, so the app opens straight away.
 export async function signUpViaForm(page, email, password = PASSWORD) {

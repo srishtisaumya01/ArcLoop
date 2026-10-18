@@ -54,3 +54,6 @@ export function securityHeaders({ apiOrigin, reportUri, mode = 'enforce', httpsO
 
 // The origin (scheme://host[:port]) of a full API base URL such as https://api.example.com/api/v1.
 export const originOf = (url) => new URL(url).origin
+
+// The same headers as nginx `add_header` lines (`always`, so error pages carry them too). Values never hold a double quote or `$`.
+export const toNginx = (headers) => Object.entries(headers).map(([name, value]) => `add_header ${name} "${value}" always;`).join('\n')
