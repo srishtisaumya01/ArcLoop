@@ -119,10 +119,10 @@ class OccurrenceResource(Resource):
         'id': 'uuid', 'user_id': 'int', 'template_id': 'uuid', 'plan_date': 'date', 'title': 'text', 'description': 'text', 'category': 'text',
         'is_priority': 'bool', 'planned_start': 'time', 'planned_end': 'time', 'estimated_minutes': 'int', 'completion': 'number',
         'completed_at': 'datetime', 'plan_state': 'text', 'excluded_reason': 'text', 'excluded_at': 'datetime',
-        'rescheduled_from_id': 'uuid', 'in_original_plan': 'bool', 'is_customized': 'bool', 'created_at': 'datetime',
+        'rescheduled_from_id': 'uuid', 'in_original_plan': 'bool', 'is_customized': 'bool', 'is_minimum': 'bool', 'created_at': 'datetime',
     }
     insert_fields = ('user_id', 'plan_date', 'template_id', *TASK_FIELDS, 'rescheduled_from_id', 'is_customized')
-    update_fields = (*TASK_FIELDS, 'completion', 'plan_state', 'excluded_reason', 'is_customized')  # plan_date, template, user are fixed
+    update_fields = (*TASK_FIELDS, 'completion', 'plan_state', 'excluded_reason', 'is_customized', 'is_minimum')  # plan_date, template, user are fixed; is_minimum is never set on insert
     nullable = ('template_id', 'description', 'category', 'planned_start', 'planned_end', 'estimated_minutes', 'rescheduled_from_id', 'excluded_reason')
     order_default = ('plan_date', 'created_at')
 
@@ -163,9 +163,15 @@ class OccurrenceResource(Resource):
         old_completion, old_state = occurrence.completion, occurrence.plan_state
         had_completed_at, had_excluded_at = occurrence.completed_at, occurrence.excluded_at
         _apply(occurrence, values)
+        if occurrence.plan_state == 'excluded' and old_state == 'active':
+            occurrence.is_minimum = False  # setting a task aside (or moving it) takes it out of the minimum; it never carries over
         if occurrence.title is None:
             raise validation_error('Please check the highlighted details.', {'title': 'This is required.'})
         rules.validate_occurrence(occurrence)
+        if occurrence.is_minimum:
+            # One request at a time may change a day's minimum, so two cannot both take the last place (PostgreSQL).
+            list(DayPlan.objects.select_for_update().filter(user=user, plan_date=occurrence.plan_date).values_list('pk', flat=True))
+        rules.guard_minimum(TaskOccurrence, user, occurrence)
         completion_changed = occurrence.completion != old_completion
         # progress can only be recorded for today or earlier, in the user's own timezone
         if completion_changed and occurrence.completion > 0 and occurrence.plan_date > rules.today_for(user):

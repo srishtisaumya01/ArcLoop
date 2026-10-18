@@ -1,5 +1,6 @@
 import {
   addDays,
+  assertCompletion,
   assertEditableDate,
   buildPlanSnapshot,
   classifyDate,
@@ -9,7 +10,9 @@ import {
   isValidDate,
   occurrencesToCreate,
   planForRange,
+  occursOn,
   parseDate,
+  planMinimum,
   planRemoval,
   planTemplateEdit,
   planUndoReschedule,
@@ -22,6 +25,7 @@ import {
   sortOccurrencesForDisplay,
   summarizeDay,
   summarizeHabits,
+  summarizeMinimum,
   templatesDueOn,
   expectedTaskView,
   RECOVERY_LOOKBACK_DAYS,
@@ -46,6 +50,7 @@ import {
   occurrenceDiffRow,
   occurrenceFromRow,
   occurrenceInsertRow,
+  occurrenceMinimumRow,
   occurrenceStateRow,
   templateFromRow,
   templateInsertRow,
@@ -176,6 +181,7 @@ export function createPlannerService({ getClient, clock = () => Date.now() }) {
       moves: await fetchMoves(client, occurrences),
       expected: await fetchExpected(client, planDate, day, occurrences, access),
       summary: day ? summarizeDay({ day, occurrences }) : null,
+      minimum: summarizeMinimum(occurrences), // reported on its own: it never feeds `summary`
       access,
     }
   }
@@ -411,8 +417,25 @@ export function createPlannerService({ getClient, clock = () => Date.now() }) {
       return { occurrence: saved, day: (await fetchDay(client, occurrence.planDate)) ?? day, changed: true, restored: result.restored }
     },
 
-    undoCompletion(occurrenceId) {
-      return ops.setCompletion(occurrenceId, 0)
+    // Without options: back to not done. With { from, to }: put the task back to `to`, but only while it is still at `from`
+    // (what the person just recorded). The write itself carries that condition (`completion = from`), so if the task
+    // changed in the meantime, in this tab or another, nothing is overwritten and the answer is a CONFLICT.
+    async undoCompletion(occurrenceId, options) {
+      if (options === undefined) return ops.setCompletion(occurrenceId, 0)
+      const { from, to } = options
+      assertId(occurrenceId, 'occurrenceId')
+      assertCompletion(from)
+      assertCompletion(to)
+      if (from === to) throw fail(SERVICE_ERROR.VALIDATION, 'There is nothing to undo.')
+      const { client, ctx } = await session()
+      const occurrence = await fetchOccurrence(client, occurrenceId)
+      const changed = () => fail(SERVICE_ERROR.CONFLICT, 'That task changed since. Reload to see where it is now.', { reason: 'changed_since' })
+      if (occurrence.completion !== from) throw changed()
+      const day = await requireDay(client, occurrence.planDate)
+      const result = setCompletionLogic({ occurrence, day, value: to }, ctx) // the same rules as any change of progress
+      const rows = check(await client.from(T.occurrences).update(occurrenceStateRow(result.occurrence)).eq('id', occurrenceId).eq('completion', from).select(OCCURRENCE_COLUMNS))
+      if (!rows || rows.length !== 1) throw changed() // it moved on between the read and the write
+      return { occurrence: occurrenceFromRow(rows[0]), day: (await fetchDay(client, occurrence.planDate)) ?? day, changed: true }
     },
 
     async setAside(occurrenceId, reason) {
@@ -457,6 +480,13 @@ export function createPlannerService({ getClient, clock = () => Date.now() }) {
       const occurrencesOnTarget = targetDayBefore ? await fetchOccurrencesOn(client, targetDate) : []
       const plan = rescheduleLogic({ occurrence, day, targetDate, targetDay: targetDayBefore, occurrencesOnTarget, plannedStart, plannedEnd }, ctx)
 
+      // Undoing a move removes the copy and, for a repeating task, records that the task is not wanted on that day. If the
+      // repeating task is due on the new day anyway, that would leave the day without its own occurrence, so a quick Undo
+      // is only offered when it is clean. (The "Undo move" button on the moved task still works as before.)
+      // (read before anything is written, so a failed read cannot leave a half-done move)
+      const template = occurrence.templateId ? await fetchTemplate(client, occurrence.templateId) : null
+      const undoIsClean = !template || !occursOn(template, targetDate)
+
       if (plan.createsTargetDay) await ensureDay(client, userId, targetDate)
       const suppressionChanged = targetDayBefore && !sameSet(plan.targetDay.suppressedTemplateIds, targetDayBefore.suppressedTemplateIds)
       if (suppressionChanged) await writeDay(client, targetDate, { suppressed_template_ids: plan.targetDay.suppressedTemplateIds })
@@ -467,7 +497,7 @@ export function createPlannerService({ getClient, clock = () => Date.now() }) {
 
       try {
         const source = await writeOccurrence(client, occurrenceId, occurrenceStateRow(plan.source))
-        return { source, target, link: plan.link }
+        return { source, target, link: plan.link, undoIsClean }
       } catch (error) {
         try {
           await deleteOccurrence(client, target.id)
@@ -511,6 +541,40 @@ export function createPlannerService({ getClient, clock = () => Date.now() }) {
       const next = setDayModeLogic({ day, mode }, ctx)
       if (next === day) return day
       return writeDay(client, planDate, { day_mode: next.dayMode })
+    },
+
+    // Minimum Day: make the day's minimum exactly `ids` (1 to 3 active tasks on that day; an empty list clears it). Only a label
+    // on tasks that already exist: completion, plan state, the baseline and every other task are left alone. Flags are
+    // cleared before new ones are set, so the day never holds more than the limit part-way. One request per task (at most
+    // six). A failure midway leaves a valid minimum (never over the limit) and says so (details.partial); choosing
+    // again is safe and creates nothing.
+    async setMinimum(planDate, ids) {
+      parseDate(planDate)
+      const { client, ctx } = await session()
+      const day = await fetchDay(client, planDate)
+      if (!day) throw fail(SERVICE_ERROR.NOT_FOUND, 'Start this day before choosing your minimum.')
+      const occurrences = await fetchOccurrencesOn(client, planDate)
+      const { clear, set } = planMinimum({ planDate, occurrences, ids }, ctx)
+      let written = 0
+      try {
+        for (const id of clear) {
+          await writeOccurrence(client, id, occurrenceMinimumRow(false))
+          written += 1
+        }
+        for (const id of set) {
+          await writeOccurrence(client, id, occurrenceMinimumRow(true))
+          written += 1
+        }
+      } catch (error) {
+        if (written === 0) throw error // nothing changed: the error already says why
+        // Part of the choice is saved. Choosing again is safe: it is worked out from what the day holds now, and it only sets
+        // a label, so no task is ever created or duplicated.
+        throw new PlannerServiceError(error.code ?? SERVICE_ERROR.UNKNOWN, 'Your minimum was only partly saved. The list shows what is saved; choose again to finish it. No tasks were changed.', {
+          details: { ...error.details, partial: 'minimum_partly_saved' },
+          cause: error,
+        })
+      }
+      return summarizeMinimum(await fetchOccurrencesOn(client, planDate))
     },
 
     // ---- history ---------------------------------------------------------------

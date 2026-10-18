@@ -108,7 +108,7 @@ describe('My Day: welcome back', () => {
     const user = setupUser()
     renderDay()
     await screen.findByRole('region', { name: 'Welcome back' })
-    await user.click(await screen.findByRole('button', { name: 'Done: Walk' }))
+    await user.click(await screen.findByRole('checkbox', { name: 'Done: Walk' }))
     await waitFor(() => expect(note('Welcome back')).toBeNull())
     expect(Number((await rowsOn(YESTERDAY))[0].completion)).toBe(0) // yesterday is untouched by today's progress
   })

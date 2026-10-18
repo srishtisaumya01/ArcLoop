@@ -83,17 +83,23 @@ describe('the core journey', () => {
     await user.click(nav('My Day'))
     expect(await screen.findByText('No tasks on this day')).toBeTruthy()
     expect(noRegion('Welcome back')).toBeNull() // nothing was ever planned, so nothing was missed
-    const add = async (title, { every = false } = {}) => {
-      await user.type(screen.getByRole('textbox', { name: /^Task/ }), title)
-      if (every) {
-        await user.click(screen.getByLabelText('Repeats'))
-        await user.click(await screen.findByRole('option', { name: 'Every day' }))
-      }
+    const add = async (title) => {
+      await user.type(screen.getByRole('textbox', { name: 'Task' }), title)
       await user.click(screen.getByRole('button', { name: 'Add task' }))
       expect(await screen.findByText(title)).toBeTruthy()
     }
+    // Repeating tasks are made on the Recurring tasks page (My Day's quick add is for one-off tasks).
+    const addRepeating = async (title) => {
+      await user.click(nav('Recurring Tasks'))
+      const form = await screen.findByRole('form', { name: 'New recurring task' })
+      await user.type(within(form).getByRole('textbox', { name: /^Task/ }), title)
+      await user.click(within(form).getByRole('button', { name: 'Add recurring task' })) // repeats every day by default
+      expect(await screen.findByRole('button', { name: `Edit ${title}` })).toBeTruthy()
+      await user.click(nav('My Day'))
+      expect(await screen.findByText(title)).toBeTruthy() // it comes back on My Day
+    }
     await add('Write report')
-    await add('Stretch', { every: true })
+    await addRepeating('Stretch')
     await add('Email Sam')
     await add('Tidy desk')
     await user.click(screen.getByRole('button', { name: 'Edit Write report' }))
@@ -114,8 +120,11 @@ describe('the core journey', () => {
     await waitFor(() => expect(within(screen.getByLabelText('Set aside tasks')).getByText('Set aside for a busy day')).toBeTruthy())
 
     // 3. Complete one task and partly complete another. Moved and set-aside tasks are not counted.
-    await user.click(screen.getByRole('button', { name: 'Done: Stretch' }))
-    await user.click(screen.getByRole('button', { name: 'Partly: Write the report' }))
+    await user.click(screen.getByRole('checkbox', { name: 'Done: Stretch' }))
+    await user.click(screen.getByRole('button', { name: 'Edit Write the report' })) // Partly is chosen in Edit
+    const progressForm = screen.getByRole('form', { name: 'Edit Write the report' })
+    await user.click(within(progressForm).getByRole('button', { name: 'Partly' }))
+    await user.click(within(progressForm).getByRole('button', { name: 'Save changes' }))
     await waitFor(() => expect(progressText('75% of today’s plan')).toBeTruthy())
     expect(screen.getByText(/1 of 2 done, 1 partly done/)).toBeTruthy()
 

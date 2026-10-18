@@ -91,6 +91,9 @@ class TaskOccurrence(models.Model):
     rescheduled_from = models.ForeignKey('self', null=True, blank=True, on_delete=models.SET_NULL, related_name='moved_to')
     in_original_plan = models.BooleanField(default=True)
     is_customized = models.BooleanField(default=False)
+    # Part of this day's Minimum Day: the few tasks the person chose to keep the day moving. A per-day label only: it never
+    # changes completion, plan state or the baseline, and it does not follow a task to another date.
+    is_minimum = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -114,6 +117,7 @@ class TaskOccurrence(models.Model):
                 | (Q(plan_state='active') & Q(excluded_reason__isnull=True) & Q(excluded_at__isnull=True)),
                 name='task_occurrences_excluded_fields_match',
             ),
+            models.CheckConstraint(condition=Q(is_minimum=False) | Q(plan_state='active'), name='task_occurrences_minimum_is_active'),
             # C2: a partially completed task may be set aside or moved; a done task may not
             models.CheckConstraint(condition=Q(plan_state='active') | Q(completion__lt=1), name='task_occurrences_done_stays_active'),
         ]

@@ -1,16 +1,19 @@
 import { RouterProvider } from 'react-router-dom'
-import { ThemeProvider, CssBaseline } from '@mui/material'
-import theme from '../theme/theme.js'
+import { CssBaseline } from '@mui/material'
+import ThemeModeProvider from '../context/ThemeModeProvider.jsx'
+import I18nProvider from '../context/I18nProvider.jsx'
 import AuthProvider from '../context/AuthProvider.jsx'
 import { router } from './router.jsx'
 
 export default function App() {
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <AuthProvider>
-        <RouterProvider router={router} />
-      </AuthProvider>
-    </ThemeProvider>
+    <ThemeModeProvider>
+      <I18nProvider>
+        <CssBaseline />
+        <AuthProvider>
+          <RouterProvider router={router} />
+        </AuthProvider>
+      </I18nProvider>
+    </ThemeModeProvider>
   )
 }

@@ -6,7 +6,7 @@ import { parseIcs } from '../tests/support/icsParse.js'
 // event or "Refused to ..." console message fails the test. Then the policy is shown to really block things, so a
 // silently permissive policy cannot pass.
 
-const PUBLIC = ['/', '/challenges', '/login', '/signup', '/forgot-password', '/privacy', '/terms', '/contact', '/no-such-page']
+const PUBLIC = ['/', '/challenges', '/how-it-works', '/participants', '/faq', '/login', '/signup', '/forgot-password', '/privacy', '/terms', '/contact', '/no-such-page']
 const APP = ['/app', '/app/day', '/app/week', '/app/progress', '/app/recurring', '/app/reminders', '/app/settings']
 
 async function watch(page) {
@@ -71,8 +71,8 @@ test.describe('no violations anywhere in the app', () => {
     }
     await page.goto('/app/day')
     await expect(page.getByText('Morning walk')).toBeVisible()
-    await page.getByRole('button', { name: 'Done: Morning walk', exact: true }).click()
-    await expect(page.getByRole('button', { name: 'Not done: Morning walk', exact: true })).toBeVisible()
+    await page.getByRole('checkbox', { name: 'Done: Morning walk', exact: true }).click()
+    await expect(page.getByRole('checkbox', { name: 'Done: Morning walk', exact: true })).toBeChecked()
     await page.goto('/app/reminders')
     await expect(page.getByRole('heading', { level: 1, name: 'Reminders' })).toBeVisible()
     expect(await violations(page)).toEqual([])

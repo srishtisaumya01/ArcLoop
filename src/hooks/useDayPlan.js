@@ -8,7 +8,8 @@ import { classifyDate } from '../utils/planner/index.js'
 // read-only history are only read, so browsing never creates rows by accident. `start` opens a
 // future day on purpose.
 //   status: 'loading' | 'success' | 'error'    (an error after a success keeps `data`)
-//   run(fn): runs a service change, reloads the day, and resolves { ok, error } (never throws)
+//   run(fn): runs a service change, reloads the day, and resolves { ok, result, error } (never throws); `result` is what the
+//            service call returned (the same shape useRecurringTasks gives)
 export function useDayPlan(date) {
   const key = date ?? 'today'
   const [result, setResult] = useState(null)
@@ -56,11 +57,11 @@ export function useDayPlan(date) {
   const run = useCallback(
     async (change, { open = false } = {}) => {
       setBusy(true)
-      let outcome = { ok: true, error: null }
+      let outcome
       try {
-        await change(plannerService)
+        outcome = { ok: true, result: await change(plannerService), error: null }
       } catch (error) {
-        outcome = { ok: false, error }
+        outcome = { ok: false, result: null, error }
       }
       try {
         const data = await fetchPlan({ open })

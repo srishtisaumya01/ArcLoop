@@ -24,7 +24,7 @@ export function seedData() {
   const occ = (templateId, date, title, completion = 0, o = {}) => ({
     id: uid((n += 1)), user_id: USER_ID, template_id: templateId ? uid(templateId) : null, plan_date: date, title, description: null, category: null,
     is_priority: false, planned_start: null, planned_end: null, estimated_minutes: null, completion, completed_at: completion > 0 ? `${date}T20:00:00Z` : null,
-    plan_state: 'active', excluded_reason: null, excluded_at: null, rescheduled_from_id: null, in_original_plan: true, is_customized: false,
+    plan_state: 'active', excluded_reason: null, excluded_at: null, rescheduled_from_id: null, in_original_plan: true, is_customized: false, is_minimum: false,
     created_at: `${date}T08:00:00Z`, ...o,
   })
   const day = (date, mode = 'normal', baseline = null) => ({ user_id: USER_ID, plan_date: date, day_mode: mode, baseline_at: baseline, suppressed_template_ids: [] })
@@ -65,7 +65,7 @@ const RESOURCES = {
 const DEFAULTS = {
   task_templates: () => ({ id: null, description: null, category: null, is_priority: false, planned_start: null, planned_end: null, estimated_minutes: null, weekdays: null, ends_on: null, archived_at: null, created_at: NOW_ISO }),
   day_plans: () => ({ day_mode: 'normal', baseline_at: null, suppressed_template_ids: [] }),
-  task_occurrences: () => ({ id: null, template_id: null, description: null, category: null, is_priority: false, planned_start: null, planned_end: null, estimated_minutes: null, completion: 0, completed_at: null, plan_state: 'active', excluded_reason: null, excluded_at: null, rescheduled_from_id: null, in_original_plan: true, is_customized: false, created_at: NOW_ISO }),
+  task_occurrences: () => ({ id: null, template_id: null, description: null, category: null, is_priority: false, planned_start: null, planned_end: null, estimated_minutes: null, completion: 0, completed_at: null, plan_state: 'active', excluded_reason: null, excluded_at: null, rescheduled_from_id: null, in_original_plan: true, is_customized: false, is_minimum: false, created_at: NOW_ISO }),
   reminder_preferences: () => ({ enabled: false, remind_time: '09:00:00', weekdays: [1, 2, 3, 4, 5, 6, 7], last_notified_on: '1970-01-01' }),
   task_reminders: () => ({ id: null, plan_date: null, notified_at: null, created_at: NOW_ISO }),
 }
@@ -176,12 +176,23 @@ export function createStubApi({ seed = seedData(), mode = 'normal', signedIn = t
     if (method === 'PATCH') {
       const patch = JSON.parse(req.postData() || '{}')
       const targets = matching()
+      if (table === 'task_occurrences' && patch.is_minimum === true) {
+        // Mirrors the server: only a planned task, and at most three per day.
+        for (const row of targets) {
+          const others = tables.task_occurrences.filter((o) => o.plan_date === row.plan_date && o.is_minimum && o.id !== row.id).length
+          if (row.plan_state !== 'active') return error(route, 400, 'constraint_violation', 'Only a task that is still planned can be part of your minimum.')
+          if (others >= 3) return error(route, 400, 'limit_reached', 'Choose up to 3 tasks for your minimum.')
+        }
+      }
       for (const row of targets) {
         Object.assign(row, patch)
         if (table === 'task_occurrences') {
           // The server-set timestamps and the baseline rule.
           if ('completion' in patch) row.completed_at = Number(patch.completion) > 0 ? NOW_ISO : null
-          if (patch.plan_state === 'excluded') row.excluded_at = NOW_ISO
+          if (patch.plan_state === 'excluded') {
+            row.excluded_at = NOW_ISO
+            row.is_minimum = false // setting a task aside takes it out of the minimum, as the server does
+          }
           if (patch.plan_state === 'active') row.excluded_at = null
           const day = tables.day_plans.find((d) => d.plan_date === row.plan_date)
           if (day && day.baseline_at === null && (Number(row.completion) > 0 || row.plan_state === 'excluded')) day.baseline_at = NOW_ISO

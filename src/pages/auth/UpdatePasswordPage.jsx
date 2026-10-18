@@ -11,6 +11,7 @@ import { useAsyncSubmit } from '../../hooks/useAsyncSubmit.js'
 import { useAuth } from '../../hooks/useAuth.js'
 import { useForm } from '../../hooks/useForm.js'
 import { usePageMeta } from '../../hooks/usePageMeta.js'
+import { useI18n } from '../../hooks/useI18n.js'
 import { updatePassword } from '../../services/authService.js'
 import { ROUTES } from '../../constants/navigation.js'
 import { PASSWORD_MIN_LENGTH, validateNewPassword } from '../../utils/validation.js'
@@ -29,7 +30,8 @@ const validate = ({ password, confirm, currentPassword, needsCurrent }) => ({
 // The emailed link carries `uid` and `token`, which are sent with the new password (it works in any browser and
 // only once); a signed-in user without a link must give their current password instead.
 export default function UpdatePasswordPage() {
-  usePageMeta('Choose a new password')
+  const { t } = useI18n()
+  usePageMeta(t('Choose a new password'))
   const { status: authStatus } = useAuth()
   const [params, setParams] = useSearchParams()
   // The link's secret is kept in memory and removed from the address bar at once, so it does not linger in the URL,
@@ -54,11 +56,10 @@ export default function UpdatePasswordPage() {
     return (
       <AuthLayout title="This link has expired">
         <Typography color="text.secondary" sx={{ mb: 3 }}>
-          This password reset link is invalid, has expired (links last one hour), or was already used. Request a new one and
-          open it within the hour.
+          {t('This password reset link is invalid, has expired (links last one hour), or was already used. Request a new one and open it within the hour.')}
         </Typography>
         <Button component={RouterLink} to={ROUTES.forgotPassword} variant="contained" color="primary" size="large" fullWidth>
-          Request a new link
+          {t('Request a new link')}
         </Button>
       </AuthLayout>
     )
@@ -72,10 +73,10 @@ export default function UpdatePasswordPage() {
             <CircleCheck size={48} aria-hidden="true" />
           </Box>
           <Typography color="text.secondary" sx={{ mb: 3 }}>
-            {reset ? 'Your password has been changed. Log in with it to continue.' : 'Your password has been changed. You are logged in on this device.'}
+            {reset ? t('Your password has been changed. Log in with it to continue.') : t('Your password has been changed. You are logged in on this device.')}
           </Typography>
           <Button component={RouterLink} to={reset ? ROUTES.login : ROUTES.app} variant="contained" color="primary" size="large">
-            Continue
+            {t('Continue')}
           </Button>
         </Box>
       </AuthLayout>
@@ -88,7 +89,7 @@ export default function UpdatePasswordPage() {
       subtitle="Pick something you have not used elsewhere."
       footer={
         <Typography variant="body2" color="text.secondary">
-          <Link component={RouterLink} to={ROUTES.app}>Cancel</Link>
+          <Link component={RouterLink} to={ROUTES.app}>{t('Cancel')}</Link>
         </Typography>
       }
     >
@@ -96,11 +97,11 @@ export default function UpdatePasswordPage() {
         {needsCurrent && (
           <PasswordField name="currentPassword" label="Current password" value={values.currentPassword} onChange={onChange} onBlur={onBlur} error={errors.currentPassword} autoComplete="current-password" />
         )}
-        <PasswordField label="New password" value={values.password} onChange={onChange} onBlur={onBlur} error={errors.password} autoComplete="new-password" helperText={`At least ${PASSWORD_MIN_LENGTH} characters.`} />
+        <PasswordField label="New password" value={values.password} onChange={onChange} onBlur={onBlur} error={errors.password} autoComplete="new-password" helperText={t('At least {count} characters.', { count: PASSWORD_MIN_LENGTH })} />
         <PasswordField name="confirm" label="Confirm new password" value={values.confirm} onChange={onChange} onBlur={onBlur} error={errors.confirm} autoComplete="new-password" />
         <FormError message={error} />
-        <SubmitButton loading={status === 'loading'} loadingLabel="Saving…">
-          Update password
+        <SubmitButton loading={status === 'loading'} loadingLabel={t('Saving…')}>
+          {t('Update password')}
         </SubmitButton>
       </Box>
     </AuthLayout>

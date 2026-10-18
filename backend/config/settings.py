@@ -5,6 +5,7 @@ Everything environment-specific comes from environment variables (optionally a g
 """
 import os
 from pathlib import Path
+from urllib.parse import parse_qsl, unquote, urlsplit
 
 from django.core.exceptions import ImproperlyConfigured
 
@@ -100,8 +101,30 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'config.wsgi.application'
 
+def _postgres_from_url(url):
+    parsed = urlsplit(url)
+    if parsed.scheme not in {'postgres', 'postgresql'}:
+        raise ImproperlyConfigured('DATABASE_URL must be a postgres:// or postgresql:// URL.')
+    pooled = '-pooler.' in (parsed.hostname or '')
+    return {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': unquote(parsed.path.lstrip('/')),
+        'USER': unquote(parsed.username or ''),
+        'PASSWORD': unquote(parsed.password or ''),
+        'HOST': parsed.hostname or '',
+        'PORT': str(parsed.port or ''),
+        'OPTIONS': dict(parse_qsl(parsed.query)),
+        # Neon's pooler runs PgBouncer in transaction mode: no persistent connections or server-side cursors.
+        'CONN_MAX_AGE': 0 if pooled else 60,
+        'CONN_HEALTH_CHECKS': not pooled,
+        'DISABLE_SERVER_SIDE_CURSORS': pooled,
+    }
+
+
+DATABASE_URL = os.environ.get('DATABASE_URL', '').strip()
+
 DATABASES = {
-    'default': {
+    'default': _postgres_from_url(DATABASE_URL) if DATABASE_URL else {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': os.environ.get('DJANGO_DB_PATH', str(BASE_DIR / 'db.sqlite3')),
         'OPTIONS': {

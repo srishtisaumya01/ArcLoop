@@ -3,7 +3,7 @@
 // shows a visible "to be configured" marker for empty values.
 export const SITE_CONFIG = {
   legalEntityName: '',
-  supportEmail: '',
+  supportEmail: 'arcloopoct@gmail.com',
   postalAddress: '',
   governingLaw: '',
   legalLastUpdated: '',

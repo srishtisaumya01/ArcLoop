@@ -2,6 +2,9 @@
 export const ROUTES = {
   home: '/',
   challenges: '/challenges',
+  participants: '/participants',
+  howItWorks: '/how-it-works',
+  faq: '/faq',
   login: '/login',
   signup: '/signup',
   forgotPassword: '/forgot-password',
@@ -22,10 +25,10 @@ export const challengePath = (slug) => `${ROUTES.challenges}/${slug}`
 
 // Primary navigation. `hash` entries scroll within the landing page.
 export const NAV_LINKS = [
-  { label: 'How it works', to: { pathname: ROUTES.home, hash: '#how-it-works' } },
-  { label: 'Groups', to: { pathname: ROUTES.home, hash: '#groups' } },
+  { label: 'How it works', to: ROUTES.howItWorks },
   { label: 'Challenges', to: ROUTES.challenges },
-  { label: 'FAQ', to: { pathname: ROUTES.home, hash: '#faq' } },
+  { label: 'Participants', to: ROUTES.participants },
+  { label: 'FAQ', to: ROUTES.faq },
 ]
 
 // Navigation for signed-in users (replaces the public links in the navbar while signed in).
@@ -41,14 +44,18 @@ export const FOOTER_GROUPS = [
   {
     title: 'Product',
     links: [
-      { label: 'How it works', to: { pathname: ROUTES.home, hash: '#how-it-works' } },
+      { label: 'How it works', to: ROUTES.howItWorks },
       { label: 'Challenges', to: ROUTES.challenges },
-      { label: 'FAQ', to: { pathname: ROUTES.home, hash: '#faq' } },
+      { label: 'Participants', to: ROUTES.participants },
+      { label: 'FAQ', to: ROUTES.faq },
     ],
   },
   {
     title: 'Company',
-    links: [{ label: 'Contact & support', to: ROUTES.contact }],
+    links: [
+      { label: 'Contact & support', to: ROUTES.contact },
+      { label: 'Log in', to: ROUTES.login },
+    ],
   },
   {
     title: 'Legal',

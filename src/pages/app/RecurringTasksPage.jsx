@@ -1,14 +1,13 @@
 import { useState } from 'react'
-import { Link as RouterLink } from 'react-router-dom'
 import { Box, Button, Container, Skeleton, Typography } from '@mui/material'
 import { Repeat, RefreshCw, TriangleAlert } from 'lucide-react'
 import PageHeader from '../../components/common/PageHeader.jsx'
 import StatePanel from '../../components/common/StatePanel.jsx'
+import AddTaskForm from '../../components/planner/AddTaskForm.jsx'
 import TemplateCard from '../../components/planner/TemplateCard.jsx'
 import { editSummary } from '../../components/planner/templateSummary.js'
 import { useRecurringTasks } from '../../hooks/useRecurringTasks.js'
 import { usePageMeta } from '../../hooks/usePageMeta.js'
-import { ROUTES } from '../../constants/navigation.js'
 import { contentWidths } from '../../theme/tokens.js'
 
 function Group({ title, status, templates, busy, run, notices, onSaved }) {
@@ -68,14 +67,16 @@ export default function RecurringTasksPage() {
             action={<Button variant="outlined" startIcon={<RefreshCw size={18} aria-hidden="true" />} onClick={refresh}>Try again</Button>} />
         )}
         {groups && count === 0 && (
-          <StatePanel icon={Repeat} title="No recurring tasks yet" text="Add a task in My Day and choose how often it repeats. It will show up here."
-            action={<Button component={RouterLink} to={ROUTES.day} variant="contained">Open My Day</Button>} />
+          <StatePanel icon={Repeat} title="No recurring tasks yet" text="Add one below and choose how often it repeats. It will show up here, and on My Day on the days it comes back." />
         )}
         {groups && (
           <>
             <Group title="Active" status="active" templates={groups.active} busy={busy} run={run} notices={notices} onSaved={onSaved} />
             <Group title="Not started yet" status="upcoming" templates={groups.upcoming} busy={busy} run={run} notices={notices} onSaved={onSaved} />
             <Group title="Ended" status="ended" templates={groups.ended} busy={busy} run={run} notices={notices} onSaved={onSaved} />
+            {/* A repeating task starts today and shows up on My Day on the days it repeats, exactly as one made from My Day did. */}
+            <AddTaskForm title="New recurring task" submitLabel="Add recurring task" allowOnce={false} busy={busy}
+              onAdd={({ recurrence, weekdays, ...input }) => run((s) => s.createTemplate({ ...input, recurrence, weekdays, startsOn: data.today }))} />
           </>
         )}
       </Container>

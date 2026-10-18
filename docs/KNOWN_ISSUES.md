@@ -3,6 +3,9 @@
 Backend: Django + SQLite (migrated from Supabase; see `docs/DJANGO_MIGRATION.md`). Nothing is deployed, no real email has been sent, only Chromium has been run.
 
 ## Backend and deployment
+- **PostgreSQL (Neon) coverage.** The deployed API can use PostgreSQL (`DATABASE_URL`, `render.yaml`), and migrations run on it at every deploy. On 18 October 2026 the backend suite (148 tests), the whole integration project (142 tests, real API) and migration `planner/0002` (forward on existing rows, constraint, reverse, forward again) were run against a **disposable local PostgreSQL 16.2**, never against Neon or any real data. **Not** tested: Neon's pooler (PgBouncer, transaction mode), Render, any other PostgreSQL version, the browser suites on PostgreSQL. To repeat: set `DATABASE_URL` to a disposable PostgreSQL database and run `npm run test:backend` (use a fresh database for each integration run: some integration tests pin the clock and so create the same email every run).
+- **Two simultaneous requests used to both "win" on PostgreSQL** (found 18 October 2026 by that run; SQLite hid it because it serialises writers). A conditional `PATCH` such as claiming a reminder ("not yet notified") read its rows and then wrote them without a lock, so two open tabs could both show the same notice, and two requests could both take the last Minimum Day place. `PATCH` now locks the rows it matches (`select_for_update`), and a day's minimum is changed one request at a time. Regression tests in `backend/tests/test_concurrency.py` run only on PostgreSQL (they are skipped on SQLite) and were seen to fail before the fix. Other writes that read-then-write without a lock (`DELETE`, the multi-step planner operations) have not been audited for the same race.
+- **Backup tools are SQLite-only** (`backup_db`, `restore_db`, `verify_db` refuse to run on PostgreSQL). On Neon, backups are the provider's; the recovery drill in `docs/BACKUP_RESTORE.md` does not apply to a PostgreSQL deployment and nothing has been verified for it.
 - **Not deployed, HTTPS unverified.** `docs/DEPLOYMENT.md` lists what a deployment needs and its blockers. A strict Content-Security-Policy now exists (`deploy/securityHeaders.js`) and is verified in Chromium against the production build, **but the frontend host must send it; nothing is deployed, so it is not in force anywhere.** HSTS is available and **off** until HTTPS is confirmed on the real domain. Still open: no SMTP provider chosen or tested, no scheduled or off-machine backups and no recovery drill on a real setup, no monitoring provider or alerting, draft privacy policy.
 - **Cookie sessions are unverified over HTTPS.** Verified in Chromium over HTTP; `Secure`, proxy `Host`/`X-Forwarded-Proto` handling untested. On-page script can still act as the user while a page is open (CSP is the mitigation, not yet deployed). See `docs/AUTH_SECURITY.md`.
 - **Dependency audit (18 Oct 2026):** `npm audit` 0 vulnerabilities. `pip-audit` (scratch virtualenv, installed backend packages) found 2 in djangorestframework 3.16.1; the pin is now `>=3.17.2,<3.18` (fixed version), tested, and a re-audit found none. Behaviour change handled: DRF 3.17.2 enforces Django's request-size limit and raises on oversized bodies, which would have been a 500, so the error handler answers `413 too_large` (tested). The proxy's 1 MB limit remains defence in depth. Audits cover known advisories only; repeat before launch.
@@ -82,6 +85,28 @@ Backend: Django + SQLite (migrated from Supabase; see `docs/DJANGO_MIGRATION.md`
 - Recurring-task figures cover the last 28 days and count only tasks still linked to their repeating task: if a repeating task is permanently deleted, its older records stay in My Day and the weekly numbers but drop out of this list.
 - The page loads 8 weeks with one request set per week; not optimised for very busy accounts.
 - Goals with targets are not built: the spec calls them a separate later concept and there is no approved data model.
+
+## Undo (finishing and moving a task)
+- **Existing behaviour found while testing, not changed:** undoing a move of a *repeating* task onto a day it is due (a daily task onto an unopened day, say) deletes the copy and records the task as removed for that day, so the day never gets its own occurrence (opening it returns nothing). The quick Undo notice is not offered after such a move; the "Undo move" button on the moved row still does this. A fix changes the planner's removal rule and needs a product decision. A pending test (`it.todo`) in `tests/integration/undo.integration.test.js` marks it.
+- The Undo notice is not remembered: it is gone after a reload or when the day changes. Only the latest change is offered; earlier ticks are undone by unticking.
+- Keyboard users reach the notice with Tab after the task list; if they do not get there within 8 seconds it closes (unticking the checkbox still undoes a completion).
+- The 8-second timer is MUI's: after the pointer or focus leaves the notice it restarts for another 8 seconds rather than resuming.
+- Not tested: Firefox, Safari, real phones, screen readers (the notice is a status region; whether it is announced was not checked with a screen reader).
+
+## My Day as a to-do list
+- Quick add takes a **title only**. Times, estimate, category, description and priority are set with Edit afterwards; a repeating task is made on the Recurring tasks page (My Day has no repeat option, and a one-off task cannot be turned into a repeating one).
+- "Partly done" is two steps away (Edit, then Progress); one tap on the checkbox finishes a partly done task.
+- The checkbox's accessible name is "Done: <title>"; it was a three-way button group before, so any saved bookmarks or scripts that looked for "Not done" / "Partly" buttons need updating.
+- **Existing quirk, not changed here:** a one-off task made with Add is linked to a one-off template, so its row says "repeats" and its remove dialog offers "Stop repeating after today". Found while testing; it predates this change.
+- The checkbox updates when the server confirms (the old buttons did too), so it is briefly disabled while a change is saving. Its tap target is 44 px (tested at desktop and phone width).
+- Not tested: Firefox, Safari, real phones, screen readers; Hindi (these screens are English-only).
+
+## Minimum Day
+- **Product decision still needed: the limit of 3 tasks is provisional and has not been confirmed.** Do not treat it as final. It is kept equal on the client and the server by a test, so changing it means changing `PLANNER_CONFIG.limits.minimumTasks` and `MAX_MINIMUM_TASKS` together.
+- Saving a minimum is one request per task (at most six): not atomic. A failure midway leaves a valid minimum, never more than three; the person is told it was only partly saved, sees what is saved, and can choose again safely (nothing is created, so nothing duplicates). Tested with a server that fails the second write.
+- Putting a set-aside task back, or undoing a move, does not re-choose it for the minimum; a moved task's copy is never flagged. This is deliberate (nothing is chosen on the person's behalf).
+- The Week and Progress screens, reminders and the calendar export do not know about the minimum.
+- Not tested: Firefox and Safari, real phones, a screen reader (the markup uses a labelled region, a fieldset-style group of checkboxes, `role="status"` for the message and `aria-live` for the count).
 
 ## Recurring tasks
 - **There is no pause or resume.** The planner has no paused state, and an ended task cannot be restarted; create a new one.

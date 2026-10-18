@@ -8,7 +8,7 @@ export const TEMPLATE_COLUMNS =
   'id, title, description, category, is_priority, planned_start, planned_end, estimated_minutes, recurrence, weekdays, starts_on, ends_on, archived_at, created_at'
 export const DAY_COLUMNS = 'plan_date, day_mode, baseline_at, suppressed_template_ids'
 export const OCCURRENCE_COLUMNS =
-  'id, template_id, plan_date, title, description, category, is_priority, planned_start, planned_end, estimated_minutes, completion, completed_at, plan_state, excluded_reason, excluded_at, rescheduled_from_id, in_original_plan, is_customized, created_at'
+  'id, template_id, plan_date, title, description, category, is_priority, planned_start, planned_end, estimated_minutes, completion, completed_at, plan_state, excluded_reason, excluded_at, rescheduled_from_id, in_original_plan, is_customized, is_minimum, created_at'
 
 // Columns clients may write (must equal the migration's grants).
 export const WRITABLE = Object.freeze({
@@ -17,7 +17,7 @@ export const WRITABLE = Object.freeze({
   dayInsert: ['user_id', 'plan_date'],
   dayUpdate: ['day_mode', 'suppressed_template_ids'],
   occurrenceInsert: ['user_id', 'plan_date', 'template_id', 'title', 'description', 'category', 'is_priority', 'planned_start', 'planned_end', 'estimated_minutes', 'rescheduled_from_id', 'is_customized'],
-  occurrenceUpdate: ['title', 'description', 'category', 'is_priority', 'planned_start', 'planned_end', 'estimated_minutes', 'completion', 'plan_state', 'excluded_reason', 'is_customized'],
+  occurrenceUpdate: ['title', 'description', 'category', 'is_priority', 'planned_start', 'planned_end', 'estimated_minutes', 'completion', 'plan_state', 'excluded_reason', 'is_customized', 'is_minimum'],
 })
 
 // PostgREST returns `time` as HH:MM:SS; the planner works with HH:MM.
@@ -71,6 +71,7 @@ export function occurrenceFromRow(row) {
     rescheduledFromId: row.rescheduled_from_id ?? null,
     inOriginalPlan: Boolean(row.in_original_plan),
     isCustomized: Boolean(row.is_customized),
+    isMinimum: Boolean(row.is_minimum),
     createdAt: row.created_at ?? null,
   }
 }
@@ -116,6 +117,9 @@ export const occurrenceStateRow = (occurrence) => ({
   plan_state: occurrence.planState,
   excluded_reason: occurrence.excludedReason ?? null,
 })
+
+// Whether the task is part of the day's Minimum Day.
+export const occurrenceMinimumRow = (isMinimum) => ({ is_minimum: Boolean(isMinimum) })
 
 // Task details edited on a single day; marks the occurrence as customised so
 // template edits no longer overwrite it.

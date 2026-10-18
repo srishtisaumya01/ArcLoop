@@ -26,9 +26,22 @@ beforeAll(() => {
 
 let userId
 let service
+let failNext = null // (state) => boolean: the next matching request fails, as a dropped connection would
+let updates = 0 // writes to the occurrences, counted
 beforeEach(async () => {
   userId = await createUser(world, `myday-${(seq += 1)}@example.com`, 'America/New_York')
-  const client = createTestClient(world, { getUserId: () => userId })
+  failNext = null
+  updates = 0
+  const hooks = {
+    before: async (state) => {
+      if (state.table === 'task_occurrences' && state.op === 'update') updates += 1
+      if (failNext && failNext(state)) {
+        failNext = null
+        throw new Error('Failed to fetch')
+      }
+    },
+  }
+  const client = createTestClient(world, { getUserId: () => userId, hooks })
   service = createPlannerService({ getClient: () => client, clock: () => Date.parse(CLOCK) })
   holder.service = service
   localStorage.clear() // dismissals (welcome-back, day-mode offers) are per browser and must not leak between tests
@@ -38,6 +51,16 @@ const daily = (title, extra = {}) => ({ title, recurrence: 'daily', startsOn: '2
 const renderDay = (path = '/app/day') =>
   render(h(ThemeProvider, { theme }, h(MemoryRouter, { initialEntries: [path] }, h(MyDayPage))))
 const progress = () => screen.getByLabelText('Day progress', { selector: 'section' })
+const box = (title) => screen.getByRole('checkbox', { name: `Done: ${title}` })
+const findBox = (title) => screen.findByRole('checkbox', { name: `Done: ${title}` })
+// "Partly" lives in Edit: open the task's edit form, choose Partly, save.
+async function markPartly(user, title) {
+  await user.click(screen.getByRole('button', { name: `Edit ${title}` }))
+  const form = screen.getByRole('form', { name: `Edit ${title}` })
+  await user.click(within(form).getByRole('button', { name: 'Partly' }))
+  await user.click(within(form).getByRole('button', { name: 'Save changes' }))
+  await waitFor(() => expect(screen.queryByRole('form', { name: `Edit ${title}` })).toBeNull())
+}
 const persisted = async (title) => (await service.getDayPlan(TODAY)).occurrences.find((o) => o.title === title)
 
 describe('My Day against the real service and database', () => {
@@ -52,38 +75,40 @@ describe('My Day against the real service and database', () => {
     expect(await countRows(world, userId, 'task-occurrences')).toBe(2)
   })
 
-  it('records done and partly done, saves them, and updates progress', async () => {
+  it('ticks a task done and back, sets partly done from Edit, saves them, and updates progress', async () => {
     await service.createTemplate(daily('Walk'))
     await service.createTemplate(daily('Read'))
     const user = setupUser()
     renderDay()
     await screen.findByText('Walk')
-    await user.click(screen.getByRole('button', { name: 'Done: Walk' }))
+    await user.click(box('Walk'))
     await waitFor(() => expect(within(progress()).getByText('50% of today’s plan')).toBeTruthy())
+    expect(box('Walk').checked).toBe(true)
     expect((await persisted('Walk')).completion).toBe(1)
     expect((await persisted('Walk')).completedAt).not.toBeNull()
-    await user.click(screen.getByRole('button', { name: 'Partly: Read' }))
+    await markPartly(user, 'Read')
     await waitFor(() => expect(within(progress()).getByText('75% of today’s plan')).toBeTruthy())
     expect((await persisted('Read')).completion).toBe(0.5)
-    // Undo goes back to not done and clears the stamp.
-    await user.click(screen.getByRole('button', { name: 'Not done: Walk' }))
+    expect(box('Read').indeterminate).toBe(true) // a dash: partly done
+    // Unticking goes back to not done and clears the stamp.
+    await user.click(box('Walk'))
     await waitFor(() => expect(within(progress()).getByText('25% of today’s plan')).toBeTruthy())
     expect((await persisted('Walk')).completion).toBe(0)
   })
 
-  it('adds a task, with validation shown for an empty title', async () => {
+  it('quick-adds a task with just a title, with validation shown for an empty one', async () => {
     const user = setupUser()
     renderDay()
     expect(await screen.findByText('No tasks on this day')).toBeTruthy()
     await user.click(screen.getByRole('button', { name: 'Add task' }))
     expect(await screen.findByText('Give the task a title.')).toBeTruthy()
     expect(await countRows(world, userId, 'task-occurrences')).toBe(0)
-    await user.type(screen.getByRole('textbox', { name: /^Task/ }), 'Call the dentist')
-    await user.type(screen.getByLabelText(/Estimate in minutes/), '15')
+    await user.type(screen.getByRole('textbox', { name: 'Task' }), 'Call the dentist')
     await user.click(screen.getByRole('button', { name: 'Add task' }))
     expect(await screen.findByText('Call the dentist')).toBeTruthy()
-    expect((await persisted('Call the dentist')).estimatedMinutes).toBe(15)
+    expect(await persisted('Call the dentist')).toMatchObject({ planState: 'active', completion: 0, estimatedMinutes: null, plannedStart: null })
     expect(screen.queryByText('Give the task a title.')).toBeNull()
+    expect((screen.getByRole('textbox', { name: 'Task' })).value).toBe('') // ready for the next one
   })
 
   it('sets a task aside and puts it back; set-aside tasks leave the progress maths', async () => {
@@ -92,7 +117,7 @@ describe('My Day against the real service and database', () => {
     const user = setupUser()
     renderDay()
     await screen.findByText('Walk')
-    await user.click(screen.getByRole('button', { name: 'Done: Walk' }))
+    await user.click(box('Walk'))
     await user.click(await screen.findByRole('button', { name: 'Set aside Read' }))
     await waitFor(() => expect(within(progress()).getByText('100% of today’s plan')).toBeTruthy())
     const list = screen.getByLabelText('Set aside tasks')
@@ -131,7 +156,7 @@ describe('My Day against the real service and database', () => {
     expect(await countRows(world, userId, 'day-plans')).toBe(0)
     await user.click(screen.getByRole('button', { name: 'Start this day' }))
     expect(await screen.findByText('Walk')).toBeTruthy()
-    expect((await screen.findByRole('button', { name: 'Done: Walk' })).disabled).toBe(true)
+    expect((await findBox('Walk')).disabled).toBe(true)
   })
 
   it('edits a task for this day only, keeping progress, and shows validation without saving', async () => {
@@ -139,7 +164,7 @@ describe('My Day against the real service and database', () => {
     const user = setupUser()
     renderDay()
     await screen.findByText('Walk')
-    await user.click(screen.getByRole('button', { name: 'Partly: Walk' }))
+    await markPartly(user, 'Walk')
     await waitFor(async () => expect((await persisted('Walk')).completion).toBe(0.5))
     await user.click(screen.getByRole('button', { name: 'Edit Walk' }))
     const form = screen.getByRole('form', { name: 'Edit Walk' })
@@ -206,7 +231,7 @@ describe('My Day against the real service and database', () => {
     expect(await persisted('Read')).toBeUndefined()
     // It stays gone when the day is reopened (the template is suppressed for this day).
     expect((await service.openDay(TODAY)).occurrences.map((o) => o.title)).toEqual(['Walk'])
-    await user.click(screen.getByRole('button', { name: 'Done: Walk' }))
+    await user.click(box('Walk'))
     await waitFor(() => expect(within(progress()).getByText('100% of today’s plan')).toBeTruthy())
     expect(screen.queryByRole('button', { name: 'Remove Walk' })).toBeNull()
   })
@@ -217,7 +242,7 @@ describe('My Day against the real service and database', () => {
     const user = setupUser()
     renderDay()
     await screen.findByText('Walk')
-    await user.click(screen.getByRole('button', { name: 'Partly: Walk' })) // stamps the baseline
+    await markPartly(user, 'Walk') // stamps the baseline
     await waitFor(async () => expect((await service.getDayPlan(TODAY)).day.baselineAt).not.toBeNull())
     await user.click(screen.getByRole('button', { name: 'Remove Read' }))
     await user.click(await screen.findByRole('button', { name: 'Remove from this day' }))
@@ -227,22 +252,12 @@ describe('My Day against the real service and database', () => {
     expect(within(list).queryByRole('button', { name: 'Put back Read' })).toBeNull()
   })
 
-  it('creates a repeating task that appears on later days, and can stop repeating', async () => {
+  it('a repeating task appears on later days, and can stop repeating', async () => {
+    await service.createTemplate({ title: 'Stretch', recurrence: 'weekly', weekdays: [2, 3], startsOn: TODAY })
     const user = setupUser()
     renderDay()
-    await screen.findByText('No tasks on this day')
-    await user.type(screen.getByRole('textbox', { name: /^Task/ }), 'Stretch')
-    await user.click(screen.getByLabelText('Repeats'))
-    await user.click(await screen.findByRole('option', { name: 'Selected days of the week' }))
-    await user.click(screen.getByRole('button', { name: 'Add task' }))
-    expect(await screen.findByText('Choose at least one day of the week.')).toBeTruthy()
-    expect(await service.listTemplates()).toHaveLength(0)
-    await user.click(screen.getByRole('checkbox', { name: 'Wed' }))
-    await user.click(screen.getByRole('checkbox', { name: 'Tue' }))
-    await user.click(screen.getByRole('button', { name: 'Add task' }))
     expect(await screen.findByText('Stretch')).toBeTruthy() // 2026-03-10 is a Tuesday
-    const [template] = await service.listTemplates()
-    expect(template).toMatchObject({ title: 'Stretch', recurrence: 'weekly', weekdays: [2, 3], startsOn: TODAY })
+    expect(screen.queryByLabelText('Repeats')).toBeNull() // My Day's quick add has no repeat options: repeating tasks are made on the Recurring tasks page
     // Wednesday: a read-only look creates nothing; starting the day brings the task in.
     await user.click(screen.getByRole('button', { name: 'Next day' }))
     await user.click(await screen.findByRole('button', { name: 'Start this day' }))
@@ -263,7 +278,7 @@ describe('My Day against the real service and database', () => {
     const user = setupUser()
     renderDay()
     await screen.findByText('Walk')
-    await user.click(screen.getByRole('button', { name: 'Done: Walk' }))
+    await user.click(box('Walk'))
     await user.click(screen.getByRole('button', { name: 'Move Read' }))
     const form = screen.getByRole('form', { name: 'Move Read' })
     expect(within(form).getByLabelText('Move to').value).toBe('2026-03-11')
@@ -305,8 +320,8 @@ describe('My Day against the real service and database', () => {
     const user = setupUser()
     renderDay()
     await screen.findByText('Walk')
-    await user.click(screen.getByRole('button', { name: 'Partly: Read' }))
-    await user.click(screen.getByRole('button', { name: 'Done: Walk' }))
+    await markPartly(user, 'Read')
+    await user.click(box('Walk'))
     await waitFor(() => expect(screen.queryByRole('button', { name: 'Move Walk' })).toBeNull()) // finished tasks stay put
     await waitFor(async () => expect((await persisted('Read')).completion).toBe(0.5))
     await user.click(screen.getByRole('button', { name: 'Move Read' }))
@@ -362,7 +377,7 @@ describe('My Day against the real service and database', () => {
     expect(screen.queryByRole('button', { name: 'Add my repeating tasks' })).toBeNull() // not offered on today
     await user.click(screen.getByRole('button', { name: 'Next day' }))
     expect(await screen.findByText('Moved from Tuesday 10 Mar')).toBeTruthy()
-    expect(screen.queryByRole('button', { name: 'Done: Stretch', exact: true })).toBeNull() // tomorrow exists, but without its repeating tasks
+    expect(screen.queryByRole('checkbox', { name: 'Done: Stretch', exact: true })).toBeNull() // tomorrow exists, but without its repeating tasks
     expect(within(screen.getByLabelText('Repeating tasks to add')).getByText('Stretch')).toBeTruthy() // the preview says what the action will add
     await user.click(screen.getByRole('button', { name: 'Add my repeating tasks' }))
     expect(await screen.findByText('Stretch')).toBeTruthy()
@@ -397,7 +412,7 @@ describe('My Day against the real service and database', () => {
       const user = setupUser()
       renderDay()
       await screen.findByText('Walk')
-      await user.click(screen.getByRole('button', { name: 'Done: Pay rent' }))
+      await user.click(box('Pay rent'))
       await waitFor(() => expect(within(progress()).getByText('33% of today’s plan')).toBeTruthy())
       await user.click(screen.getByRole('button', { name: 'Busy' }))
       await user.click(await screen.findByRole('button', { name: 'Set these aside' }))
@@ -415,7 +430,7 @@ describe('My Day against the real service and database', () => {
       const user = setupUser()
       renderDay()
       await screen.findByText('Walk')
-      await user.click(screen.getByRole('button', { name: 'Done: Walk' }))
+      await user.click(box('Walk'))
       await user.click(screen.getByRole('button', { name: 'Rest day' }))
       const panel = await screen.findByRole('region', { name: 'Rest day' })
       expect(within(panel).getByText('Rest is part of the plan.')).toBeTruthy()
@@ -581,5 +596,343 @@ describe('My Day against the real service and database', () => {
     expect(screen.queryByText(/relation/)).toBeNull()
     await user.click(screen.getByRole('button', { name: /Try again/ }))
     expect(await screen.findByText('Today')).toBeTruthy()
+  })
+})
+
+
+describe('Minimum Day on My Day, against the real service and database', () => {
+  const panel = () => screen.getByRole('region', { name: 'Minimum Day' })
+
+  it('chooses a minimum, shows it on the task, and leaves the day percentage alone as it is completed', async () => {
+    for (const title of ['Walk', 'Read', 'Write', 'Tidy']) await service.createTemplate(daily(title))
+    const user = setupUser()
+    renderDay()
+    await screen.findByText('Walk')
+    expect(within(panel()).getByText('Choose a few important tasks to keep your day moving.')).toBeTruthy()
+    await user.click(within(panel()).getByRole('button', { name: 'Choose your minimum' }))
+    await user.click(within(panel()).getByRole('checkbox', { name: 'Walk' }))
+    await user.click(within(panel()).getByRole('checkbox', { name: 'Read' }))
+    await user.click(within(panel()).getByRole('button', { name: 'Save minimum' }))
+    await within(panel()).findByRole('list', { name: 'Your minimum tasks' })
+    expect(within(panel()).getByRole('status').textContent).toBe('Your minimum is still here whenever you’re ready.')
+    expect((await persisted('Walk')).isMinimum).toBe(true)
+    expect((await persisted('Write')).isMinimum).toBe(false)
+    expect(within(progress()).getByText('0% of today’s plan')).toBeTruthy()
+
+    await user.click(box('Walk'))
+    await waitFor(() => expect(within(progress()).getByText('25% of today’s plan')).toBeTruthy())
+    await user.click(box('Read'))
+    await waitFor(() => expect(within(panel()).getByRole('status').textContent).toBe('You showed up for yourself today.'))
+    expect(within(progress()).getByText('50% of today’s plan')).toBeTruthy() // the minimum done is not the day done
+    expect(within(panel()).getByText('2 of 2 done')).toBeTruthy()
+    expect((await persisted('Write')).completion).toBe(0)
+  })
+
+  it('stops at three choices, and keeps the tasks the person chose when a Busy day proposes setting others aside', async () => {
+    for (const title of ['A', 'B', 'C', 'D']) await service.createTemplate(daily(title))
+    const user = setupUser()
+    renderDay()
+    await screen.findByText('A')
+    await user.click(within(panel()).getByRole('button', { name: 'Choose your minimum' }))
+    for (const title of ['A', 'B', 'C']) await user.click(within(panel()).getByRole('checkbox', { name: title }))
+    expect(within(panel()).getByRole('checkbox', { name: 'D' }).disabled).toBe(true)
+    await user.click(within(panel()).getByRole('button', { name: 'Save minimum' }))
+    await within(panel()).findByRole('list', { name: 'Your minimum tasks' })
+
+    await user.click(screen.getByRole('button', { name: 'Busy' }))
+    const offer = await screen.findByRole('list', { name: 'Tasks proposed for setting aside' })
+    expect(within(offer).getAllByRole('listitem').map((li) => li.textContent)).toEqual(['D']) // never the minimum
+    expect((await service.getDayPlan(TODAY)).occurrences.every((o) => o.planState === 'active')).toBe(true) // nothing moved by itself
+  })
+
+  it('can be cleared, and clearing deletes or skips nothing', async () => {
+    await service.createTemplate(daily('Walk'))
+    const user = setupUser()
+    renderDay()
+    await screen.findByText('Walk')
+    await user.click(within(panel()).getByRole('button', { name: 'Choose your minimum' }))
+    await user.click(within(panel()).getByRole('checkbox', { name: 'Walk' }))
+    await user.click(within(panel()).getByRole('button', { name: 'Save minimum' }))
+    await user.click(await within(panel()).findByRole('button', { name: 'Clear minimum' }))
+    await waitFor(() => expect(within(panel()).getByText('You haven’t chosen a minimum for this day. That is fine.')).toBeTruthy())
+    expect((await persisted('Walk')).planState).toBe('active')
+    expect(await countRows(world, userId, 'task-occurrences')).toBe(1)
+  })
+
+  it('is per day: another date does not inherit it, and a day that does not exist yet shows no panel', async () => {
+    await service.createTemplate(daily('Walk'))
+    const today = await service.openDay(TODAY)
+    await service.setMinimum(TODAY, [today.occurrences[0].id])
+    renderDay('/app/day?date=2026-03-11')
+    expect(await screen.findByText('Nothing planned for this day yet')).toBeTruthy()
+    expect(screen.queryByRole('region', { name: 'Minimum Day' })).toBeNull() // the day does not exist yet: nothing to choose from
+  })
+
+  it('shows a minimum on history outside the editing window as a record, with no controls', async () => {
+    await service.createTask(TODAY, { title: 'Keeper' })
+    const today = await service.openDay(TODAY)
+    await service.setMinimum(TODAY, [today.occurrences[0].id])
+    holder.service = createPlannerService({ getClient: () => createTestClient(world, { getUserId: () => userId }), clock: () => Date.parse('2026-03-20T15:00:00Z') })
+    renderDay(`/app/day?date=${TODAY}`)
+    const record = await screen.findByRole('region', { name: 'Minimum Day' })
+    expect(within(record).getByText(/Keeper · Not done/)).toBeTruthy()
+    expect(within(record).queryByRole('button')).toBeNull()
+  })
+})
+
+
+describe('Undo on My Day, against the real service and database', () => {
+  const doneNotice = (title) => `“${title}” marked done.`
+  const undoButton = (title) => screen.getByRole('button', { name: `Undo: ${title} marked done` })
+  const writesToTasks = (state) => state.table === 'task_occurrences' && state.op === 'update'
+
+  it('ticking a task offers Undo; Undo puts it back, and what is shown is what the server holds', async () => {
+    await service.createTemplate(daily('Walk'))
+    await service.createTemplate(daily('Read'))
+    const user = setupUser()
+    renderDay()
+    await screen.findByText('Walk')
+    await user.click(box('Walk'))
+    expect(await screen.findByText(doneNotice('Walk'))).toBeTruthy()
+    expect((await persisted('Walk')).completion).toBe(1)
+    await user.click(undoButton('Walk'))
+    await waitFor(() => expect(screen.queryByText(doneNotice('Walk'))).toBeNull())
+    expect(box('Walk').checked).toBe(false)
+    expect((await persisted('Walk')).completion).toBe(0)
+    expect((await persisted('Walk')).completedAt).toBeNull()
+    expect(within(progress()).getByText('0% of today’s plan')).toBeTruthy()
+  })
+
+  it('Undo restores a partly done task to partly done', async () => {
+    await service.createTemplate(daily('Walk'))
+    const user = setupUser()
+    renderDay()
+    await screen.findByText('Walk')
+    await markPartly(user, 'Walk')
+    await user.click(box('Walk')) // a dash: one tick finishes it
+    expect(await screen.findByText(doneNotice('Walk'))).toBeTruthy()
+    await user.click(undoButton('Walk'))
+    await waitFor(() => expect(box('Walk').indeterminate).toBe(true))
+    expect((await persisted('Walk')).completion).toBe(0.5)
+  })
+
+  it('unticking a task does not offer Undo, and a refused tick does not claim success', async () => {
+    await service.createTemplate(daily('Walk'))
+    const user = setupUser()
+    renderDay()
+    await screen.findByText('Walk')
+    failNext = writesToTasks
+    await user.click(box('Walk'))
+    expect(await screen.findByRole('alert')).toBeTruthy() // the page says it did not save
+    expect(screen.queryByText(doneNotice('Walk'))).toBeNull() // no notice for something that did not happen
+    expect((await persisted('Walk')).completion).toBe(0)
+    await user.click(box('Walk'))
+    await screen.findByText(doneNotice('Walk'))
+    await user.click(box('Walk')) // unticking by hand
+    await waitFor(() => expect(screen.queryByText(doneNotice('Walk'))).toBeNull()) // the notice no longer describes the screen
+  })
+
+  it('with several tasks ticked in succession, the notice is for the latest only and Undo touches only that task', async () => {
+    for (const title of ['Walk', 'Read', 'Write']) await service.createTemplate(daily(title))
+    const user = setupUser()
+    renderDay()
+    await screen.findByText('Walk')
+    await user.click(box('Walk'))
+    await screen.findByText(doneNotice('Walk'))
+    await user.click(box('Read'))
+    expect(await screen.findByText(doneNotice('Read'))).toBeTruthy()
+    expect(screen.queryByText(doneNotice('Walk'))).toBeNull()
+    expect(screen.getAllByRole('button', { name: /^Undo:/ })).toHaveLength(1)
+    await user.click(undoButton('Read'))
+    await waitFor(() => expect(box('Read').checked).toBe(false))
+    expect(box('Walk').checked).toBe(true) // the earlier one is untouched
+    expect((await persisted('Walk')).completion).toBe(1)
+    expect((await persisted('Write')).completion).toBe(0)
+  })
+
+  it('a failed Undo says so, keeps the task as the server has it, and Try again works', async () => {
+    await service.createTemplate(daily('Walk'))
+    const user = setupUser()
+    renderDay()
+    await screen.findByText('Walk')
+    await user.click(box('Walk'))
+    await screen.findByText(doneNotice('Walk'))
+    failNext = writesToTasks
+    await user.click(undoButton('Walk'))
+    const alert = await screen.findByRole('alert')
+    expect(alert.textContent).not.toMatch(/marked done/) // no false success, and no stale message either
+    expect(box('Walk').checked).toBe(true)
+    expect((await persisted('Walk')).completion).toBe(1)
+    await user.click(screen.getByRole('button', { name: 'Try again' }))
+    await waitFor(() => expect(box('Walk').checked).toBe(false)) // shown only once the server has confirmed it
+    expect(screen.queryByRole('alert')).toBeNull()
+    expect((await persisted('Walk')).completion).toBe(0)
+  })
+
+  it('if the task changed somewhere else, Undo says so plainly and does not overwrite it', async () => {
+    await service.createTemplate(daily('Walk'))
+    const user = setupUser()
+    renderDay()
+    await screen.findByText('Walk')
+    await user.click(box('Walk'))
+    await screen.findByText(doneNotice('Walk'))
+    await service.setCompletion((await persisted('Walk')).id, 0.5) // another tab
+    await user.click(undoButton('Walk'))
+    expect(await screen.findByText('That task changed since. Reload to see where it is now.')).toBeTruthy()
+    await waitFor(() => expect(screen.queryByText(doneNotice('Walk'))).toBeNull())
+    expect((await persisted('Walk')).completion).toBe(0.5)
+    await waitFor(() => expect(box('Walk').indeterminate).toBe(true)) // the screen shows where it is now
+  })
+
+  it('pressing Undo twice in a row sends one request', async () => {
+    await service.createTemplate(daily('Walk'))
+    const user = setupUser()
+    renderDay()
+    await screen.findByText('Walk')
+    await user.click(box('Walk'))
+    await screen.findByText(doneNotice('Walk'))
+    const before = updates
+    const button = undoButton('Walk')
+    fireEvent.click(button)
+    fireEvent.click(button)
+    await waitFor(() => expect(box('Walk').checked).toBe(false))
+    expect(updates - before).toBe(1)
+    expect((await persisted('Walk')).completion).toBe(0)
+  })
+
+  it('moving to another day ends the notice: it only ever describes the day on screen', async () => {
+    await service.createTemplate(daily('Walk'))
+    const user = setupUser()
+    renderDay()
+    await screen.findByText('Walk')
+    await user.click(box('Walk'))
+    await screen.findByText(doneNotice('Walk'))
+    await user.click(screen.getByRole('button', { name: 'Previous day' }))
+    await waitFor(() => expect(screen.queryByText(doneNotice('Walk'))).toBeNull())
+  })
+
+  it('works from the keyboard: Tab to Undo, Enter', async () => {
+    await service.createTemplate(daily('Walk'))
+    const user = setupUser()
+    renderDay()
+    await screen.findByText('Walk')
+    await user.click(box('Walk'))
+    await screen.findByText(doneNotice('Walk'))
+    undoButton('Walk').focus()
+    expect(document.activeElement).toBe(undoButton('Walk'))
+    await user.keyboard('{Enter}')
+    await waitFor(() => expect(box('Walk').checked).toBe(false))
+    expect((await persisted('Walk')).completion).toBe(0)
+  })
+
+  it('a repeating task: Undo changes only that day’s occurrence and the repeating task is untouched', async () => {
+    const template = await service.createTemplate(daily('Walk'))
+    const user = setupUser()
+    renderDay()
+    await screen.findByText('Walk')
+    await user.click(box('Walk'))
+    await screen.findByText(doneNotice('Walk'))
+    await user.click(undoButton('Walk'))
+    await waitFor(() => expect(box('Walk').checked).toBe(false))
+    expect(await service.listTemplates()).toEqual([expect.objectContaining({ id: template.id, recurrence: 'daily', endsOn: null })])
+    expect(await countRows(world, userId, 'task-occurrences')).toBe(1)
+  })
+})
+
+describe('Move and its Undo on My Day, against the real service and database', () => {
+  const moveForm = (title) => screen.getByRole('form', { name: `Move ${title}` })
+  const movedNotice = (title, when) => `“${title}” moved to ${when}.`
+
+  it('the date field offers only days the planner accepts: 6 days back to 30 days ahead', async () => {
+    await service.createTemplate({ title: 'Dentist', recurrence: 'once', startsOn: TODAY })
+    const user = setupUser()
+    renderDay()
+    await screen.findByText('Dentist')
+    await user.click(screen.getByRole('button', { name: 'Move Dentist' }))
+    const date = within(moveForm('Dentist')).getByLabelText('Move to')
+    expect(date.getAttribute('min')).toBe('2026-03-04')
+    expect(date.getAttribute('max')).toBe('2026-04-09')
+    expect(date.value).toBe('2026-03-11')
+  })
+
+  it('moving a one-off task offers Undo, and Undo brings it back to its own day without leaving a copy', async () => {
+    await service.createTemplate({ title: 'Dentist', recurrence: 'once', startsOn: TODAY })
+    const user = setupUser()
+    renderDay()
+    await screen.findByText('Dentist')
+    await user.click(screen.getByRole('button', { name: 'Move Dentist' }))
+    fireEvent.change(within(moveForm('Dentist')).getByLabelText('Move to'), { target: { value: '2026-03-12' } })
+    await user.click(within(moveForm('Dentist')).getByRole('button', { name: 'Move task' }))
+    expect(await screen.findByText(movedNotice('Dentist', 'Thursday 12 Mar'))).toBeTruthy()
+    expect(within(screen.getByLabelText('Set aside tasks')).getByText('Moved to Thursday 12 Mar')).toBeTruthy()
+    await user.click(screen.getByRole('button', { name: 'Undo: move of Dentist' }))
+    await waitFor(() => expect(screen.queryByText(movedNotice('Dentist', 'Thursday 12 Mar'))).toBeNull())
+    expect(await screen.findByRole('checkbox', { name: 'Done: Dentist' })).toBeTruthy() // back in today's list, ready to tick
+    expect(screen.queryByLabelText('Set aside tasks')).toBeNull()
+    expect(await countRows(world, userId, 'task-occurrences')).toBe(1) // no duplicate
+    expect((await persisted('Dentist')).planState).toBe('active')
+    expect((await service.getDayPlan('2026-03-12')).occurrences.filter((o) => o.planState === 'active')).toEqual([])
+  })
+
+  it('a failed Undo of a move says so and leaves the move as the server has it', async () => {
+    await service.createTemplate({ title: 'Dentist', recurrence: 'once', startsOn: TODAY })
+    const user = setupUser()
+    renderDay()
+    await screen.findByText('Dentist')
+    await user.click(screen.getByRole('button', { name: 'Move Dentist' }))
+    fireEvent.change(within(moveForm('Dentist')).getByLabelText('Move to'), { target: { value: '2026-03-12' } })
+    await user.click(within(moveForm('Dentist')).getByRole('button', { name: 'Move task' }))
+    await screen.findByText(movedNotice('Dentist', 'Thursday 12 Mar'))
+    failNext = (state) => state.table === 'task_occurrences' && state.op === 'select' && state.filters.some((f) => f.column === 'rescheduled_from_id')
+    await user.click(screen.getByRole('button', { name: 'Undo: move of Dentist' }))
+    expect(await screen.findByRole('alert')).toBeTruthy()
+    expect(screen.queryByText(movedNotice('Dentist', 'Thursday 12 Mar'))).toBeNull()
+    expect((await service.getDayPlan(TODAY)).occurrences[0]).toMatchObject({ planState: 'excluded', excludedReason: 'rescheduled' }) // still moved
+    await user.click(screen.getByRole('button', { name: 'Try again' }))
+    expect(await screen.findByRole('checkbox', { name: 'Done: Dentist' })).toBeTruthy() // back on the day only once the server confirmed it
+    expect(screen.queryByRole('alert')).toBeNull()
+    expect((await persisted('Dentist')).planState).toBe('active')
+  })
+
+  it('a repeating task that is not due on the new day gets a clean Undo; the repeating task is untouched', async () => {
+    const template = await service.createTemplate({ title: 'Gym', recurrence: 'weekly', weekdays: [2], startsOn: '2026-03-01' })
+    const user = setupUser()
+    renderDay()
+    await screen.findByText('Gym')
+    await user.click(screen.getByRole('button', { name: 'Move Gym' }))
+    fireEvent.change(within(moveForm('Gym')).getByLabelText('Move to'), { target: { value: '2026-03-13' } })
+    await user.click(within(moveForm('Gym')).getByRole('button', { name: 'Move task' }))
+    await screen.findByText(movedNotice('Gym', 'Friday 13 Mar'))
+    await user.click(screen.getByRole('button', { name: 'Undo: move of Gym' }))
+    await waitFor(() => expect(screen.queryByLabelText('Set aside tasks')).toBeNull())
+    expect(await service.listTemplates()).toEqual([expect.objectContaining({ id: template.id, recurrence: 'weekly', weekdays: [2] })])
+    expect((await service.getDayPlan('2026-03-13')).occurrences.filter((o) => o.planState === 'active')).toEqual([])
+  })
+
+  it('a repeating task that is due on the new day anyway is moved without the quick Undo (the row’s own "Undo move" is still there)', async () => {
+    await service.createTemplate(daily('Walk'))
+    const user = setupUser()
+    renderDay()
+    await screen.findByText('Walk')
+    await user.click(screen.getByRole('button', { name: 'Move Walk' }))
+    fireEvent.change(within(moveForm('Walk')).getByLabelText('Move to'), { target: { value: '2026-03-12' } })
+    await user.click(within(moveForm('Walk')).getByRole('button', { name: 'Move task' }))
+    expect(await screen.findByText('Moved to Thursday 12 Mar')).toBeTruthy() // the row says where it went
+    expect(screen.queryByText(movedNotice('Walk', 'Thursday 12 Mar'))).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Undo: move of Walk' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Undo move of Walk' })).toBeTruthy()
+  })
+
+  it('a refused move shows the planner’s message, offers no Undo, and moves nothing', async () => {
+    await service.createTemplate({ title: 'Dentist', recurrence: 'once', startsOn: TODAY })
+    const user = setupUser()
+    renderDay()
+    await screen.findByText('Dentist')
+    await user.click(screen.getByRole('button', { name: 'Move Dentist' }))
+    fireEvent.change(within(moveForm('Dentist')).getByLabelText('Move to'), { target: { value: '2026-05-01' } }) // past the limit (a typed date can still be out of range)
+    await user.click(within(moveForm('Dentist')).getByRole('button', { name: 'Move task' }))
+    expect(await within(moveForm('Dentist')).findByText(/ahead|far|plan/i)).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /^Undo:/ })).toBeNull()
+    expect((await persisted('Dentist')).planState).toBe('active')
   })
 })

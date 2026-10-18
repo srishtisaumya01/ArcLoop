@@ -241,7 +241,10 @@ class ResourceView(APIView):
         updated = []
         try:
             with transaction.atomic():
-                for obj in qs:
+                # Lock the matched rows. A filter such as "not yet notified" is a compare-and-set, and under PostgreSQL's default
+                # isolation two simultaneous requests could both match before either writes (so both would "win"). With the lock
+                # the second waits, then re-checks the filter against the committed row. SQLite ignores this: it serialises writers.
+                for obj in qs.select_for_update():
                     values = res.read_input(request.data, res.update_fields, request.user)
                     updated.append(res.update(request.user, obj, values))
         except IntegrityError as e:
