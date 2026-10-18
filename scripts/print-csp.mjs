@@ -1,7 +1,7 @@
 // Prints the frontend security headers for a given API address, to paste into the frontend host's configuration:
-//   npm run csp:print -- [https://api.example.com/api/v1] [--report-only] [--https]
+//   npm run csp:print -- [https://api.example.com/api/v1] [--report-only] [--https] [--nginx]
 // With no address the API is assumed to share the app's origin (`/api/` routed to Django): the recommended layout.
-import { originOf, securityHeaders } from '../deploy/securityHeaders.js'
+import { originOf, securityHeaders, toNginx } from '../deploy/securityHeaders.js'
 
 const args = process.argv.slice(2)
 const api = args.find((a) => !a.startsWith('--'))
@@ -12,4 +12,5 @@ const headers = securityHeaders({
   mode: args.includes('--report-only') ? 'report-only' : 'enforce',
   httpsOnly: args.includes('--https'),
 })
-for (const [name, value] of Object.entries(headers)) console.log(`${name}: ${value}`)
+if (args.includes('--nginx')) console.log(toNginx(headers))
+else for (const [name, value] of Object.entries(headers)) console.log(`${name}: ${value}`)

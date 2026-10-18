@@ -2,6 +2,7 @@ import { inject } from 'vitest'
 import { createDjangoClient } from '../../src/services/api/djangoClient.js'
 import { createPlannerService } from '../../src/services/planner/createPlannerService.js'
 import { createBrowserLikeApi } from '../support/browserLikeApi.js'
+import { uniqueEmail } from '../support/uniqueEmail.js'
 
 // Helpers for the integration tests: the real frontend services, hooks and screens run against the real Arcloop
 // Django API (started once by globalSetup.js) with a real SQLite database. Each test makes its own users, so test
@@ -27,11 +28,10 @@ export const useFixedClock = (world, iso) => {
 }
 export const setClock = useFixedClock
 
-let counter = 0
 // Registers a real account through the API, sets its profile timezone, and returns its id.
 export async function createUser(world, email, timeZone = 'UTC') {
   const api = world.newApi()
-  const unique = `${email.replace('@', `-${Date.now().toString(36)}${(counter += 1)}@`)}`
+  const unique = uniqueEmail(email.split('@')[0])
   api.setSession(await api.post('/auth/register/', { email: unique, password: PASSWORD, transport: 'cookie' }))
   if (timeZone !== 'UTC') await api.patch('/profile/', { timezone: timeZone })
   const id = api.getSession().user.id

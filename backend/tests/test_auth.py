@@ -1,8 +1,13 @@
 import datetime as dt
+import re
+from pathlib import Path
 from unittest import mock
 
+from django.contrib.auth import get_user_model
+from django.contrib.auth.password_validation import validate_password
 from django.core import mail
-from django.test import override_settings
+from django.core.exceptions import ValidationError
+from django.test import SimpleTestCase, override_settings
 from django.utils import timezone
 
 from accounts.models import AuthToken, hash_token
@@ -132,6 +137,32 @@ class AuthTests(ApiCase):
             responses = [self.client.post('/api/v1/auth/login/', {'email': 'x@example.com', 'password': 'nope-nope-nope'}, format='json') for _ in range(5)]
         self.assertEqual([r.status_code for r in responses], [401, 401, 401, 429, 429])
         self.assertError(responses[-1], 429, 'rate_limited')
+
+
+class TestAccountEmailTests(SimpleTestCase):
+    """The browser and integration suites sign up with one fixed password and a fresh address each time
+    (tests/support/uniqueEmail.js). The similarity rule once rejected an address now and then because of its random letters,
+    so check that no label in use can be rejected, whatever digits the clock produces."""
+
+    ROOT = Path(__file__).resolve().parents[2]
+    LABEL = re.compile(r"uniqueEmail\('([a-z-]+)'\)|(?:createUser|createPerson)\(world, `([a-z-]+?)-?\$\{")  # the local part each suite starts from
+
+    def test_no_address_the_suites_generate_is_too_similar_to_the_test_password(self):
+        password = re.search(r"PASSWORD = '([^']+)'", (self.ROOT / 'e2e-django/support/helpers.js').read_text(encoding='utf8')).group(1)
+        self.assertEqual(password, STRONG)
+        labels = set()
+        for path in [*(self.ROOT / 'e2e-django').glob('*.js'), *(self.ROOT / 'tests/integration').glob('*.js')]:
+            for match in self.LABEL.findall(path.read_text(encoding='utf8')):
+                labels.update(group for group in match if group)
+        self.assertGreater(len(labels), 25)  # the search itself works
+        user_model = get_user_model()
+        for label in sorted(labels):
+            for digits in ('17923000000001', '42' + '0' * 12, '24' + '0' * 12):  # a typical stamp, and the digits that match the password
+                email = f'{label}-{digits}@example.com'
+                try:
+                    validate_password(password, user_model(username=email, email=email))
+                except ValidationError as error:
+                    self.fail(f'{email}: {error.messages}')
 
 
 class ProfileTests(ApiCase):

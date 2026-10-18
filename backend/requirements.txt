@@ -1,3 +1,3 @@
 Django>=5.2,<5.3
-djangorestframework>=3.16,<3.17
+djangorestframework>=3.17.2,<3.18  # 3.17.2 fixes GHSA-2m8g-3cmr-wg3w and GHSA-g47c-3xmw-q6m2
 django-cors-headers>=4.7,<5

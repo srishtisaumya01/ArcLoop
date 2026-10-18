@@ -1,11 +1,14 @@
 import os
 from unittest import mock
 
+from django.conf import settings
 from django.core import mail
 from django.core.cache import cache
 from django.core.exceptions import ImproperlyConfigured
-from django.test import SimpleTestCase, override_settings
+from django.test import RequestFactory, SimpleTestCase, override_settings
 from rest_framework.throttling import ScopedRateThrottle
+
+from config.security_log import client_ip
 
 from .base import ApiCase
 
@@ -26,6 +29,14 @@ class ApiHeaderTests(ApiCase):
         response = self.client.get('/api/v1/profile/')
         self.assertEqual(response.status_code, 401)
         self.assertEqual(response.headers['Cache-Control'], 'no-store')
+
+
+class RequestSizeTests(ApiCase):
+    def test_an_oversized_json_body_is_refused_with_413_before_it_is_parsed(self):
+        self.anonymous()
+        body = '{"email": "a@example.com", "password": "%s"}' % ('a' * (settings.DATA_UPLOAD_MAX_MEMORY_SIZE + 1))
+        response = self.client.post('/api/v1/auth/login/', data=body, content_type='application/json')
+        self.assertError(response, 413, 'too_large')
 
 
 class HealthTests(ApiCase):
@@ -184,6 +195,26 @@ class ProductionSettingsTests(SimpleTestCase):
         self.assertEqual(loaded.SECURE_HSTS_SECONDS, 600)
         self.assertEqual(loaded.SECURE_PROXY_SSL_HEADER, ('HTTP_X_FORWARDED_PROTO', 'https'))
         self.assertFalse(hasattr(self.load(), 'SECURE_PROXY_SSL_HEADER'))
+
+    def test_the_client_address_trusts_forwarding_only_behind_a_proxy(self):
+        self.assertEqual(self.load().REST_FRAMEWORK['NUM_PROXIES'], 0)
+        self.assertEqual(self.load(DJANGO_BEHIND_PROXY='true').REST_FRAMEWORK['NUM_PROXIES'], 1)
+
+
+class ClientAddressTests(SimpleTestCase):
+    """One address for rate limiting and the security log. A client-supplied X-Forwarded-For must not choose it."""
+
+    def request(self, forwarded):
+        return RequestFactory().get('/', REMOTE_ADDR='10.0.0.1', HTTP_X_FORWARDED_FOR=forwarded)
+
+    def test_without_a_proxy_the_header_is_ignored(self):
+        self.assertEqual(client_ip(self.request('6.6.6.6')), '10.0.0.1')
+
+    def test_behind_one_proxy_the_address_the_proxy_set_is_used_and_a_spoofed_prefix_is_not(self):
+        rest = {**settings.REST_FRAMEWORK, 'NUM_PROXIES': 1}
+        with override_settings(REST_FRAMEWORK=rest):
+            self.assertEqual(client_ip(self.request('203.0.113.9')), '203.0.113.9')
+            self.assertEqual(client_ip(self.request('6.6.6.6, 203.0.113.9')), '203.0.113.9')  # the proxy's own entry is the last
 
 
 class ResetEmailFailureTests(ApiCase):

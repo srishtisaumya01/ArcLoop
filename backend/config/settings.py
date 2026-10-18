@@ -141,11 +141,14 @@ REST_FRAMEWORK = {
     'DEFAULT_THROTTLE_CLASSES': [],
     'DEFAULT_THROTTLE_RATES': {'auth': os.environ.get('DJANGO_AUTH_THROTTLE', '30/min'), 'csp': os.environ.get('DJANGO_CSP_REPORT_THROTTLE', '60/min')},
     'UNAUTHENTICATED_USER': None,
+    # Client address for rate limiting and the security log (config/security_log.py): 0 = the connection's own address, so a
+    # client-supplied X-Forwarded-For is ignored. Set to 1 below when exactly one trusted proxy sits in front.
+    'NUM_PROXIES': 0,
 }
 
 # Opaque session tokens: stored hashed, expire, and can be revoked on logout or password change. Browsers carry theirs in an
 # HttpOnly cookie, other clients as a bearer header (config/auth_cookies.py, accounts/authentication.py).
-AUTH_TOKEN_LIFETIME_DAYS = int(os.environ.get('DJANGO_TOKEN_LIFETIME_DAYS', '30'))
+AUTH_TOKEN_LIFETIME_DAYS = int(os.environ.get('DJANGO_TOKEN_LIFETIME_DAYS', '7'))  # fixed from sign-in, no renewal; the cookie's Max-Age and the CSRF cookie follow it
 AUTH_COOKIE_NAME = 'arcloop_session'
 AUTH_COOKIE_PATH = '/api/'  # sent only to the API, never with page or asset requests
 AUTH_COOKIE_SAMESITE = 'Strict'  # the API is only ever called by the app's own pages, so cross-site requests carry no cookie
@@ -213,6 +216,7 @@ if not DEBUG:
     # cookies see the real scheme. Only enable when such a proxy is actually in front: a client could forge the header.
     if _flag('DJANGO_BEHIND_PROXY', False):
         SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+        REST_FRAMEWORK['NUM_PROXIES'] = 1  # the proxy's X-Forwarded-For (it must overwrite, not append: deploy/nginx.example.conf)
 
 # Logging: everything to the process output (the process manager or platform keeps it). `arcloop.security` carries the
 # security events (failed sign-ins, rate limiting, resets, deletions, CSP reports); no secrets or addresses in it.

@@ -1,5 +1,6 @@
 import datetime as dt
 
+from django.db import models
 from django.test import override_settings
 from django.utils import timezone
 from rest_framework.test import APIClient
@@ -36,7 +37,7 @@ class CookieSessionTests(ApiCase):
         self.assertTrue(cookie['httponly'])
         self.assertEqual((cookie['samesite'], cookie['path']), ('Strict', '/api/'))
         self.assertFalse(cookie['secure'])  # local development over http; the production flag is tested below
-        lifetime = 30 * 24 * 3600
+        lifetime = 7 * 24 * 3600  # the private-beta policy: seven days
         self.assertLessEqual(abs(int(cookie['max-age']) - lifetime), 5)
         self.assertEqual(AuthToken.objects.get(key_hash=hash_token(cookie.value)).user, self.alice)  # the cookie value is the server-side token
 
@@ -196,3 +197,51 @@ class CookieSettingsTests(ApiCase):
     @override_settings(AUTH_COOKIE_SECURE=True)
     def test_a_secure_cookie_is_marked_secure_on_the_response(self):
         self.assertTrue(sign_in(browser()).cookies[SESSION]['secure'])
+
+
+class SessionLifetimeTests(ApiCase):
+    """The policy: a session lasts seven days from sign-in, fixed (no renewal). One setting drives the server-side expiry, the
+    cookie's Max-Age and the CSRF cookie, and only the server-side expiry decides whether the session is valid."""
+
+    def age_by(self, days):  # time passing, expressed as the stored expiry moving closer
+        AuthToken.objects.update(expires_at=models.F('expires_at') - dt.timedelta(days=days))
+
+    def test_the_default_lifetime_is_seven_days_in_every_place_it_is_used(self):
+        loaded = load_settings()
+        self.assertEqual(loaded.AUTH_TOKEN_LIFETIME_DAYS, 7)
+        self.assertEqual(loaded.CSRF_COOKIE_AGE, 7 * 24 * 3600)
+        self.assertEqual(load_settings(DJANGO_TOKEN_LIFETIME_DAYS='3').CSRF_COOKIE_AGE, 3 * 24 * 3600)  # one knob moves both
+
+    def test_sign_in_stores_a_seven_day_expiry_and_reports_it(self):
+        response = sign_in(browser())
+        token = AuthToken.objects.get(key_hash=hash_token(response.cookies[SESSION].value))
+        self.assertLess(abs((token.expires_at - timezone.now()) - dt.timedelta(days=7)), dt.timedelta(seconds=5))
+        self.assertEqual(response.json()['expires_at'], token.expires_at.isoformat())
+        self.assertLessEqual(int(response.cookies[SESSION]['max-age']), 7 * 24 * 3600)  # the cookie never outlives the server side
+        self.assertLessEqual(int(response.cookies[CSRF]['max-age']), 7 * 24 * 3600)
+
+    def test_using_the_session_does_not_extend_it(self):
+        client = browser()
+        mine = AuthToken.objects.filter(key_hash=hash_token(sign_in(client).cookies[SESSION].value))  # setUp made another token
+        expiry = mine.get().expires_at
+        for _ in range(3):
+            self.assertEqual(client.get('/api/v1/auth/me/').status_code, 200)
+        self.assertEqual(mine.get().expires_at, expiry)
+
+    def test_the_session_works_on_day_six_and_is_refused_and_cleared_after_day_seven(self):
+        client = browser()
+        sign_in(client)
+        self.age_by(6)
+        self.assertEqual(client.get('/api/v1/auth/me/').status_code, 200)
+        self.age_by(1.5)  # now past the seven days, although the browser still holds the cookie
+        expired = client.get('/api/v1/auth/me/')
+        self.assertError(expired, 401, 'unauthenticated')
+        self.assertEqual(expired.cookies[SESSION].value, '')  # the dead cookie is cleared
+        self.assertEqual(expired.cookies[SESSION]['max-age'], 0)
+
+    def test_an_expired_session_cannot_write_even_with_a_valid_csrf_token(self):
+        client = browser()
+        sign_in(client)
+        headers = csrf_headers(client)
+        self.age_by(8)
+        self.assertError(client.post('/api/v1/task-templates/', {'title': 'x', 'recurrence': 'daily', 'starts_on': '2026-03-01'}, format='json', **headers), 401, 'unauthenticated')
