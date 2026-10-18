@@ -58,15 +58,17 @@ export default function DashboardPage() {
         ring={<TodayRing percent={today?.percent ?? 0} label={t('Today')} size={100} />}
       />
 
-      <Container sx={{ maxWidth: `${contentWidths.page + 120}px !important`, py: { xs: 3, md: 5 }, display: 'grid', gap: 3, alignItems: 'start', gridTemplateColumns: { xs: 'minmax(0, 1fr)', lg: 'minmax(0, 1fr) 290px' } }}>
-        <Box sx={{ display: 'grid', gap: 3, minWidth: 0, order: { xs: 2, lg: 1 } }}>
-        <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
+      <Container sx={{ maxWidth: `${contentWidths.page}px !important`, py: { xs: 3, md: 5 }, display: 'grid', gap: 3 }}>
+        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'stretch' }}>
+          <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', alignItems: 'flex-start' }}>
         <Button component={RouterLink} to={ROUTES.day} variant="contained" color="primary" startIcon={<CalendarCheck size={18} aria-hidden="true" />}>
           {t('Open My Day')}
         </Button>
         <Button component={RouterLink} to={ROUTES.week} variant="outlined" color="primary" startIcon={<CalendarRange size={18} aria-hidden="true" />}>
           {t('Plan your week')}
         </Button>
+          </Box>
+          <QuoteCard now={now} />
         </Box>
         {status === 'loading' && !data && (
           <Box aria-busy="true" aria-label={t('Loading your dashboard')} sx={{ display: 'grid', gap: 3 }}>
@@ -118,10 +120,6 @@ export default function DashboardPage() {
         )}
 
         {brandNew && <ChallengeCard />}
-        </Box>
-        <Box component="aside" aria-label={t('Quote of the day')} sx={{ order: { xs: 1, lg: 2 }, position: { lg: 'sticky' }, top: { lg: 24 } }}>
-          <QuoteCard now={now} />
-        </Box>
       </Container>
     </>
   )
