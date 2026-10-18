@@ -1,0 +1,170 @@
+[
+ {
+  "slug": "winter-arc-90",
+  "title": "Winter Arc 90",
+  "featured": true,
+  "category": "Personal growth",
+  "duration_days": 90,
+  "start_date": "2026-10-01",
+  "end_date": "2026-12-29",
+  "visibility": "public",
+  "summary": "Ninety days to build a few habits that stick through the colder, darker months. Pick your own habits, check in, and grow alongside others.",
+  "description": "Winter Arc 90 is Arcloop’s first featured campaign. It is a shared ninety-day window for building habits you choose yourself. There is no single \"right\" habit: the campaign rewards showing up consistently over time, not being perfect.",
+  "details": {
+   "organizer": {
+    "name": "Arcloop",
+    "role": "Official campaign"
+   },
+   "rules": [
+    "Choose the habits or goals you want to focus on.",
+    "Check in on the days they are scheduled.",
+    "Progress is based on consistency across the 90 days, not perfection. A missed day is just a day."
+   ],
+   "habits": [
+    "Any habit or goal you create",
+    "Suggested: a daily movement habit",
+    "Suggested: a weekly review"
+   ],
+   "participation": "Open to anyone with an Arcloop account. You can leave at any time.",
+   "scoring": "Score is based on eligible completed check-ins, with one credit per habit per scheduled day."
+  }
+ },
+ {
+  "slug": "morning-movement",
+  "title": "Morning movement",
+  "featured": false,
+  "category": "Fitness",
+  "duration_days": 30,
+  "start_date": null,
+  "end_date": null,
+  "visibility": "public",
+  "summary": "Move your body for 10+ minutes each morning, in any way you like.",
+  "description": "A gentle thirty-day challenge to start the day with movement: a walk, stretching, a workout, anything that counts for you.",
+  "details": {
+   "organizer": {
+    "name": "Sample organizer",
+    "role": "Community challenge (sample)"
+   },
+   "rules": [
+    "Move for at least 10 minutes.",
+    "Any activity counts.",
+    "Check in once per day."
+   ],
+   "habits": [
+    "Morning movement"
+   ],
+   "participation": "Open to anyone with an Arcloop account. You can leave at any time.",
+   "scoring": "One credit per day you check in."
+  }
+ },
+ {
+  "slug": "deep-work-blocks",
+  "title": "Deep work blocks",
+  "featured": false,
+  "category": "Learning",
+  "duration_days": 21,
+  "start_date": null,
+  "end_date": null,
+  "visibility": "public",
+  "summary": "One focused 45-minute session a day on something that matters to you.",
+  "description": "Protect a focused block of time for learning or meaningful work. Study, practice, write, or build: you decide the subject.",
+  "details": {
+   "organizer": {
+    "name": "Sample organizer",
+    "role": "Community challenge (sample)"
+   },
+   "rules": [
+    "One 45-minute focused session.",
+    "Phone away during the session.",
+    "Check in once per day."
+   ],
+   "habits": [
+    "Focused session"
+   ],
+   "participation": "Open to anyone with an Arcloop account. You can leave at any time.",
+   "scoring": "One credit per day you check in."
+  }
+ },
+ {
+  "slug": "wind-down-routine",
+  "title": "Wind-down routine",
+  "featured": false,
+  "category": "Wellness",
+  "duration_days": 14,
+  "start_date": null,
+  "end_date": null,
+  "visibility": "public",
+  "summary": "Screens off 30 minutes before bed for two weeks.",
+  "description": "A short challenge to build a calmer evening. Swap the scroll for something slower: reading, stretching, or just quiet.",
+  "details": {
+   "organizer": {
+    "name": "Sample organizer",
+    "role": "Community challenge (sample)"
+   },
+   "rules": [
+    "Screens off 30 minutes before bed.",
+    "Check in each evening."
+   ],
+   "habits": [
+    "Evening wind-down"
+   ],
+   "participation": "Open to anyone with an Arcloop account. You can leave at any time.",
+   "scoring": "One credit per evening you check in."
+  }
+ },
+ {
+  "slug": "creative-minutes",
+  "title": "Creative minutes",
+  "featured": false,
+  "category": "Creative",
+  "duration_days": 30,
+  "start_date": null,
+  "end_date": null,
+  "visibility": "public",
+  "summary": "Make something small every day: write, draw, play, or build.",
+  "description": "Fifteen creative minutes a day. The goal is the habit, not the masterpiece.",
+  "details": {
+   "organizer": {
+    "name": "Sample organizer",
+    "role": "Community challenge (sample)"
+   },
+   "rules": [
+    "At least 15 minutes of creative work.",
+    "Any medium counts.",
+    "Check in once per day."
+   ],
+   "habits": [
+    "Daily creative practice"
+   ],
+   "participation": "Open to anyone with an Arcloop account. You can leave at any time.",
+   "scoring": "One credit per day you check in."
+  }
+ },
+ {
+  "slug": "weekly-review-circle",
+  "title": "Weekly review circle",
+  "featured": false,
+  "category": "Professional",
+  "duration_days": 28,
+  "start_date": null,
+  "end_date": null,
+  "visibility": "invite-only",
+  "summary": "A four-week circle for a weekly planning and review habit.",
+  "description": "Review the week behind you and plan the week ahead, together with a small group. Joining requires an invitation from the organizer.",
+  "details": {
+   "organizer": {
+    "name": "Sample organizer",
+    "role": "Group challenge (sample)"
+   },
+   "rules": [
+    "One weekly review.",
+    "Share only what you want to share."
+   ],
+   "habits": [
+    "Weekly review"
+   ],
+   "participation": "Invite only. Joining needs an invitation from the organizer.",
+   "scoring": "One credit per weekly review."
+  }
+ }
+]

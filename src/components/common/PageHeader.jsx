@@ -1,26 +1,29 @@
+import { useContext } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
 import { Box, Container, Typography } from '@mui/material'
 import { ArrowLeft } from 'lucide-react'
-import { colors, contentWidths, gradients, navOuterHeight } from '../../theme/tokens.js'
+import { NavOffsetContext } from '../../context/navOffsetContext.js'
+import { colors, contentWidths, gradients } from '../../theme/tokens.js'
 
-const TONES = {
+const tones = (offset) => ({
   light: { band: { background: gradients.hero, borderBottom: `1px solid ${colors.border}`, pt: { xs: 5, md: 8 } }, accent: colors.blue600, text: 'text.secondary' },
   brand: {
     band: {
       background: gradients.brand,
       color: colors.textOnDark,
-      mt: `-${navOuterHeight}px`,
-      pt: { xs: `${navOuterHeight + 40}px`, md: `${navOuterHeight + 64}px` },
+      mt: `-${offset}px`,
+      pt: { xs: `${offset + 40}px`, md: `${offset + 64}px` },
     },
     accent: colors.mint300,
     text: 'rgba(255, 255, 255, 0.86)',
   },
-}
+})
 
 // Title band shared by inner pages. `back` = { to, label }. The default brand tone runs the gradient up behind the
 // navbar, like the home page; `tone="light"` is the plain pale band.
 export default function PageHeader({ eyebrow, title, description, back, children, tone = 'brand' }) {
-  const t = TONES[tone]
+  const offset = useContext(NavOffsetContext)
+  const t = tones(offset)[tone]
   return (
     <Box component="section" sx={{ ...t.band, pb: { xs: 5, md: 7 } }}>
       <Container sx={{ maxWidth: `${contentWidths.page}px !important` }}>

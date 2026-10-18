@@ -37,8 +37,10 @@ describe('navigation', () => {
     renderAt('/app')
     const nav = await screen.findByRole('navigation', { name: 'App' })
     expect(within(nav).getAllByRole('link').map((a) => [a.textContent, a.getAttribute('href')])).toEqual([
+      ['Dashboard', '/app'],
       ['My Day', '/app/day'],
       ['Week', '/app/week'],
+      ['Progress', '/app/progress'],
       ['Recurring Tasks', '/app/recurring'],
       ['Reminders', '/app/reminders'],
       ['Settings', '/app/settings'],
@@ -52,7 +54,7 @@ describe('navigation', () => {
     renderAt('/app')
     await user.click(await screen.findByRole('button', { name: 'Open menu' }))
     const mobile = await screen.findByRole('navigation', { name: 'Mobile' })
-    expect(within(mobile).getAllByRole('link').map((a) => a.textContent)).toEqual(['My Day', 'Week', 'Recurring Tasks', 'Reminders', 'Settings'])
+    expect(within(mobile).getAllByRole('link').map((a) => a.textContent)).toEqual(['Dashboard', 'My Day', 'Week', 'Progress', 'Recurring Tasks', 'Reminders', 'Settings'])
     await user.click(within(mobile).getByRole('link', { name: 'Settings' }))
     expect(await screen.findByRole('heading', { level: 1, name: 'Settings' })).toBeTruthy()
     const nav = screen.getByRole('navigation', { name: 'App' })

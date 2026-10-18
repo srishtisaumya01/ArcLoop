@@ -12,10 +12,10 @@ import { useI18n } from '../../hooks/useI18n.js'
 import { signIn } from '../../services/authService.js'
 import { isBackendConfigured } from '../../services/backend.js'
 import { ROUTES } from '../../constants/navigation.js'
-import { validateEmail, validateRequired } from '../../utils/validation.js'
+import { validateRequired } from '../../utils/validation.js'
 
-const validate = ({ email, password }) => ({
-  email: validateEmail(email),
+const validate = ({ username, password }) => ({
+  username: validateRequired(username, 'Enter your username.'),
   password: validateRequired(password, 'Enter your password.'),
 })
 
@@ -24,7 +24,7 @@ export default function LoginPage() {
   usePageMeta(t('Log in'))
   // On success the auth listener updates the session and <GuestOnly> redirects.
   const { status, error, submit } = useAsyncSubmit(signIn)
-  const { values, errors, onChange, onBlur, handleSubmit } = useForm({ initialValues: { email: '', password: '' }, validate })
+  const { values, errors, onChange, onBlur, handleSubmit } = useForm({ initialValues: { username: '', password: '' }, validate })
 
   return (
     <AuthLayout
@@ -37,7 +37,7 @@ export default function LoginPage() {
       }
     >
       <Box component="form" noValidate onSubmit={handleSubmit(submit)} sx={{ display: 'grid', gap: 2.5 }}>
-        <TextInput name="email" label={t('Email')} type="email" autoComplete="email" value={values.email} onChange={onChange} onBlur={onBlur} error={errors.email} />
+        <TextInput name="username" label={t('Username')} autoComplete="username" autoCapitalize="none" spellCheck={false} value={values.username} onChange={onChange} onBlur={onBlur} error={errors.username} />
         <PasswordField value={values.password} onChange={onChange} onBlur={onBlur} error={errors.password} autoComplete="current-password" />
         <Box sx={{ textAlign: 'right', mt: -1 }}>
           <Link component={RouterLink} to={ROUTES.forgotPassword} variant="body2" sx={{ display: 'inline-block', py: 1.25 }}>{t('Forgot your password?')}</Link>

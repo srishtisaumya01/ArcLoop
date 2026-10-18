@@ -258,10 +258,10 @@ test.describe('loading, empty and error states', () => {
   })
 })
 
-test('navigation lists the five app links and marks the current page', async ({ page }, testInfo) => {
+test('navigation lists the app links in the sidebar and marks the current page', async ({ page }, testInfo) => {
   await page.goto('/app/week')
   const nav = await openNav(page, testInfo)
-  await expect(nav.getByRole('link')).toHaveText(['My Day', 'Week', 'Recurring Tasks', 'Reminders', 'Settings'])
+  await expect(nav.getByRole('link')).toHaveText(['Dashboard', 'My Day', 'Week', 'Progress', 'Recurring Tasks', 'Reminders', 'Settings'])
   await expect(nav.getByRole('link', { name: 'Week' })).toHaveAttribute('aria-current', 'page')
   await nav.getByRole('link', { name: 'Settings' }).click()
   await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible()
