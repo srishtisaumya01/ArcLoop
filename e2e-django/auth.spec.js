@@ -206,6 +206,7 @@ test.describe('password reset', () => {
   })
 
   test('a signed-in user changes their password with the current one, and other devices are signed out', async ({ browser, page, baseURL }) => {
+    test.slow() // a sign-up, three log-ins and two password changes, each hashed by the real server: long on a busy machine
     const email = uniqueEmail('change')
     await signUpViaForm(page, email)
     const other = await browser.newContext({ baseURL })

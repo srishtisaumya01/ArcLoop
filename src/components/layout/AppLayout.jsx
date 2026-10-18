@@ -1,26 +1,10 @@
-import { useEffect } from 'react'
-import { Outlet, useLocation } from 'react-router-dom'
+import { Outlet } from 'react-router-dom'
 import { Box } from '@mui/material'
 import Navbar from './Navbar.jsx'
+import ScrollManager from './ScrollManager.jsx'
 import Footer from './Footer.jsx'
 import ChallengeBanner from '../challenge/ChallengeBanner.jsx'
 import { useI18n } from '../../hooks/useI18n.js'
-
-// React Router does not scroll to #hash targets or reset scroll by itself.
-function ScrollManager() {
-  const { pathname, hash } = useLocation()
-  useEffect(() => {
-    if (hash) {
-      const el = document.getElementById(hash.slice(1))
-      if (el) {
-        el.scrollIntoView()
-        return
-      }
-    }
-    window.scrollTo(0, 0)
-  }, [pathname, hash])
-  return null
-}
 
 export default function AppLayout() {
   const { t } = useI18n()

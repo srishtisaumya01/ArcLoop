@@ -48,12 +48,12 @@ function forgetLegacyToken() {
 export function createApiClient({ baseUrl, fetchImpl, csrfToken = () => readCookie(CSRF_COOKIE_NAME) } = {}) {
   const root = typeof baseUrl === 'string' ? baseUrl.replace(/\/+$/, '') : ''
   const listeners = new Set()
-  let session = null // { user: { id, email } }
+  let session = null // { user: { id, email, username } }
 
   const notify = (event) => listeners.forEach((fn) => fn(event, session))
 
   function setSession(payload) {
-    session = { user: { id: payload.user.id, email: payload.user.email } }
+    session = { user: { id: payload.user.id, email: payload.user.email, username: payload.user.username ?? null } }
     notify('SIGNED_IN')
   }
 
@@ -63,12 +63,12 @@ export function createApiClient({ baseUrl, fetchImpl, csrfToken = () => readCook
     if (had) notify(event)
   }
 
-  async function request(method, path, { query, body } = {}) {
+  async function request(method, path, { query, body, contentType } = {}) {
     if (!root) throw new ApiError({ code: 'not_configured', message: 'The server address is not configured.' })
     const url = new URL(`${root}${path}`, globalThis.location?.origin)
     for (const [key, value] of Object.entries(query ?? {})) if (value !== undefined && value !== null) url.searchParams.append(key, String(value))
     const headers = { Accept: 'application/json' }
-    if (body !== undefined) headers['Content-Type'] = 'application/json'
+    if (body !== undefined) headers['Content-Type'] = contentType ?? 'application/json'
     if (!SAFE_METHODS.has(method)) {
       const token = csrfToken()
       if (token) headers[CSRF_HEADER_NAME] = token
@@ -76,7 +76,7 @@ export function createApiClient({ baseUrl, fetchImpl, csrfToken = () => readCook
 
     let response
     try {
-      response = await (fetchImpl ?? globalThis.fetch)(url, { method, headers, credentials: 'same-origin', body: body === undefined ? undefined : JSON.stringify(body) })
+      response = await (fetchImpl ?? globalThis.fetch)(url, { method, headers, credentials: 'same-origin', body: body === undefined || contentType ? body : JSON.stringify(body) })
     } catch {
       throw new ApiError({ status: 0, message: 'We could not reach the server. Check your connection and try again.' })
     }
@@ -92,6 +92,7 @@ export function createApiClient({ baseUrl, fetchImpl, csrfToken = () => readCook
     get: (path, options) => request('GET', path, options),
     post: (path, body, options) => request('POST', path, { ...options, body }),
     patch: (path, body, options) => request('PATCH', path, { ...options, body }),
+    put: (path, body, options) => request('PUT', path, { ...options, body }),
     delete: (path, options) => request('DELETE', path, options),
     getSession: () => session,
     setSession,
@@ -112,6 +113,9 @@ const rawBase = import.meta.env?.VITE_API_BASE_URL ?? (import.meta.env?.MODE ===
 export const isApiConfigured = typeof rawBase === 'string' && /^(https?:\/\/|\/)/.test(rawBase) && !/your-/i.test(rawBase)
 
 forgetLegacyToken()
+
+// Where the API lives (no trailing slash), for the few things the browser loads itself, such as the profile picture.
+export const apiRoot = isApiConfigured ? rawBase.replace(/\/+$/, '') : ''
 
 // The one client the application uses.
 export const api = createApiClient({ baseUrl: isApiConfigured ? rawBase : '' })

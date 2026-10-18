@@ -21,6 +21,9 @@ body { margin: 0; overflow-x: hidden; transition: background-color 240ms ease, c
   --ac-error: #B42318;
   --ac-error-bg: #FDECEA;
   --ac-tint: linear-gradient(135deg, #D2E2F8 0%, #CBE9EE 50%, #C4EBD7 100%);
+  --ac-sidebar: linear-gradient(185deg, #A9C7F2 0%, #A7DAEA 48%, #9EE0C2 100%);
+  --ac-sidebar-active: #FFFFFF;
+  --ac-sidebar-hover: rgba(255, 255, 255, 0.5);
   --ac-series-1: #2a78d6;
   --ac-series-2: #1baf7a;
   --ac-grid: #E3E9F2;
@@ -44,6 +47,9 @@ body { margin: 0; overflow-x: hidden; transition: background-color 240ms ease, c
   --ac-error: #FF9A90;
   --ac-error-bg: #3A1B22;
   --ac-tint: linear-gradient(135deg, #10285A 0%, #0F3A56 50%, #0F4A45 100%);
+  --ac-sidebar: linear-gradient(185deg, #12306E 0%, #0F4160 52%, #0F5048 100%);
+  --ac-sidebar-active: rgba(255, 255, 255, 0.14);
+  --ac-sidebar-hover: rgba(255, 255, 255, 0.08);
   --ac-series-1: #3987e5;
   --ac-series-2: #199e70;
   --ac-grid: #2A4070;
