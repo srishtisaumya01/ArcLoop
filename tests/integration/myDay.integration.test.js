@@ -38,6 +38,16 @@ const daily = (title, extra = {}) => ({ title, recurrence: 'daily', startsOn: '2
 const renderDay = (path = '/app/day') =>
   render(h(ThemeProvider, { theme }, h(MemoryRouter, { initialEntries: [path] }, h(MyDayPage))))
 const progress = () => screen.getByLabelText('Day progress', { selector: 'section' })
+const box = (title) => screen.getByRole('checkbox', { name: `Done: ${title}` })
+const findBox = (title) => screen.findByRole('checkbox', { name: `Done: ${title}` })
+// "Partly" lives in Edit: open the task's edit form, choose Partly, save.
+async function markPartly(user, title) {
+  await user.click(screen.getByRole('button', { name: `Edit ${title}` }))
+  const form = screen.getByRole('form', { name: `Edit ${title}` })
+  await user.click(within(form).getByRole('button', { name: 'Partly' }))
+  await user.click(within(form).getByRole('button', { name: 'Save changes' }))
+  await waitFor(() => expect(screen.queryByRole('form', { name: `Edit ${title}` })).toBeNull())
+}
 const persisted = async (title) => (await service.getDayPlan(TODAY)).occurrences.find((o) => o.title === title)
 
 describe('My Day against the real service and database', () => {
@@ -52,38 +62,40 @@ describe('My Day against the real service and database', () => {
     expect(await countRows(world, userId, 'task-occurrences')).toBe(2)
   })
 
-  it('records done and partly done, saves them, and updates progress', async () => {
+  it('ticks a task done and back, sets partly done from Edit, saves them, and updates progress', async () => {
     await service.createTemplate(daily('Walk'))
     await service.createTemplate(daily('Read'))
     const user = setupUser()
     renderDay()
     await screen.findByText('Walk')
-    await user.click(screen.getByRole('button', { name: 'Done: Walk' }))
+    await user.click(box('Walk'))
     await waitFor(() => expect(within(progress()).getByText('50% of today’s plan')).toBeTruthy())
+    expect(box('Walk').checked).toBe(true)
     expect((await persisted('Walk')).completion).toBe(1)
     expect((await persisted('Walk')).completedAt).not.toBeNull()
-    await user.click(screen.getByRole('button', { name: 'Partly: Read' }))
+    await markPartly(user, 'Read')
     await waitFor(() => expect(within(progress()).getByText('75% of today’s plan')).toBeTruthy())
     expect((await persisted('Read')).completion).toBe(0.5)
-    // Undo goes back to not done and clears the stamp.
-    await user.click(screen.getByRole('button', { name: 'Not done: Walk' }))
+    expect(box('Read').indeterminate).toBe(true) // a dash: partly done
+    // Unticking goes back to not done and clears the stamp.
+    await user.click(box('Walk'))
     await waitFor(() => expect(within(progress()).getByText('25% of today’s plan')).toBeTruthy())
     expect((await persisted('Walk')).completion).toBe(0)
   })
 
-  it('adds a task, with validation shown for an empty title', async () => {
+  it('quick-adds a task with just a title, with validation shown for an empty one', async () => {
     const user = setupUser()
     renderDay()
     expect(await screen.findByText('No tasks on this day')).toBeTruthy()
     await user.click(screen.getByRole('button', { name: 'Add task' }))
     expect(await screen.findByText('Give the task a title.')).toBeTruthy()
     expect(await countRows(world, userId, 'task-occurrences')).toBe(0)
-    await user.type(screen.getByRole('textbox', { name: /^Task/ }), 'Call the dentist')
-    await user.type(screen.getByLabelText(/Estimate in minutes/), '15')
+    await user.type(screen.getByRole('textbox', { name: 'Task' }), 'Call the dentist')
     await user.click(screen.getByRole('button', { name: 'Add task' }))
     expect(await screen.findByText('Call the dentist')).toBeTruthy()
-    expect((await persisted('Call the dentist')).estimatedMinutes).toBe(15)
+    expect(await persisted('Call the dentist')).toMatchObject({ planState: 'active', completion: 0, estimatedMinutes: null, plannedStart: null })
     expect(screen.queryByText('Give the task a title.')).toBeNull()
+    expect((screen.getByRole('textbox', { name: 'Task' })).value).toBe('') // ready for the next one
   })
 
   it('sets a task aside and puts it back; set-aside tasks leave the progress maths', async () => {
@@ -92,7 +104,7 @@ describe('My Day against the real service and database', () => {
     const user = setupUser()
     renderDay()
     await screen.findByText('Walk')
-    await user.click(screen.getByRole('button', { name: 'Done: Walk' }))
+    await user.click(box('Walk'))
     await user.click(await screen.findByRole('button', { name: 'Set aside Read' }))
     await waitFor(() => expect(within(progress()).getByText('100% of today’s plan')).toBeTruthy())
     const list = screen.getByLabelText('Set aside tasks')
@@ -131,7 +143,7 @@ describe('My Day against the real service and database', () => {
     expect(await countRows(world, userId, 'day-plans')).toBe(0)
     await user.click(screen.getByRole('button', { name: 'Start this day' }))
     expect(await screen.findByText('Walk')).toBeTruthy()
-    expect((await screen.findByRole('button', { name: 'Done: Walk' })).disabled).toBe(true)
+    expect((await findBox('Walk')).disabled).toBe(true)
   })
 
   it('edits a task for this day only, keeping progress, and shows validation without saving', async () => {
@@ -139,7 +151,7 @@ describe('My Day against the real service and database', () => {
     const user = setupUser()
     renderDay()
     await screen.findByText('Walk')
-    await user.click(screen.getByRole('button', { name: 'Partly: Walk' }))
+    await markPartly(user, 'Walk')
     await waitFor(async () => expect((await persisted('Walk')).completion).toBe(0.5))
     await user.click(screen.getByRole('button', { name: 'Edit Walk' }))
     const form = screen.getByRole('form', { name: 'Edit Walk' })
@@ -206,7 +218,7 @@ describe('My Day against the real service and database', () => {
     expect(await persisted('Read')).toBeUndefined()
     // It stays gone when the day is reopened (the template is suppressed for this day).
     expect((await service.openDay(TODAY)).occurrences.map((o) => o.title)).toEqual(['Walk'])
-    await user.click(screen.getByRole('button', { name: 'Done: Walk' }))
+    await user.click(box('Walk'))
     await waitFor(() => expect(within(progress()).getByText('100% of today’s plan')).toBeTruthy())
     expect(screen.queryByRole('button', { name: 'Remove Walk' })).toBeNull()
   })
@@ -217,7 +229,7 @@ describe('My Day against the real service and database', () => {
     const user = setupUser()
     renderDay()
     await screen.findByText('Walk')
-    await user.click(screen.getByRole('button', { name: 'Partly: Walk' })) // stamps the baseline
+    await markPartly(user, 'Walk') // stamps the baseline
     await waitFor(async () => expect((await service.getDayPlan(TODAY)).day.baselineAt).not.toBeNull())
     await user.click(screen.getByRole('button', { name: 'Remove Read' }))
     await user.click(await screen.findByRole('button', { name: 'Remove from this day' }))
@@ -227,22 +239,12 @@ describe('My Day against the real service and database', () => {
     expect(within(list).queryByRole('button', { name: 'Put back Read' })).toBeNull()
   })
 
-  it('creates a repeating task that appears on later days, and can stop repeating', async () => {
+  it('a repeating task appears on later days, and can stop repeating', async () => {
+    await service.createTemplate({ title: 'Stretch', recurrence: 'weekly', weekdays: [2, 3], startsOn: TODAY })
     const user = setupUser()
     renderDay()
-    await screen.findByText('No tasks on this day')
-    await user.type(screen.getByRole('textbox', { name: /^Task/ }), 'Stretch')
-    await user.click(screen.getByLabelText('Repeats'))
-    await user.click(await screen.findByRole('option', { name: 'Selected days of the week' }))
-    await user.click(screen.getByRole('button', { name: 'Add task' }))
-    expect(await screen.findByText('Choose at least one day of the week.')).toBeTruthy()
-    expect(await service.listTemplates()).toHaveLength(0)
-    await user.click(screen.getByRole('checkbox', { name: 'Wed' }))
-    await user.click(screen.getByRole('checkbox', { name: 'Tue' }))
-    await user.click(screen.getByRole('button', { name: 'Add task' }))
     expect(await screen.findByText('Stretch')).toBeTruthy() // 2026-03-10 is a Tuesday
-    const [template] = await service.listTemplates()
-    expect(template).toMatchObject({ title: 'Stretch', recurrence: 'weekly', weekdays: [2, 3], startsOn: TODAY })
+    expect(screen.queryByLabelText('Repeats')).toBeNull() // My Day's quick add has no repeat options: repeating tasks are made on the Recurring tasks page
     // Wednesday: a read-only look creates nothing; starting the day brings the task in.
     await user.click(screen.getByRole('button', { name: 'Next day' }))
     await user.click(await screen.findByRole('button', { name: 'Start this day' }))
@@ -263,7 +265,7 @@ describe('My Day against the real service and database', () => {
     const user = setupUser()
     renderDay()
     await screen.findByText('Walk')
-    await user.click(screen.getByRole('button', { name: 'Done: Walk' }))
+    await user.click(box('Walk'))
     await user.click(screen.getByRole('button', { name: 'Move Read' }))
     const form = screen.getByRole('form', { name: 'Move Read' })
     expect(within(form).getByLabelText('Move to').value).toBe('2026-03-11')
@@ -305,8 +307,8 @@ describe('My Day against the real service and database', () => {
     const user = setupUser()
     renderDay()
     await screen.findByText('Walk')
-    await user.click(screen.getByRole('button', { name: 'Partly: Read' }))
-    await user.click(screen.getByRole('button', { name: 'Done: Walk' }))
+    await markPartly(user, 'Read')
+    await user.click(box('Walk'))
     await waitFor(() => expect(screen.queryByRole('button', { name: 'Move Walk' })).toBeNull()) // finished tasks stay put
     await waitFor(async () => expect((await persisted('Read')).completion).toBe(0.5))
     await user.click(screen.getByRole('button', { name: 'Move Read' }))
@@ -362,7 +364,7 @@ describe('My Day against the real service and database', () => {
     expect(screen.queryByRole('button', { name: 'Add my repeating tasks' })).toBeNull() // not offered on today
     await user.click(screen.getByRole('button', { name: 'Next day' }))
     expect(await screen.findByText('Moved from Tuesday 10 Mar')).toBeTruthy()
-    expect(screen.queryByRole('button', { name: 'Done: Stretch', exact: true })).toBeNull() // tomorrow exists, but without its repeating tasks
+    expect(screen.queryByRole('checkbox', { name: 'Done: Stretch', exact: true })).toBeNull() // tomorrow exists, but without its repeating tasks
     expect(within(screen.getByLabelText('Repeating tasks to add')).getByText('Stretch')).toBeTruthy() // the preview says what the action will add
     await user.click(screen.getByRole('button', { name: 'Add my repeating tasks' }))
     expect(await screen.findByText('Stretch')).toBeTruthy()
@@ -397,7 +399,7 @@ describe('My Day against the real service and database', () => {
       const user = setupUser()
       renderDay()
       await screen.findByText('Walk')
-      await user.click(screen.getByRole('button', { name: 'Done: Pay rent' }))
+      await user.click(box('Pay rent'))
       await waitFor(() => expect(within(progress()).getByText('33% of today’s plan')).toBeTruthy())
       await user.click(screen.getByRole('button', { name: 'Busy' }))
       await user.click(await screen.findByRole('button', { name: 'Set these aside' }))
@@ -415,7 +417,7 @@ describe('My Day against the real service and database', () => {
       const user = setupUser()
       renderDay()
       await screen.findByText('Walk')
-      await user.click(screen.getByRole('button', { name: 'Done: Walk' }))
+      await user.click(box('Walk'))
       await user.click(screen.getByRole('button', { name: 'Rest day' }))
       const panel = await screen.findByRole('region', { name: 'Rest day' })
       expect(within(panel).getByText('Rest is part of the plan.')).toBeTruthy()
@@ -604,9 +606,9 @@ describe('Minimum Day on My Day, against the real service and database', () => {
     expect((await persisted('Write')).isMinimum).toBe(false)
     expect(within(progress()).getByText('0% of today’s plan')).toBeTruthy()
 
-    await user.click(screen.getByRole('button', { name: 'Done: Walk' }))
+    await user.click(box('Walk'))
     await waitFor(() => expect(within(progress()).getByText('25% of today’s plan')).toBeTruthy())
-    await user.click(screen.getByRole('button', { name: 'Done: Read' }))
+    await user.click(box('Read'))
     await waitFor(() => expect(within(panel()).getByRole('status').textContent).toBe('You showed up for yourself today.'))
     expect(within(progress()).getByText('50% of today’s plan')).toBeTruthy() // the minimum done is not the day done
     expect(within(panel()).getByText('2 of 2 done')).toBeTruthy()

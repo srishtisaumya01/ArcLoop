@@ -54,7 +54,9 @@ describe('recurring tasks: listing', () => {
   it('shows an empty state, then lists only repeating tasks grouped by status', async () => {
     renderPage()
     expect(await screen.findByText('No recurring tasks yet')).toBeTruthy()
-    expect(screen.getByRole('link', { name: 'Open My Day' }).getAttribute('href')).toBe('/app/day')
+    expect(screen.getByText(/Add one below and choose how often it repeats/)).toBeTruthy()
+    expect(screen.getByRole('form', { name: 'New recurring task' })).toBeTruthy() // the way to make one
+    expect(screen.queryByRole('link', { name: 'Open My Day' })).toBeNull()
   })
 
   it('separates active, not started and ended tasks, and leaves out one-off tasks and other people\'s', async () => {
@@ -310,5 +312,60 @@ describe('recurring tasks: ending and deleting', () => {
     expect(screen.queryByText(/connection reset/)).toBeNull()
     expect((await service.listTemplates())[0].archivedAt).toBeNull()
     expect(within(screen.getByRole('region', { name: 'Active' })).getByText('Walk')).toBeTruthy()
+  })
+})
+
+
+describe('recurring tasks: creating one here', () => {
+  const newForm = () => screen.getByRole('form', { name: 'New recurring task' })
+
+  it('adds a daily task that starts today, lists it as active, and brings it to My Day', async () => {
+    const user = setupUser()
+    renderPage()
+    await screen.findByText('No recurring tasks yet')
+    const form = newForm()
+    expect(within(form).queryByRole('option', { name: 'Just this day' })).toBeNull() // a one-off task is made on My Day
+    await user.type(within(form).getByRole('textbox', { name: /^Task/ }), 'Stretch')
+    await user.type(within(form).getByLabelText(/Estimate in minutes/), '10')
+    await user.click(within(form).getByRole('button', { name: 'Add recurring task' })) // repeats every day by default
+    expect(await screen.findByRole('button', { name: 'Edit Stretch' })).toBeTruthy()
+    expect(screen.queryByText('No recurring tasks yet')).toBeNull()
+    expect(within(newForm()).getByRole('textbox', { name: /^Task/ }).value).toBe('') // ready for another
+    const [template] = await service.listTemplates()
+    expect(template).toMatchObject({ title: 'Stretch', recurrence: 'daily', startsOn: TODAY, estimatedMinutes: 10, weekdays: null })
+    expect(titles((await service.openDay(TODAY)).occurrences)).toEqual(['Stretch']) // it comes back on the day
+  })
+
+  it('adds a task for selected days, and refuses to save without a day or a title', async () => {
+    const user = setupUser()
+    renderPage()
+    await screen.findByText('No recurring tasks yet')
+    const form = newForm()
+    await user.click(within(form).getByRole('button', { name: 'Add recurring task' }))
+    expect(await within(form).findByText('Give the task a title.')).toBeTruthy()
+    await user.type(within(form).getByRole('textbox', { name: /^Task/ }), 'Gym')
+    await user.click(within(form).getByLabelText('Repeats'))
+    await user.click(await screen.findByRole('option', { name: 'Selected days of the week' }))
+    await user.click(within(form).getByRole('button', { name: 'Add recurring task' }))
+    expect(await within(form).findByText('Choose at least one day of the week.')).toBeTruthy()
+    expect(await service.listTemplates()).toHaveLength(0)
+    await user.click(within(form).getByRole('checkbox', { name: 'Tue' }))
+    await user.click(within(form).getByRole('checkbox', { name: 'Thu' }))
+    await user.click(within(form).getByRole('button', { name: 'Add recurring task' }))
+    expect(await screen.findByRole('button', { name: 'Edit Gym' })).toBeTruthy()
+    expect((await service.listTemplates())[0]).toMatchObject({ title: 'Gym', recurrence: 'weekly', weekdays: [2, 4], startsOn: TODAY })
+  })
+
+  it('shows a calm message and keeps what was typed when saving fails', async () => {
+    const user = setupUser()
+    renderPage()
+    await screen.findByText('No recurring tasks yet')
+    const form = newForm()
+    await user.type(within(form).getByRole('textbox', { name: /^Task/ }), 'Stretch')
+    holder.failNext = (state) => state.op === 'insert' && state.table === 'task_templates'
+    await user.click(within(form).getByRole('button', { name: 'Add recurring task' }))
+    expect(await within(form).findByRole('alert')).toBeTruthy()
+    expect(within(form).getByRole('textbox', { name: /^Task/ }).value).toBe('Stretch')
+    expect(await service.listTemplates()).toHaveLength(0)
   })
 })

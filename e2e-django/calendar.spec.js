@@ -31,10 +31,15 @@ test('a timed task is exported at the right moment for the person’s profile ti
   await page.goto('/app/day')
   const add = page.getByRole('form', { name: 'Add a task' })
   await add.getByLabel('Task').fill('Standup')
-  await add.getByLabel('Start time (optional)').fill('09:00')
-  await add.getByLabel('End time (optional)').fill('09:30')
   await add.getByRole('button', { name: 'Add task' }).click()
-  await expect(page.getByRole('button', { name: 'Done: Standup', exact: true })).toBeVisible()
+  await expect(page.getByRole('checkbox', { name: 'Done: Standup', exact: true })).toBeVisible()
+  // Times are set in Edit (quick add takes a title only).
+  await page.getByRole('button', { name: 'Edit Standup' }).click()
+  const edit = page.getByRole('form', { name: 'Edit Standup' })
+  await edit.getByLabel('Start time (optional)').fill('09:00')
+  await edit.getByLabel('End time (optional)').fill('09:30')
+  await edit.getByRole('button', { name: 'Save changes' }).click()
+  await expect(page.getByText('09:00')).toBeVisible()
 
   const file = await exportCalendar(page, { days: 7 })
   const [y, m, d] = localDate('Asia/Kolkata').split('-').map(Number)

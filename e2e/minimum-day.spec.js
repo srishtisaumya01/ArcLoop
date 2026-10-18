@@ -32,9 +32,9 @@ test.describe('Minimum Day', () => {
   test('finishing the minimum shows the kind message while the full day stays where it is', async ({ page }) => {
     await page.goto('/app/day')
     await choose(page, ['Read for twenty minutes', 'Morning walk'])
-    await page.getByRole('button', { name: 'Done: Read for twenty minutes', exact: true }).click()
+    await page.getByRole('checkbox', { name: 'Done: Read for twenty minutes', exact: true }).click()
     await expect(panelOf(page)).toContainText('1 of 2 done')
-    await page.getByRole('button', { name: 'Done: Morning walk', exact: true }).click()
+    await page.getByRole('checkbox', { name: 'Done: Morning walk', exact: true }).click()
     await expect(panelOf(page).getByRole('status')).toHaveText('You showed up for yourself today.')
     await expect(page.getByText('50% of today’s plan')).toBeVisible() // two of four tasks: the minimum is not the whole day
     await expect(page.getByText('Done counts as 1')).toBeVisible()
@@ -80,7 +80,7 @@ test.describe('Minimum Day', () => {
     await expect(busy.getByRole('listitem')).toHaveText(['Gym session', 'Morning walk']) // not the minimum, not the priority task
     expect(api.rows('task_occurrences').filter((o) => o.plan_state === 'excluded')).toHaveLength(0)
     await busy.getByRole('button', { name: 'Set these aside' }).click()
-    await expect(page.getByRole('button', { name: 'Done: Read for twenty minutes', exact: true })).toBeVisible() // the minimum stays
+    await expect(page.getByRole('checkbox', { name: 'Done: Read for twenty minutes', exact: true })).toBeVisible() // the minimum stays
     await expect(panelOf(page).getByRole('list', { name: 'Your minimum tasks' })).toContainText('Read for twenty minutes')
   })
 

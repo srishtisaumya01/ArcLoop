@@ -5,7 +5,7 @@ import { CalendarCheck, ChevronLeft, ChevronRight, RefreshCw, TriangleAlert } fr
 import PageHeader from '../../components/common/PageHeader.jsx'
 import StatePanel from '../../components/common/StatePanel.jsx'
 import TaskRow from '../../components/planner/TaskRow.jsx'
-import AddTaskForm from '../../components/planner/AddTaskForm.jsx'
+import QuickAddTask from '../../components/planner/QuickAddTask.jsx'
 import { formatDay, weekdayName } from '../../components/planner/weekFormat.js'
 import { useDayPlan } from '../../hooks/useDayPlan.js'
 import { useDayReminders } from '../../hooks/useDayReminders.js'
@@ -63,9 +63,8 @@ export default function MyDayPage() {
     return outcome
   }
 
-  // One-off tasks belong to this day; repeating ones become a template starting on this day.
-  const addTask = ({ recurrence, weekdays, ...input }) =>
-    run((s) => (recurrence === 'once' ? s.createTask(target, input) : s.createTemplate({ ...input, recurrence, weekdays, startsOn: target })), { open: true })
+  // Quick add makes a one-off task on this day (repeating tasks are made on the Recurring tasks page).
+  const addTask = (input) => run((s) => s.createTask(target, input), { open: true })
 
   const goTo = (target) => setParams(target ? { date: target } : {})
   const access = plan?.access
@@ -217,7 +216,7 @@ export default function MyDayPage() {
               )}
             </Box>
 
-            {canEdit && <AddTaskForm busy={busy} onAdd={addTask} />}
+            {canEdit && <QuickAddTask busy={busy} onAdd={addTask} />}
           </>
         )}
       </Container>

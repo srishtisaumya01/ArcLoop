@@ -71,8 +71,8 @@ test.describe('no violations anywhere in the app', () => {
     }
     await page.goto('/app/day')
     await expect(page.getByText('Morning walk')).toBeVisible()
-    await page.getByRole('button', { name: 'Done: Morning walk', exact: true }).click()
-    await expect(page.getByRole('button', { name: 'Not done: Morning walk', exact: true })).toBeVisible()
+    await page.getByRole('checkbox', { name: 'Done: Morning walk', exact: true }).click()
+    await expect(page.getByRole('checkbox', { name: 'Done: Morning walk', exact: true })).toBeChecked()
     await page.goto('/app/reminders')
     await expect(page.getByRole('heading', { level: 1, name: 'Reminders' })).toBeVisible()
     expect(await violations(page)).toEqual([])

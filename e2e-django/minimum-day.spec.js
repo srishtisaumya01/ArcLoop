@@ -9,7 +9,7 @@ async function addTask(page, title) {
   const add = page.getByRole('form', { name: 'Add a task' })
   await add.getByLabel(/^Task/).fill(title)
   await add.getByRole('button', { name: 'Add task' }).click()
-  await expect(page.getByRole('button', { name: `Done: ${title}`, exact: true })).toBeVisible()
+  await expect(page.getByRole('checkbox', { name: `Done: ${title}`, exact: true })).toBeVisible()
 }
 
 const panelOf = (page) => page.getByRole('region', { name: 'Minimum Day' })
@@ -23,7 +23,7 @@ async function seedTasks(page, context, titles) {
   const planDate = (await api.get('/day-plans/')).body.results[0].plan_date
   for (const title of titles) expect((await api.post('/task-occurrences/', { plan_date: planDate, title })).status).toBe(201)
   await page.reload()
-  await expect(page.getByRole('button', { name: `Done: ${titles.at(-1)}`, exact: true })).toBeVisible()
+  await expect(page.getByRole('checkbox', { name: `Done: ${titles.at(-1)}`, exact: true })).toBeVisible()
 }
 
 test('choose a minimum, finish it, reload: the server keeps it and the day percentage is not changed', async ({ page, context }) => {
@@ -38,8 +38,8 @@ test('choose a minimum, finish it, reload: the server keeps it and the day perce
   await expect(panel.getByRole('list', { name: 'Your minimum tasks' }).getByRole('listitem')).toHaveCount(2)
   await expect(panel.getByRole('status')).toHaveText('Your minimum is still here whenever you’re ready.')
 
-  await page.getByRole('button', { name: 'Done: Write', exact: true }).click()
-  await page.getByRole('button', { name: 'Done: Walk', exact: true }).click()
+  await page.getByRole('checkbox', { name: 'Done: Write', exact: true }).click()
+  await page.getByRole('checkbox', { name: 'Done: Walk', exact: true }).click()
   await expect(panel.getByRole('status')).toHaveText('You showed up for yourself today.')
   await expect(page.getByText('50% of today’s plan')).toBeVisible() // two of four: completing the minimum does not complete the day
 
