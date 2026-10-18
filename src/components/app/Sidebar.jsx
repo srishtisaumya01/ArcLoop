@@ -120,7 +120,7 @@ export default function Sidebar({ navLabel = 'App', onNavigate }) {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, minHeight: '100%', px: 2.5, pb: 2.5, pt: { xs: 2.5, md: 0 }, background: gradients.sidebar, color: '#FFFFFF' }}>
-      <Box component={RouterLink} to={ROUTES.app} onClick={onNavigate} aria-label={t('Arcloop home')} sx={{ display: 'flex', alignItems: 'center', alignSelf: 'stretch', height: { xs: 72, md: 176 }, textDecoration: 'none', px: 0.5 }}>
+      <Box component={RouterLink} to={ROUTES.app} onClick={onNavigate} aria-label={t('Arcloop home')} sx={{ display: 'flex', alignItems: 'center', height: { xs: 72, md: 176 }, mx: -2.5, px: 3, mb: -0.5, textDecoration: 'none', background: gradients.brand, boxShadow: '0 6px 18px rgba(4, 14, 50, 0.28)' }}>
         <Logo onDark size={60} />
       </Box>
 

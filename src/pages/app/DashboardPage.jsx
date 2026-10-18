@@ -20,17 +20,9 @@ import { useProgressOverview } from '../../hooks/useProgressOverview.js'
 import { firstNameOf, greetingFor } from '../../utils/greeting.js'
 import { isBrandNew, summarizeToday, topHabits, trendPoints, weekBars } from '../../utils/dashboard.js'
 import { ROUTES } from '../../constants/navigation.js'
-import { contentWidths, onBrandButtons } from '../../theme/tokens.js'
+import { contentWidths } from '../../theme/tokens.js'
 
 // One sentence about how today stands.
-function todayMessage(t, status, today, brandNew) {
-  if (status === 'loading') return t('Getting your day ready…')
-  if (!today || brandNew || (today.kind !== 'rest' && today.count === 0)) return t('Nothing is planned for today yet. Add a task to get started.')
-  if (today.kind === 'rest') return t('Today is a rest day. Rest counts too.')
-  if (today.left === 0) return t('Everything planned for today is done. Well done!')
-  return t('{done} of {count} done today, {left} to go.', { done: today.done, count: today.count, left: today.left })
-}
-
 // The signed-in home: a greeting for the time of day, today at a glance, the week, the trend, and the featured challenge.
 export default function DashboardPage() {
   const { t, lang } = useI18n()
@@ -44,7 +36,6 @@ export default function DashboardPage() {
   const brandNew = isBrandNew(data)
   const first = firstNameOf(displayName) || displayName
   const dateLabel = new Intl.DateTimeFormat(lang === 'hi' ? 'hi-IN' : 'en-IN', { weekday: 'long', day: 'numeric', month: 'long' }).format(now)
-  const ready = status === 'success' || Boolean(data)
 
   const tiles = week
     ? [
@@ -61,19 +52,19 @@ export default function DashboardPage() {
         greeting={greetingFor(now)}
         name={first}
         dateLabel={dateLabel}
-        message={todayMessage(t, ready ? 'success' : status, today, brandNew)}
         account={<UserMenu onDark />}
-        ring={<TodayRing percent={today?.percent ?? 0} label={t('Today')} size={112} />}
-      >
-        <Button component={RouterLink} to={ROUTES.day} variant="contained" size="small" startIcon={<CalendarCheck size={18} aria-hidden="true" />} sx={onBrandButtons.solid}>
-          {t('Open My Day')}
-        </Button>
-        <Button component={RouterLink} to={ROUTES.week} variant="outlined" size="small" startIcon={<CalendarRange size={18} aria-hidden="true" />} sx={onBrandButtons.glass}>
-          {t('Plan your week')}
-        </Button>
-      </GreetingBand>
+        ring={<TodayRing percent={today?.percent ?? 0} label={t('Today')} size={100} />}
+      />
 
       <Container sx={{ maxWidth: `${contentWidths.page}px !important`, py: { xs: 3, md: 5 }, display: 'grid', gap: 3 }}>
+        <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
+        <Button component={RouterLink} to={ROUTES.day} variant="contained" color="primary" startIcon={<CalendarCheck size={18} aria-hidden="true" />}>
+          {t('Open My Day')}
+        </Button>
+        <Button component={RouterLink} to={ROUTES.week} variant="outlined" color="primary" startIcon={<CalendarRange size={18} aria-hidden="true" />}>
+          {t('Plan your week')}
+        </Button>
+        </Box>
         {status === 'loading' && !data && (
           <Box aria-busy="true" aria-label={t('Loading your dashboard')} sx={{ display: 'grid', gap: 3 }}>
             <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: 'repeat(2, 1fr)', lg: 'repeat(4, 1fr)' } }}>
