@@ -108,6 +108,20 @@ const theme = createTheme({
       },
     },
     MuiPaper: { styleOverrides: { root: { backgroundImage: 'none' } } },
+    MuiOutlinedInput: {
+      styleOverrides: {
+        root: {
+          borderRadius: 12,
+          backgroundColor: colors.surface,
+          transition,
+          '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: colors.navy700 },
+          '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: colors.blue600, borderWidth: 2 },
+          '&.Mui-focused': { boxShadow: `0 0 0 4px ${colors.ice300}55` },
+          '&.Mui-error.Mui-focused': { boxShadow: 'none' },
+        },
+        notchedOutline: { borderColor: colors.border },
+      },
+    },
     MuiAccordion: {
       defaultProps: { disableGutters: true, elevation: 0, square: true },
       styleOverrides: {

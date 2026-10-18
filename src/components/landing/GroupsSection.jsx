@@ -25,7 +25,7 @@ export default function GroupsSection() {
           <Box component="ul" sx={{ listStyle: 'none', m: 0, p: 0, display: 'grid', gap: 2, mt: -2 }}>
             {GROUP_POINTS.map((p) => (
               <Box component="li" key={p} sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start' }}>
-                <Box sx={{ mt: '3px', color: colors.ice400, flexShrink: 0 }}>
+                <Box sx={{ mt: '3px', color: colors.mint300, flexShrink: 0 }}>
                   <Check size={20} aria-hidden="true" />
                 </Box>
                 <Typography sx={{ color: colors.textOnDarkMuted }}>{p}</Typography>
@@ -49,7 +49,7 @@ export default function GroupsSection() {
             <Box sx={{ display: 'grid', gap: 1.25 }}>
               {SAMPLE_MEMBERS.map((m) => (
                 <Box key={m.name} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, p: 1.75, borderRadius: `${radii.md}px`, bgcolor: 'rgba(255,255,255,0.06)' }}>
-                  <Box sx={{ width: 36, height: 36, borderRadius: '50%', display: 'grid', placeItems: 'center', bgcolor: colors.ice400, color: colors.navy900, fontWeight: 800 }}>
+                  <Box sx={{ width: 36, height: 36, borderRadius: '50%', display: 'grid', placeItems: 'center', bgcolor: colors.mint300, color: colors.navy900, fontWeight: 800 }}>
                     {m.name.slice(-1)}
                   </Box>
                   <Box sx={{ flex: 1, minWidth: 0 }}>

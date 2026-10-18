@@ -2,7 +2,7 @@ import { Box, Typography } from '@mui/material'
 import { Check, Flame } from 'lucide-react'
 import DemoBadge from '../ui/DemoBadge.jsx'
 import { DEMO_PREVIEW_HABITS } from '../../constants/landingContent.js'
-import { colors, radii, shadows } from '../../theme/tokens.js'
+import { colors, gradients, radii, shadows } from '../../theme/tokens.js'
 
 const WEEK = [
   { d: 'M', v: 1 },
@@ -22,6 +22,7 @@ export default function ProductPreview() {
       aria-label="Illustrative preview of the Arcloop dashboard showing today's habits and weekly progress, using sample data"
       sx={{
         bgcolor: colors.surface,
+        color: colors.textPrimary,
         border: `1px solid ${colors.border}`,
         borderRadius: `${radii.lg}px`,
         boxShadow: shadows.lg,
@@ -78,10 +79,10 @@ export default function ProductPreview() {
           ))}
         </Box>
 
-        <Box sx={{ mt: 3, p: 2, borderRadius: `${radii.md}px`, bgcolor: colors.navy900, color: colors.textOnDark }}>
+        <Box sx={{ mt: 3, p: 2, borderRadius: `${radii.md}px`, background: gradients.brand, color: colors.textOnDark }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
             <Typography sx={{ fontWeight: 700 }}>This week</Typography>
-            <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5, color: colors.ice400 }}>
+            <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5, color: colors.mint300 }}>
               <Flame size={16} />
               <Typography variant="body2" sx={{ color: 'inherit', fontWeight: 700 }}>
                 4 of 7 days
@@ -95,7 +96,7 @@ export default function ProductPreview() {
                   sx={{
                     height: 8 + w.v * 36,
                     borderRadius: 1,
-                    bgcolor: w.v ? colors.ice400 : 'rgba(255,255,255,0.18)',
+                    bgcolor: w.v ? colors.mint300 : 'rgba(255,255,255,0.18)',
                     opacity: w.v === 0.5 ? 0.6 : 1,
                   }}
                 />

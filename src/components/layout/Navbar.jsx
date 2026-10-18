@@ -5,7 +5,7 @@ import { Menu, X } from 'lucide-react'
 import Logo from '../ui/Logo.jsx'
 import { useAuth } from '../../hooks/useAuth.js'
 import { APP_LINKS, NAV_LINKS, ROUTES } from '../../constants/navigation.js'
-import { colors, contentWidths, navHeight } from '../../theme/tokens.js'
+import { colors, contentWidths, navGap, navHeight, shadows } from '../../theme/tokens.js'
 
 const navLinkSx = {
   color: colors.textSecondary,
@@ -44,16 +44,23 @@ export default function Navbar() {
   return (
     <AppBar
       position="sticky"
-      color="inherit"
+      color="transparent"
       elevation={0}
-      sx={{
-        bgcolor: 'rgba(245, 248, 252, 0.88)',
-        backdropFilter: 'saturate(180%) blur(12px)',
-        borderBottom: `1px solid ${colors.border}`,
-      }}
+      sx={{ py: `${navGap}px`, boxShadow: 'none', pointerEvents: 'none' }}
     >
-      <Container sx={{ maxWidth: `${contentWidths.page}px !important` }}>
-        <Toolbar disableGutters sx={{ minHeight: `${navHeight}px !important`, gap: 2 }}>
+      <Container sx={{ maxWidth: `${contentWidths.page + 48}px !important`, pointerEvents: 'auto' }}>
+        <Toolbar
+          disableGutters
+          sx={{
+            minHeight: `${navHeight}px !important`,
+            gap: 2,
+            px: { xs: 2, md: 3 },
+            bgcolor: colors.surface,
+            borderRadius: '16px',
+            border: `1px solid ${colors.border}`,
+            boxShadow: shadows.md,
+          }}
+        >
           <Box component={RouterLink} to={ROUTES.home} aria-label="Arcloop home" sx={{ textDecoration: 'none', borderRadius: 1 }}>
             <Logo />
           </Box>

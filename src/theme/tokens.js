@@ -9,6 +9,11 @@ export const colors = {
   ice300: '#A9DDF9',
   ice400: '#7CC8F5',
   ice500: '#4DB0EA',
+  royal900: '#0A1F66',
+  royal800: '#0F2F86',
+  teal700: '#17698F',
+  mint300: '#7CF0C0',
+  mint400: '#2ED68B',
   // Interactive blue for use on light surfaces (5.9:1 on white).
   blue600: '#1B5BC8',
   blue700: '#144AA6',
@@ -55,8 +60,32 @@ export const shadows = {
   lg: '0 24px 60px rgba(11, 27, 58, 0.16)',
 }
 
+// Fine film grain laid over the brand gradient so large flat areas do not band.
+const grain =
+  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.07 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")"
+
 export const gradients = {
   hero: `radial-gradient(900px 480px at 85% 0%, ${colors.ice300}66, transparent 70%), ${colors.bg}`,
+  brand: `${grain}, linear-gradient(115deg, ${colors.royal900} 0%, ${colors.royal800} 38%, ${colors.teal700} 70%, ${colors.mint400} 100%)`,
+  brandVertical: `${grain}, linear-gradient(160deg, ${colors.royal900} 0%, ${colors.royal800} 45%, ${colors.teal700} 80%, ${colors.mint400} 115%)`,
+  accentText: `linear-gradient(90deg, ${colors.mint300}, ${colors.ice300})`,
+}
+
+// Buttons placed on the brand gradient: a solid white primary and a frosted "glass" secondary with a soft glow.
+export const onBrandButtons = {
+  solid: {
+    bgcolor: colors.surface,
+    color: colors.navy900,
+    '&:hover': { bgcolor: colors.bgAlt, transform: 'translateY(-1px)' },
+  },
+  glass: {
+    color: colors.textOnDark,
+    bgcolor: 'rgba(255, 255, 255, 0.08)',
+    border: '1px solid rgba(255, 255, 255, 0.35)',
+    backdropFilter: 'blur(6px)',
+    boxShadow: `0 0 28px ${colors.mint300}33`,
+    '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.16)', borderColor: colors.mint300, transform: 'translateY(-1px)' },
+  },
 }
 
 export const contentWidths = { page: 1200, narrow: 760 }
@@ -75,3 +104,9 @@ export const motion = {
 }
 
 export const navHeight = 72
+
+// The navbar floats as a card with this much space above and below it.
+export const navGap = 16
+
+// Full space the sticky navbar takes; a page section can pull up by this much to run its background behind the nav.
+export const navOuterHeight = navHeight + navGap * 2

@@ -2,7 +2,7 @@ import { Box, Typography } from '@mui/material'
 import { CircleCheck, Sprout, Users } from 'lucide-react'
 import { Section, SectionHeading } from '../ui/Section.jsx'
 import { HOW_IT_WORKS } from '../../constants/landingContent.js'
-import { colors } from '../../theme/tokens.js'
+import { colors, gradients } from '../../theme/tokens.js'
 
 const ICONS = { sprout: Sprout, check: CircleCheck, users: Users }
 
@@ -22,7 +22,7 @@ export default function HowItWorks() {
               <Typography variant="overline" component="p" sx={{ color: colors.blue600, mb: 2, display: 'block' }}>
                 Step {i + 1}
               </Typography>
-              <Box sx={{ width: 48, height: 48, borderRadius: '14px', display: 'grid', placeItems: 'center', bgcolor: colors.navy900, color: colors.ice400, mb: 2.5 }}>
+              <Box sx={{ width: 48, height: 48, borderRadius: '14px', display: 'grid', placeItems: 'center', background: gradients.brand, color: colors.textOnDark, mb: 2.5 }}>
                 <Icon size={24} aria-hidden="true" />
               </Box>
               <Typography variant="h3" component="h3" sx={{ mb: 1.5 }}>

@@ -1,21 +1,29 @@
 import { Alert, Box, Container, Typography } from '@mui/material'
 import { LogoMark } from '../ui/Logo.jsx'
 import { isBackendConfigured } from '../../services/backend.js'
-import { colors, contentWidths, gradients, radii, shadows } from '../../theme/tokens.js'
+import { colors, contentWidths, gradients, navOuterHeight, radii } from '../../theme/tokens.js'
 
-// Two-column auth shell: brand panel (md+) and the form card.
+// Two-column auth shell: brand panel (md+) and the form card, on the brand gradient that runs up behind the navbar.
 export default function AuthLayout({ title, subtitle, children, footer }) {
   return (
-    <Box sx={{ background: gradients.hero, py: { xs: 4, md: 8 } }}>
+    <Box
+      sx={{
+        background: gradients.brand,
+        mt: `-${navOuterHeight}px`,
+        pt: { xs: `${navOuterHeight + 24}px`, md: `${navOuterHeight + 56}px` },
+        pb: { xs: 6, md: 10 },
+      }}
+    >
       <Container sx={{ maxWidth: `${contentWidths.page}px !important` }}>
-        <Box sx={{ display: 'grid', gap: { xs: 3, md: 0 }, gridTemplateColumns: { xs: '1fr', md: '1fr 1.1fr' }, maxWidth: 1040, mx: 'auto', borderRadius: `${radii.lg}px`, overflow: 'hidden', boxShadow: shadows.lg, bgcolor: colors.surface, border: `1px solid ${colors.border}` }}>
-          <Box sx={{ display: { xs: 'none', md: 'flex' }, flexDirection: 'column', justifyContent: 'space-between', p: 6, bgcolor: colors.navy900, color: colors.textOnDark, backgroundImage: `radial-gradient(500px 300px at 0% 100%, ${colors.navy700}, transparent 70%)` }}>
-            <LogoMark size={44} ringColor={colors.ice400} arrowColor={colors.ice400} />
-            <Box>
+        <Box sx={{ display: 'grid', gap: { xs: 3, md: 0 }, gridTemplateColumns: { xs: '1fr', md: '1fr 1.1fr' }, maxWidth: 1040, mx: 'auto', borderRadius: `${radii.lg}px`, overflow: 'hidden', boxShadow: '0 30px 80px rgba(6, 18, 43, 0.35)', bgcolor: colors.surface, border: '1px solid rgba(255, 255, 255, 0.4)' }}>
+          <Box sx={{ position: 'relative', overflow: 'hidden', display: { xs: 'none', md: 'flex' }, flexDirection: 'column', justifyContent: 'space-between', p: 6, background: gradients.brandVertical, color: colors.textOnDark }}>
+            <Box aria-hidden="true" sx={{ position: 'absolute', right: -140, bottom: -160, width: 360, height: 360, borderRadius: '50%', border: '56px solid rgba(255, 255, 255, 0.1)', pointerEvents: 'none' }} />
+            <LogoMark size={44} ringColor={colors.textOnDark} arrowColor={colors.mint300} />
+            <Box sx={{ position: 'relative' }}>
               <Typography variant="h3" component="p" sx={{ mb: 2 }}>
                 Consistency over perfection.
               </Typography>
-              <Typography sx={{ color: colors.textOnDarkMuted }}>
+              <Typography sx={{ color: 'rgba(255, 255, 255, 0.82)' }}>
                 Build habits at your own pace, and share only what you choose to share.
               </Typography>
             </Box>
