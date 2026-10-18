@@ -27,7 +27,7 @@ python manage.py runserver        # API at http://127.0.0.1:8000/api/v1/
 npm run dev                       # app at http://localhost:5173
 ```
 
-In development the app talks to `http://127.0.0.1:8000/api/v1` without any configuration. To point it elsewhere, copy the root `.env.example` to `.env` and set `VITE_API_BASE_URL`; production builds must set it.
+The app calls the same-origin `/api/v1`; `npm run dev` and `npm run preview` proxy `/api` to Django (`ARCLOOP_API_PROXY`, default `http://127.0.0.1:8000`), so no configuration is needed. In production a reverse proxy does the same (`docs/DEPLOYMENT.md`). Reminders page → "Add to a calendar" downloads an `.ics` file (`docs/CALENDAR_EXPORT.md`).
 
 Password-reset emails are printed to the API's console in debug mode (nothing is sent). `python manage.py createsuperuser` gives access to the admin at `/admin/`.
 
@@ -41,9 +41,11 @@ The virtualenv, `backend/db.sqlite3`, `backend/.env` and `.env` are git-ignored.
 | `npm run lint` | ESLint |
 | `npm test` | Both Vitest projects: `unit` (no server) and `integration` (starts a real Django server on a temporary SQLite file, so it needs the backend virtualenv) |
 | `npm run test:unit` / `test:integration` | Just one of those |
-| `npm run test:backend` | The Django test suite (63 tests: sign-in, planner rules, reminders, isolation, errors, account deletion) |
+| `npm run test:backend` | The Django test suite (103 tests: sign-in, planner rules, reminders, isolation, errors, account deletion, security headers and logging, server-side timezone edges, backup and restore on disposable databases) |
 | `npm run test:e2e` | Playwright in Chromium (desktop 1440 and mobile 390) against the real dev server with an **in-memory stand-in for the API** and a pinned clock. UI behaviour, loading/empty/error states. Needs `npx playwright install chromium` once |
 | `npm run test:e2e:django` | Playwright against the **real Django server and a real SQLite file**: sign-up, sign-in, logout, password reset by emailed link, CORS, a planner journey, persistence after reload, two users, account deletion |
+| `npm run test:e2e:csp` | Builds the **production** bundle and serves it with the real Content-Security-Policy **enforced**; fails on any violation on any page, and proves the policy blocks injected script, inline handlers, inline styles and foreign requests |
+| `npm run csp:print -- <API URL> [--report-only] [--https]` | Prints the security headers the frontend host must send (`deploy/securityHeaders.js`) |
 | `npm run verify:django` | Starts a real server on a temporary database and runs a 23-step journey through the real services. Deletes the database afterwards |
 
 Both Playwright configs start their own servers on their own ports and temporary databases; none of the tests touch `backend/db.sqlite3` or your `.env`.
@@ -58,9 +60,10 @@ Both Playwright configs start their own servers on their own ports and temporary
 
 - There is no offline mode. If the connection drops, pages not yet loaded show a calm "This page didn't load" message with a retry; data screens show their error state with a retry. Nothing is cached for offline use.
 - Reminders are delivered only while Arcloop is open in a browser tab.
-- Only Chromium has been run for browser tests.
+- Only Chromium has been run for browser tests; Firefox, WebKit/Safari, physical phones and offline use are untested.
+- Backups: `python manage.py backup_db`, `restore_db`, `verify_db` (tested on disposable databases; a drill on a real setup is still to do): [docs/BACKUP_RESTORE.md](docs/BACKUP_RESTORE.md).
 - SQLite suits one API server on one machine; see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for its limits, backups and the list of blockers before real users. **Nothing has been deployed.**
-- Sign-in tokens live in `localStorage`; a Content-Security-Policy at the host is required before launch.
+- Sessions are an HttpOnly cookie with CSRF protection, same-origin only; verified over HTTP locally, HTTPS unverified. A Content-Security-Policy at the host is required before launch. Calendar export is a one-time `.ics` file; calendar apps decide whether to alert (no notification is guaranteed).
 - Full list: [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md).
 
 ## Design system
@@ -76,4 +79,4 @@ Sample or illustrative content is kept in `src/constants/landingContent.js` (`DE
 - Signed-in screens: My Day, Week, Progress, Recurring Tasks, Reminders, Settings (with account deletion). Verified in the browser against the real server on Chromium (see the evidence table in the migration doc).
 - Not yet: deployment, an email provider, email confirmation, groups, challenge membership, onboarding. Challenge data is sample data.
 
-See [docs/](docs/): `DAILY_PLANNING_SPEC.md`, `DJANGO_MIGRATION.md`, `DEPLOYMENT.md`, `SECURITY.md`, `PROJECT_STRUCTURE.md`, `FEATURE_TRACKER.md`, `DEVELOPMENT_LOG.md`, `KNOWN_ISSUES.md`.
+See [docs/](docs/): `DAILY_PLANNING_SPEC.md`, `DJANGO_MIGRATION.md`, `DEPLOYMENT.md`, `AUTH_SECURITY.md`, `SECURITY.md`, `BACKUP_RESTORE.md`, `EMAIL_DECISIONS.md`, `REMINDERS.md`, `PRIVACY_POLICY_PROPOSAL.md`, `PROJECT_STRUCTURE.md`, `FEATURE_TRACKER.md`, `DEVELOPMENT_LOG.md`, `KNOWN_ISSUES.md`.

@@ -32,3 +32,24 @@ class TestClockMiddleware:
             return self.get_response(request)
         finally:
             rules.test_now.reset(token)
+
+
+class ApiSecurityHeadersMiddleware:
+    """Headers for every API response (/api/...). The API only ever returns JSON, so it needs no scripts, styles or
+    framing; its answers can hold personal data and tokens, so they must not be cached or leak through Referer."""
+
+    HEADERS = {
+        'Content-Security-Policy': "default-src 'none'; frame-ancestors 'none'",
+        'Cache-Control': 'no-store',
+        'Referrer-Policy': 'no-referrer',
+    }
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        response = self.get_response(request)
+        if request.path.startswith('/api/'):
+            for name, value in self.HEADERS.items():
+                response.headers[name] = value
+        return response

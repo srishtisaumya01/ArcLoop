@@ -109,6 +109,33 @@ describe('daylight saving: nonexistent local times resolve FORWARD', () => {
   })
 })
 
+describe('the start of a day when midnight happens twice (found by checking against the server timezone database)', () => {
+  // Havana falls back at 01:00 on 1 November 2026, so 00:00 to 01:00 is shown twice and that date is 25 hours long.
+  // The date began the FIRST time the clock showed it, not the second.
+  it('starts the date at the earlier midnight, so the day before is 24 hours and the day itself 25', () => {
+    expect(iso(startOfLocalDay('2026-11-01', 'America/Havana'))).toBe('2026-11-01T04:00:00.000Z') // 00:00 CDT (UTC-4), the first one
+    expect(localDayLengthMinutes('2026-10-31', 'America/Havana')).toBe(1440)
+    expect(localDayLengthMinutes('2026-11-01', 'America/Havana')).toBe(1500)
+    expect(localDayLengthMinutes('2026-11-02', 'America/Havana')).toBe(1440)
+  })
+
+  it('a repeated wall-clock TIME still resolves to the later instant (that rule is unchanged)', () => {
+    expect(iso(zonedDateTimeToInstant('2026-11-01', '00:30', 'America/Havana'))).toBe('2026-11-01T05:30:00.000Z') // the second 00:30, CST
+  })
+
+  it('counts the time left on the repeated day in real elapsed minutes', () => {
+    // 00:30 CDT (the first one) on 1 November: 24.5 hours of that 25-hour day remain.
+    expect(minutesUntilEndOfLocalDay('2026-11-01T04:30:00Z', 'America/Havana')).toBe(24 * 60 + 30 + 0)
+  })
+
+  it('leaves ordinary midnights, gaps and other zones exactly as before', () => {
+    expect(iso(startOfLocalDay('2026-03-10', 'America/New_York'))).toBe('2026-03-10T04:00:00.000Z')
+    expect(iso(startOfLocalDay('2026-11-01', 'America/New_York'))).toBe('2026-11-01T04:00:00.000Z')
+    expect(localDayLengthMinutes('2026-11-01', 'America/New_York')).toBe(1500)
+    expect(localDayLengthMinutes('2026-03-08', 'America/New_York')).toBe(1380)
+  })
+})
+
 describe('daylight saving: ambiguous local times resolve to the LATER instant', () => {
   it('New York fall-back (01:30 happens twice on 2026-11-01)', () => {
     expect(iso(zonedDateTimeToInstant('2026-11-01', '01:30', 'America/New_York'))).toBe('2026-11-01T06:30:00.000Z') // 01:30 EST, not EDT

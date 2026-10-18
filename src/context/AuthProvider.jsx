@@ -11,7 +11,7 @@ const initialState = {
 const fromSession = (session) => ({ status: session ? 'authenticated' : 'unauthenticated', session })
 
 // Restores the session on load and keeps it in sync with sign-in, sign-out
-// and token refresh events (including expiry in another tab).
+// and expiry (the server stopped accepting the cookie).
 export default function AuthProvider({ children }) {
   const [state, setState] = useState(initialState)
 
@@ -19,8 +19,8 @@ export default function AuthProvider({ children }) {
     if (!isBackendConfigured) return undefined
     let active = true
 
-    // getSession() waits for client initialisation, including exchanging a
-    // ?code= from an email link, so it is safe to treat its answer as final.
+    // getSession() asks the server who the session cookie belongs to; its answer is final. (If the server cannot be
+    // reached it rejects and the signed-out state is shown; reloading with a connection restores the session.)
     getSession().then(
       (session) => active && setState(fromSession(session)),
       () => active && setState(fromSession(null)),

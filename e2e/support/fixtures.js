@@ -1,31 +1,25 @@
 import { test as base, expect } from '@playwright/test'
-import { API, NOW_ISO, STORAGE_KEY, createStubApi, sessionFor } from './stubApi.js'
+import { API_GLOB, CSRF_COOKIE, CSRF_VALUE, NOW_ISO, createStubApi } from './stubApi.js'
 
 // Every test gets its own in-memory API (so writes never leak between tests), a browser clock pinned to
 // Tuesday 10 March 2026, 11:00 New York (so "today" matches the seeded data), and, unless a test opts out
-// with `test.use({ signedIn: false })`, a stored session so the signed-in screens open directly.
+// with `test.use({ signedIn: false })`, a signed-in stub session so the signed-in screens open directly (the app asks
+// `/auth/me/`, as it does for a real cookie), and the CSRF cookie a real sign-in would have set.
 // (Playwright's fixture callback is named `provide` here only because the React hooks lint rule
 // objects to a function argument called `use`.)
 export const test = base.extend({
   signedIn: [true, { option: true }],
   apiMode: ['normal', { option: true }],
-  context: async ({ context, signedIn }, provide) => {
+  context: async ({ context, baseURL }, provide) => {
     await context.clock.setFixedTime(new Date(NOW_ISO))
-    if (signedIn) {
-      await context.addInitScript(
-        ([key, session]) => {
-          if (!localStorage.getItem(key)) localStorage.setItem(key, JSON.stringify(session))
-        },
-        [STORAGE_KEY, sessionFor()],
-      )
-    }
+    await context.addCookies([{ name: CSRF_COOKIE, value: CSRF_VALUE, url: baseURL }])
     await provide(context)
   },
   // Automatic, so the stub is attached even when a test never mentions `api`; without it, requests would go to a dead port.
   api: [
-    async ({ context, apiMode }, provide) => {
-      const api = createStubApi({ mode: apiMode })
-      await context.route(`${API}/**`, (route) => api.handle(route))
+    async ({ context, apiMode, signedIn }, provide) => {
+      const api = createStubApi({ mode: apiMode, signedIn })
+      await context.route(API_GLOB, (route) => api.handle(route))
       await provide(api)
     },
     { auto: true },

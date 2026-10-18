@@ -55,6 +55,7 @@ const CALLS = {
   getPlanSnapshot: [TODAY],
   listSnapshots: [{ from: '2026-03-01', to: TODAY }],
   getWeekSummary: [{}],
+  getCalendarPlan: [{}],
   getHabitProgress: [{}],
   getRecoveryStatus: [],
 }
@@ -370,6 +371,31 @@ describe('reads', () => {
     expect(week.tasksRemaining).toBe(1) // today's, not started
     expect(client.calls.some((c) => c.table === 'task_templates' && c.filters.some((f) => f.column === 'starts_on' && f.op === 'lte' && f.value === '2026-03-15'))).toBe(true)
     expect(client.calls.every((c) => c.op === 'select')).toBe(true)
+  })
+
+  it('getCalendarPlan is read-only, starts today, and returns the plan with the timezone its times are in', async () => {
+    const templateId = uuid()
+    const { client, service } = setup({
+      templates: [tplRow({ id: templateId, title: 'Walk', planned_start: '07:30:00' })],
+      days: [dayRow({ plan_date: '2026-03-11' })],
+      occurrences: [occRow({ template_id: templateId, plan_date: '2026-03-11', title: 'Walk', planned_start: '07:30:00' })], // already on Wednesday
+    })
+    const plan = await service.getCalendarPlan({ days: 3 })
+    expect(plan).toMatchObject({ timeZone: 'America/New_York', today: TODAY, from: TODAY, to: '2026-03-12' })
+    expect(plan.days.map((d) => [d.date, d.tasks.map((t) => t.title), d.tasks.map((t) => Boolean(t.expected))])).toEqual([
+      [TODAY, ['Walk'], [true]], // today has no record yet: it will hold the repeating task
+      ['2026-03-11', ['Walk'], [false]], // a real occurrence, not counted twice
+      ['2026-03-12', ['Walk'], [true]],
+    ])
+    expect(client.calls.every((c) => c.op === 'select')).toBe(true)
+    expect(client.calls.some((c) => c.table === 'task_templates' && c.filters.some((f) => f.column === 'starts_on' && f.op === 'lte' && f.value === '2026-03-12'))).toBe(true)
+  })
+
+  it('getCalendarPlan checks how many days it is asked for', async () => {
+    const { service } = setup()
+    for (const days of [0, -1, 1.5, '7', 31, null]) expect((await rejection(service.getCalendarPlan({ days }))).code, String(days)).toBe(SERVICE_ERROR.VALIDATION)
+    expect((await service.getCalendarPlan()).days).toHaveLength(14) // the default
+    expect((await service.getCalendarPlan({ days: 30 })).days).toHaveLength(30) // the plan-ahead limit
   })
 
   it('getWeekSummary does not read templates for a week that is entirely in the past', async () => {

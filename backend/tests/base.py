@@ -2,6 +2,7 @@ import datetime as dt
 from unittest import mock
 
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
 from rest_framework.test import APITestCase
 
 from accounts.models import AuthToken
@@ -16,6 +17,7 @@ class ApiCase(APITestCase):
     """Fixed clock, helpers to sign users in, and short request helpers that return parsed JSON."""
 
     def setUp(self):
+        cache.clear()  # rate-limit counters live in the cache: one test's sign-ins must not throttle another's
         patcher = mock.patch('planner.rules.now', lambda: NOW)
         patcher.start()
         self.addCleanup(patcher.stop)

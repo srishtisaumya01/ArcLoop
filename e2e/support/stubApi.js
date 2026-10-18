@@ -2,8 +2,14 @@
 // It understands the collection URLs the app sends (`/api/v1/<name>/` with `col`, `col__op`, order, limit and offset),
 // stores creates, updates and deletes per test, enforces the two unique rules the models have, and imitates the
 // server-set values the app reads back (completed_at, excluded_at, baseline_at, in_original_plan).
+// It also imitates the session rules the app depends on: nothing but sign-in and a few public calls works unless someone
+// is signed in, and every request that changes data must carry the CSRF header the real server demands, so a screen that
+// forgot it fails here instead of only in production.
 // It is NOT the real API: the real one is exercised by the e2e-django suite (npm run test:e2e:django).
-export const API = 'http://127.0.0.1:54321/api/v1'
+export const API_GLOB = '**/api/v1/**' // the API is same-origin: Playwright intercepts these on the app's own origin
+export const CSRF_COOKIE = 'arcloop_csrf' // the real names, kept in step by tests/integration/authContract.integration.test.js
+export const CSRF_HEADER = 'x-csrftoken'
+export const CSRF_VALUE = 'stub-csrf-secret'
 export const USER_ID = 1
 export const EMAIL = 'asha@example.com'
 export const TODAY = '2026-03-10' // a Tuesday; the browser clock is pinned to 11:00 New York
@@ -48,12 +54,6 @@ export function seedData() {
   }
 }
 
-// The session the app stores after sign-in (see src/services/api/apiClient.js).
-export function sessionFor(userId = USER_ID, email = EMAIL) {
-  return { token: 'e2e-stub-token', expiresAt: '2999-01-01T00:00:00Z', user: { id: userId, email } }
-}
-export const STORAGE_KEY = 'arcloop.session'
-
 const RESOURCES = {
   'task-templates': 'task_templates',
   'day-plans': 'day_plans',
@@ -84,25 +84,37 @@ function matchesFilter(row, column, op, value) {
 }
 
 // `mode`: 'normal' | 'empty' (no plans or templates) | 'error' (a screen's first reads fail) | 'slow' (they take 2 s)
-export function createStubApi({ seed = seedData(), mode = 'normal' } = {}) {
+export function createStubApi({ seed = seedData(), mode = 'normal', signedIn = true } = {}) {
   const tables = clone(seed)
-  const state = { mode, log: [] }
+  const state = { mode, signedIn, csrfRefused: 0, log: [] }
   let counter = 5000
 
   const headers = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': '*', 'access-control-expose-headers': '*' }
   const json = (route, status, body) => route.fulfill({ status, contentType: 'application/json', headers, body: JSON.stringify(body) })
   const error = (route, status, code, message) => json(route, status, { error: { code, message } })
 
+  const EXPIRES = '2999-01-01T00:00:00Z'
+  const unauthenticated = (route) => error(route, 401, 'unauthenticated', 'Please log in again to continue.')
+  // A cookie sign-in answers with the user and the expiry only: the credential is an HttpOnly cookie, never in the body.
+  const session = { expires_at: EXPIRES, user: { id: USER_ID, email: EMAIL } }
+
   function auth(route, req, url) {
     const path = url.pathname.replace('/api/v1/auth', '')
     const body = JSON.parse(req.postData() || '{}')
     if (path === '/login/') {
-      if (body.email === EMAIL && body.password === 'correct-horse-battery') return json(route, 200, { token: sessionFor().token, expires_at: sessionFor().expiresAt, user: sessionFor().user })
-      return error(route, 401, 'invalid_credentials', 'Email or password is incorrect.')
+      if (body.transport !== 'cookie') return error(route, 400, 'validation_error', 'The browser must ask for the cookie transport.')
+      if (body.email !== EMAIL || body.password !== 'correct-horse-battery') return error(route, 401, 'invalid_credentials', 'Email or password is incorrect.')
+      state.signedIn = true
+      return json(route, 200, session)
     }
-    if (path === '/me/') return json(route, 200, { id: USER_ID, email: EMAIL, expires_at: sessionFor().expiresAt })
-    if (path === '/logout/' || path.startsWith('/password/') || path === '/account/delete/') return route.fulfill({ status: 204, headers })
-    return json(route, 200, {})
+    if (path === '/register/') {
+      state.signedIn = true
+      return json(route, 201, session)
+    }
+    if (path === '/me/') return state.signedIn ? json(route, 200, { ...session.user, expires_at: EXPIRES }) : unauthenticated(route)
+    if (path === '/password/reset/' || path === '/password/reset/confirm/') return route.fulfill({ status: 204, headers })
+    if (path === '/logout/' || path === '/account/delete/') state.signedIn = false
+    return route.fulfill({ status: 204, headers })
   }
 
   function profile(route, req) {
@@ -193,6 +205,13 @@ export function createStubApi({ seed = seedData(), mode = 'normal' } = {}) {
     const url = new URL(req.url())
     if (req.method() === 'OPTIONS') return route.fulfill({ status: 204, headers })
     if (!url.pathname.startsWith('/api/v1/')) return json(route, 404, {})
+    const isPublic = /\/auth\/(login|register|password\/reset(\/confirm)?|me)\/$/.test(url.pathname)
+    if (!isPublic && !state.signedIn) return unauthenticated(route)
+    // Anything that changes data must prove it came from the app, exactly as the real server insists (config/auth_cookies.py).
+    if (!isPublic && !['GET', 'HEAD'].includes(req.method()) && req.headers()[CSRF_HEADER] !== CSRF_VALUE) {
+      state.csrfRefused += 1
+      return error(route, 403, 'csrf_failed', 'Your session could not be verified. Reload the page and try again.')
+    }
     if (url.pathname.startsWith('/api/v1/auth/')) return auth(route, req, url)
     const slug = url.pathname.replace('/api/v1/', '').replace(/\/$/, '')
     const isProfile = slug === 'profile'

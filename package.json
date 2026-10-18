@@ -15,7 +15,9 @@
     "test:e2e": "playwright test",
     "test:e2e:django": "playwright test -c playwright.django.config.js",
     "test:backend": "node scripts/test-backend.mjs",
-    "verify:django": "node scripts/verify-django.mjs"
+    "verify:django": "node scripts/verify-django.mjs",
+    "csp:print": "node scripts/print-csp.mjs",
+    "test:e2e:csp": "playwright test -c playwright.csp.config.js"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
@@ -38,6 +40,7 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.7",
     "globals": "^17.13.0",
+    "ical.js": "^2.2.1",
     "jsdom": "^30.1.3",
     "vite": "^8.3.4",
     "vitest": "^5.0.5"

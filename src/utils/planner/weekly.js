@@ -39,6 +39,16 @@ const taskView = (o) => ({
 })
 const usableEstimate = (m) => Number.isInteger(m) && m > 0
 
+// What a day that has not happened yet (a later date, or today before it has a record) will hold: the tasks it already
+// has, plus the repeating tasks that opening it would add. Nothing is created. A task already on the day is never counted
+// twice, and a hidden (suppressed) or ended repeating task is not projected: it is `templatesDueOn`'s rule, so the Week,
+// My Day's preview and the calendar export can never disagree. `record` is `{ day, occurrences }` or undefined.
+export function projectDay({ date, record, templates }) {
+  const occurrences = record?.occurrences ?? []
+  const expected = templatesDueOn({ templates, occurrences, day: record?.day ?? null, planDate: date }).map((t) => expectedTaskView(t, date))
+  return { occurrences, expected }
+}
+
 const workload = (items) => ({
   plannedCount: items.length,
   estimatedMinutes: items.filter((o) => usableEstimate(o.estimatedMinutes)).reduce((a, o) => a + o.estimatedMinutes, 0),
@@ -91,8 +101,7 @@ export function summarizeWeek({ weekOf, days, templates = [] }, rawContext) {
     if (isAfterToday || isTodayUnopened) {
       // Days that have not happened yet, and today before its record exists: shown as upcoming workload (what the
       // day will hold), never counted in progress.
-      const occurrences = record?.occurrences ?? []
-      const expected = templatesDueOn({ templates, occurrences, day: record?.day ?? null, planDate: date }).map((t) => expectedTaskView(t, date))
+      const { occurrences, expected } = projectDay({ date, record, templates })
       const detail = dayDetail(occurrences)
       const tasks = [...detail.tasks, ...expected]
       return {

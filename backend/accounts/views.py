@@ -1,3 +1,5 @@
+import logging
+
 from django.conf import settings
 from django.contrib.auth import authenticate, get_user_model
 from django.contrib.auth.tokens import default_token_generator
@@ -11,7 +13,9 @@ from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
+from config.auth_cookies import clear_session_cookies, set_session_cookies
 from config.errors import ApiError, validation_error
+from config.security_log import log_event
 
 from .models import AuthToken
 from .serializers import (
@@ -29,8 +33,16 @@ User = get_user_model()
 WEAK = 'That password is too easy to guess. Try a longer or less common one.'
 
 
-def session_payload(user, raw_token, token):
-    return {'token': raw_token, 'expires_at': token.expires_at.isoformat(), 'user': {'id': user.pk, 'email': user.email}}
+def start_session(request, user, transport, status_code):
+    """Issues a session for `user` and answers in the requested transport. The cookie transport never puts the token in
+    the body: the browser's script must not hold the credential."""
+    raw, token = AuthToken.issue(user)
+    body = {'expires_at': token.expires_at.isoformat(), 'user': {'id': user.pk, 'email': user.email}}
+    if transport == 'cookie':
+        response = Response(body, status=status_code)
+        set_session_cookies(request, response, raw, token)
+        return response
+    return Response({'token': raw, **body}, status=status_code)
 
 
 def new_password(raw, user):
@@ -61,8 +73,8 @@ class RegisterView(PublicAuthView):
                 user = User.objects.create_user(username=email, email=email, password=password)
         except IntegrityError:
             raise validation_error('An account may already exist for that email. Try logging in or resetting your password.', {'email': 'Try another email, or log in.'}, 'email_taken')
-        raw, token = AuthToken.issue(user)
-        return Response(session_payload(user, raw, token), status=status.HTTP_201_CREATED)
+        log_event(request, 'registered', user=user.pk)
+        return start_session(request, user, data.validated_data['transport'], status.HTTP_201_CREATED)
 
 
 class LoginView(PublicAuthView):
@@ -71,9 +83,9 @@ class LoginView(PublicAuthView):
         data.is_valid(raise_exception=True)
         user = authenticate(request, username=data.validated_data['email'], password=data.validated_data['password'])
         if user is None:
+            log_event(request, 'login_failed', logging.WARNING)  # no email: it may be someone else's
             raise ApiError('invalid_credentials', 'Email or password is incorrect.', status.HTTP_401_UNAUTHORIZED)
-        raw, token = AuthToken.issue(user)
-        return Response(session_payload(user, raw, token))
+        return start_session(request, user, data.validated_data['transport'], status.HTTP_200_OK)
 
 
 class LogoutView(APIView):
@@ -81,7 +93,9 @@ class LogoutView(APIView):
 
     def post(self, request):
         request.auth.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        response = Response(status=status.HTTP_204_NO_CONTENT)
+        clear_session_cookies(response)  # harmless for a bearer client; a browser's cookies go
+        return response
 
 
 class MeView(APIView):
@@ -101,6 +115,7 @@ class PasswordChangeView(APIView):
         request.user.set_password(new_password(data.validated_data['password'], request.user))
         request.user.save(update_fields=['password'])
         AuthToken.objects.filter(user=request.user).exclude(pk=request.auth.pk).delete()  # other devices must log in again
+        log_event(request, 'password_changed', user=request.user.pk)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -111,16 +126,22 @@ class PasswordResetRequestView(PublicAuthView):
         data = PasswordResetRequestSerializer(data=request.data)
         data.is_valid(raise_exception=True)
         user = User.objects.filter(username__iexact=data.validated_data['email'], is_active=True).first()
+        log_event(request, 'password_reset_requested')  # whether or not the address exists: the log must not reveal it either
         if user is not None:
             uid = urlsafe_base64_encode(force_bytes(user.pk))
             token = default_token_generator.make_token(user)
             link = f'{settings.FRONTEND_URL}/update-password?uid={uid}&token={token}'
-            send_mail(
-                'Reset your Arcloop password',
-                f'Use this link to choose a new password. If you did not ask for it, you can ignore this email.\n\n{link}\n',
-                settings.DEFAULT_FROM_EMAIL,
-                [user.email],
-            )
+            try:
+                send_mail(
+                    'Reset your Arcloop password',
+                    f'Use this link to choose a new password. If you did not ask for it, you can ignore this email.\n\n{link}\n',
+                    settings.DEFAULT_FROM_EMAIL,
+                    [user.email],
+                )
+            except Exception as error:  # noqa: BLE001 - any mail failure: the caller must not learn that this address has an account
+                # Answering 500 only for real accounts would reveal which addresses exist exactly when mail is broken.
+                # The operator sees it in the log (error type only: the message may contain the address or credentials).
+                log_event(request, 'reset_email_failed', logging.ERROR, error=type(error).__name__, user=user.pk)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -134,10 +155,12 @@ class PasswordResetConfirmView(PublicAuthView):
         except (ValueError, TypeError, OverflowError, User.DoesNotExist):
             raise invalid
         if not default_token_generator.check_token(user, data.validated_data['token']):
+            log_event(request, 'password_reset_failed', logging.WARNING)
             raise invalid
         user.set_password(new_password(data.validated_data['password'], user))  # also retires this link: its token is derived from the password hash
         user.save(update_fields=['password'])
         AuthToken.objects.filter(user=user).delete()
+        log_event(request, 'password_reset_done', user=user.pk)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -165,9 +188,13 @@ class AccountDeleteView(APIView):
         if data.validated_data['confirmation'] != self.CONFIRMATION:
             message = f'Type {self.CONFIRMATION} to confirm.'
             raise validation_error(message, {'confirmation': message}, 'confirmation_required')
+        user_id = user.pk
         with transaction.atomic():
             user.delete()  # cascades to the profile, tokens, templates, days, occurrences and reminders
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        log_event(request, 'account_deleted', user=user_id)
+        response = Response(status=status.HTTP_204_NO_CONTENT)
+        clear_session_cookies(response)
+        return response
 
 
 class ProfileView(APIView):

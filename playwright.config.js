@@ -3,9 +3,9 @@ import { defineConfig } from '@playwright/test'
 // Real-browser tests for the signed-in screens. They run the real app (built for the Django backend) in Chromium against
 // the real dev server; sign-in and data come from an in-memory stub of the Arcloop API (e2e/support/stubApi.js) with the
 // browser clock pinned, so they prove the UI, routing, forms, loading/empty/error states and client behaviour, NOT the
-// server. The real API, real database and real CORS are covered by `npm run test:e2e:django` (playwright.django.config.js).
+// server. The real API, real cookies, real CSRF checks and real database are covered by `npm run test:e2e:django`
+// (playwright.django.config.js). The app calls `/api/...` on its own origin; the stub intercepts those requests in the browser.
 const PORT = 5200
-const API = 'http://127.0.0.1:54321/api/v1'
 
 export default defineConfig({
   testDir: 'e2e',
@@ -29,6 +29,5 @@ export default defineConfig({
     url: `http://127.0.0.1:${PORT}/`,
     reuseExistingServer: false,
     timeout: 60000,
-    env: { VITE_BACKEND: 'django', VITE_API_BASE_URL: API },
   },
 })

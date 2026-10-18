@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { act, cleanup, screen } from '@testing-library/react'
+import { act, cleanup, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderAt } from './renderRoute.jsx'
 
@@ -213,9 +213,11 @@ describe('Update password', () => {
     const user = userEvent.setup()
     h.getSession.mockResolvedValue(null)
     h.updatePassword.mockResolvedValue(undefined)
-    renderAt('/update-password?uid=MQ&token=abc-123')
+    const { router } = renderAt('/update-password?uid=MQ&token=abc-123')
     await user.type(await screen.findByLabelText('New password'), 'brand-new-pass')
     expect(screen.queryByLabelText('Current password')).toBeNull()
+    // The secret is removed from the address bar (and history) as soon as the page has it, yet is still used below.
+    await waitFor(() => expect(router.state.location.search).toBe(''))
     await user.type(screen.getByLabelText('Confirm new password'), 'brand-new-pass')
     await user.click(screen.getByRole('button', { name: 'Update password' }))
     expect(h.updatePassword).toHaveBeenCalledWith('brand-new-pass', { reset: { uid: 'MQ', token: 'abc-123' } })

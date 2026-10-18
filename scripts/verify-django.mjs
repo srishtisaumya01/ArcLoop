@@ -10,7 +10,7 @@ import { spawn } from 'node:child_process'
 import { existsSync, mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
-import { createApiClient } from '../src/services/api/apiClient.js'
+import { createBrowserLikeApi } from '../tests/support/browserLikeApi.js'
 import { createDjangoClient } from '../src/services/api/djangoClient.js'
 import { createPlannerService } from '../src/services/planner/createPlannerService.js'
 import { createReminderService } from '../src/services/reminders/createReminderService.js'
@@ -56,19 +56,15 @@ migrate.on('exit', async (code) => {
     return finish(server, 2)
   }
 
-  const memoryStorage = () => {
-    const data = new Map()
-    return { getItem: (k) => data.get(k) ?? null, setItem: (k, v) => data.set(k, v), removeItem: (k) => data.delete(k) }
-  }
   const person = async (email) => {
-    const api = createApiClient({ baseUrl: BASE, storage: memoryStorage() })
+    const { api } = createBrowserLikeApi({ baseUrl: BASE }) // its own cookie jar: a separate "browser" per person
     const client = createDjangoClient(api)
     const planner = createPlannerService({ getClient: () => client })
     const reminders = createReminderService({ getClient: () => client })
     return { api, client, planner, reminders, userId: undefined, email }
   }
   const signIn = async (p, password) => {
-    p.api.setSession(await p.api.post('/auth/login/', { email: p.email, password }, { authenticated: false }))
+    p.api.setSession(await p.api.post('/auth/login/', { email: p.email, password, transport: 'cookie' }))
     p.userId = p.api.getSession().user.id
   }
   const password = 'plum-ladder-orbit-42'
@@ -77,7 +73,7 @@ migrate.on('exit', async (code) => {
     const a = await person('journey-a@example.com')
     const b = await person('journey-b@example.com')
     for (const p of [a, b]) {
-      p.api.setSession(await p.api.post('/auth/register/', { email: p.email, password }, { authenticated: false }))
+      p.api.setSession(await p.api.post('/auth/register/', { email: p.email, password, transport: 'cookie' }))
       p.userId = p.api.getSession().user.id
       // New accounts default to UTC; the journey, like a real user, has a profile timezone.
       await p.api.patch('/profile/', { timezone: 'America/New_York' })

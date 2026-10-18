@@ -23,8 +23,15 @@ class EmailField(serializers.EmailField):
         return super().to_internal_value(data).strip().lower()
 
 
-class RegisterSerializer(serializers.Serializer):
+class SessionRequestSerializer(serializers.Serializer):
+    """What sign-in and registration share. `transport` says how the session reaches the client: a browser asks for
+    `cookie` (HttpOnly cookie, no token in the body); scripts and tools take the default `token` (bearer)."""
+
     email = EmailField(max_length=MAX_EMAIL)
+    transport = serializers.ChoiceField(choices=['token', 'cookie'], default='token')
+
+
+class RegisterSerializer(SessionRequestSerializer):
     password = serializers.CharField(write_only=True, max_length=128, trim_whitespace=False)
 
     def validate(self, attrs):
@@ -35,8 +42,7 @@ class RegisterSerializer(serializers.Serializer):
         return attrs
 
 
-class LoginSerializer(serializers.Serializer):
-    email = EmailField(max_length=MAX_EMAIL)
+class LoginSerializer(SessionRequestSerializer):
     password = serializers.CharField(max_length=128, trim_whitespace=False)
 
 

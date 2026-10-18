@@ -32,11 +32,14 @@ src/
 
 backend/
   config/         settings.py (everything environment-specific comes from env vars), errors.py (one error shape),
-                  resources.py (the generic user-scoped collection view), middleware.py (test-only clock), urls.py
+                  resources.py (the generic user-scoped collection view), middleware.py (API security headers; test-only clock),
+                  security_log.py (security events), views.py (health, CSP report), urls.py
   accounts/       Profile, hashed expiring AuthToken, register/login/logout/password/reset/delete endpoints
   planner/        TaskTemplate, DayPlan, TaskOccurrence; rules.py (the ported trigger/RLS rules), resources.py
   reminders/      ReminderPreference, TaskReminder
-  tests/          63 Django tests
+  tests/          103 Django tests
+  accounts/backup.py + management/commands/   backup_db, restore_db, verify_db (SQLite backup, restore, health check)
+  planner/management/commands/               writable_fields, tz_samples (cross-checks against the frontend)
 
 tests/
   unit/           Vitest + Testing Library (node-only; no server needed): planner/ (pure logic),
@@ -46,8 +49,10 @@ tests/
   support/        queryBuilder (re-export), fakeClient and memoryDb (mocks), serviceJourney, plannerSeed
 e2e/              Playwright against the real dev server with an in-memory stub of the API (UI behaviour,
                   loading/empty/error states, pinned clock)
-e2e-django/       Playwright against the real Django server and a real SQLite file (auth, CORS, planner, deletion)
-scripts/          verify-django.mjs (23-step journey), test-backend.mjs
+e2e-django/       Playwright against the real Django server and a real SQLite file (cookie auth, CSRF, planner, calendar export, deletion)
+e2e-csp/          Playwright: the production build under the enforced Content-Security-Policy (no violations; the policy blocks injected script)
+deploy/           securityHeaders.js: the one definition of the frontend security headers (CSP etc.)
+scripts/          verify-django.mjs (23-step journey), test-backend.mjs, serve-csp.mjs, print-csp.mjs
 docs/             this folder; archive/supabase/ holds the retired Postgres design for reference
 ```
 

@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { Link as RouterLink, useSearchParams } from 'react-router-dom'
 import { Box, Button, Link, Typography } from '@mui/material'
 import { CircleCheck } from 'lucide-react'
@@ -30,8 +31,19 @@ const validate = ({ password, confirm, currentPassword, needsCurrent }) => ({
 export default function UpdatePasswordPage() {
   usePageMeta('Choose a new password')
   const { status: authStatus } = useAuth()
-  const [params] = useSearchParams()
-  const reset = params.get('uid') && params.get('token') ? { uid: params.get('uid'), token: params.get('token') } : null
+  const [params, setParams] = useSearchParams()
+  // The link's secret is kept in memory and removed from the address bar at once, so it does not linger in the URL,
+  // the browser history or a shared screenshot. (Reloading the page therefore needs the emailed link again.)
+  const [reset] = useState(() => (params.get('uid') && params.get('token') ? { uid: params.get('uid'), token: params.get('token') } : null))
+  useEffect(() => {
+    if (params.has('uid') || params.has('token')) {
+      setParams((current) => {
+        current.delete('uid')
+        current.delete('token')
+        return current
+      }, { replace: true })
+    }
+  }, [params, setParams])
   const needsCurrent = !reset
   const { status, error, submit } = useAsyncSubmit(changePassword)
   const { values, errors, onChange, onBlur, handleSubmit } = useForm({ initialValues: { password: '', confirm: '', currentPassword: '' }, validate: (v) => validate({ ...v, needsCurrent }) })
@@ -42,8 +54,8 @@ export default function UpdatePasswordPage() {
     return (
       <AuthLayout title="This link has expired">
         <Typography color="text.secondary" sx={{ mb: 3 }}>
-          This password reset link is invalid, has expired, or was already used. Reset links also need to be opened in
-          the same browser where you asked for them.
+          This password reset link is invalid, has expired (links last one hour), or was already used. Request a new one and
+          open it within the hour.
         </Typography>
         <Button component={RouterLink} to={ROUTES.forgotPassword} variant="contained" color="primary" size="large" fullWidth>
           Request a new link
