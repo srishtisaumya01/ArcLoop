@@ -775,5 +775,107 @@
    "participation": "Open to anyone with an Arcloop account. You can leave at any time.",
    "scoring": "One credit per day you plan and reflect. A missed day is simply a day."
   }
+ },
+ {
+  "slug": "system-design-7-days",
+  "title": "7-day System Design challenge",
+  "featured": false,
+  "category": "Developers & tech",
+  "duration_days": 7,
+  "start_date": null,
+  "end_date": null,
+  "visibility": "public",
+  "summary": "One system design topic a day for a week: from load balancers to designing a full service.",
+  "description": "Seven days, seven core ideas of system design. Each day you read or watch one topic, sketch a small design on paper, and write down the trade-offs in your own words.",
+  "details": {
+   "organizer": {
+    "name": "Arcloop",
+    "role": "Official challenge"
+   },
+   "rules": [
+    "Study one topic each day and sketch a design for it.",
+    "Write down at least two trade-offs you noticed.",
+    "Check in and check out every day, even on a busy day."
+   ],
+   "habits": [
+    "Day 1: Scaling and load balancing",
+    "Day 2: Caching",
+    "Day 3: Databases and indexing",
+    "Day 4: Queues and async work",
+    "Day 5: APIs and rate limiting",
+    "Day 6: Consistency and replication",
+    "Day 7: Design a small service end to end"
+   ],
+   "participation": "Open to anyone with an Arcloop account. It starts on the day you join, and you can do it alone or with friends.",
+   "scoring": "One credit for each day you complete the topic and check out."
+  }
+ },
+ {
+  "slug": "dsa-15-days",
+  "title": "15-day DSA challenge",
+  "featured": false,
+  "category": "Developers & tech",
+  "duration_days": 15,
+  "start_date": null,
+  "end_date": null,
+  "visibility": "public",
+  "summary": "Fifteen days of data structures and algorithms practice, two problems a day.",
+  "description": "A fortnight of steady practice. Each day you solve two problems on one topic, then write the idea of the solution in one or two lines.",
+  "details": {
+   "organizer": {
+    "name": "Arcloop",
+    "role": "Official challenge"
+   },
+   "rules": [
+    "Solve two problems every day on the day's topic.",
+    "Write the idea of each solution in a line or two.",
+    "Revisit one problem you got wrong."
+   ],
+   "habits": [
+    "Arrays and strings",
+    "Hashing",
+    "Two pointers and sliding window",
+    "Linked lists",
+    "Stacks and queues",
+    "Recursion and backtracking",
+    "Trees",
+    "Binary search",
+    "Graphs basics",
+    "A mixed revision day"
+   ],
+   "participation": "Open to anyone with an Arcloop account. It starts on the day you join, and you can do it alone or with friends.",
+   "scoring": "One credit for each day you finish your two problems and check out."
+  }
+ },
+ {
+  "slug": "dsa-30-days",
+  "title": "1-month DSA challenge",
+  "featured": false,
+  "category": "Developers & tech",
+  "duration_days": 30,
+  "start_date": null,
+  "end_date": null,
+  "visibility": "public",
+  "summary": "Thirty days of data structures and algorithms, building from basics to harder problems.",
+  "description": "A month to build a real DSA habit. Week by week you move from arrays and hashing to trees, graphs and dynamic programming, with a revision day each week.",
+  "details": {
+   "organizer": {
+    "name": "Arcloop",
+    "role": "Official challenge"
+   },
+   "rules": [
+    "Solve at least two problems every day.",
+    "Keep one revision day each week for problems you found hard.",
+    "Note the pattern behind every problem you solve."
+   ],
+   "habits": [
+    "Week 1: Arrays, strings and hashing",
+    "Week 2: Two pointers, linked lists, stacks and queues",
+    "Week 3: Recursion, trees and binary search",
+    "Week 4: Graphs and dynamic programming basics"
+   ],
+   "participation": "Open to anyone with an Arcloop account. It starts on the day you join, and you can do it alone or with friends.",
+   "scoring": "One credit for each day you finish your problems and check out."
+  }
  }
 ]
