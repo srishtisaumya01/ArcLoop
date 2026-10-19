@@ -34,7 +34,7 @@ export async function expectNoHorizontalScroll(page) {
   expect(overflow, 'horizontal overflow in px').toBeLessThanOrEqual(0)
 }
 
-export const isMobile = (testInfo) => testInfo.project.name === 'mobile'
+export const isMobile = (testInfo) => testInfo.project.name.endsWith('mobile') // 'mobile' and 'webkit-mobile'
 
 // Opens the signed-in navigation: the links are in the bar on desktop and behind the menu button on mobile.
 export async function openNav(page, testInfo) {
