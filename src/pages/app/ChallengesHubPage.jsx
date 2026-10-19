@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
-import { Box, Button, Chip, Container, InputAdornment, Skeleton, TextField, Typography } from '@mui/material'
+import { Box, Button, Chip, Container, InputAdornment, MenuItem, Skeleton, TextField, Typography } from '@mui/material'
 import { Plus, RefreshCw, Search, SearchX, TriangleAlert } from 'lucide-react'
 import PageHeader from '../../components/common/PageHeader.jsx'
 import StatePanel from '../../components/common/StatePanel.jsx'
@@ -13,7 +13,9 @@ import { usePageMeta } from '../../hooks/usePageMeta.js'
 import { CHALLENGES_CHANGED, listAppChallenges } from '../../services/myChallengesService.js'
 import { appChallengePath } from '../../constants/navigation.js'
 import { groupByCategory } from '../../utils/groupByCategory.js'
-import { colors, contentWidths, onBrandButtons, radii } from '../../theme/tokens.js'
+import { colors, contentWidths, radii } from '../../theme/tokens.js'
+
+const ALL = '__all__'
 
 // The signed-in Challenges page: make your own challenge, see the ones you are in, and search everything you can join.
 export default function ChallengesHubPage() {
@@ -21,16 +23,17 @@ export default function ChallengesHubPage() {
   usePageMeta(t('Challenges'))
   const mine = useMyChallenges()
   const [query, setQuery] = useState('')
-  const [debounced, setDebounced] = useState('')
+  const [category, setCategory] = useState(ALL)
   const [creating, setCreating] = useState(false)
 
-  useEffect(() => {
-    const id = setTimeout(() => setDebounced(query), 250)
-    return () => clearTimeout(id)
-  }, [query])
-  const load = useCallback(() => listAppChallenges(debounced), [debounced])
-  const all = useAsync(load)
-  const groups = useMemo(() => groupByCategory(all.data ?? []), [all.data])
+  const all = useAsync(listAppChallenges)
+  const categories = useMemo(() => [...new Set((all.data ?? []).map((c) => c.category))], [all.data])
+  // Searching and the category filter work on the list already loaded, so they answer as you type.
+  const shown = useMemo(() => {
+    const needle = query.trim().toLowerCase()
+    return (all.data ?? []).filter((c) => (category === ALL || c.category === category) && (!needle || `${t(c.title)} ${c.title} ${c.summary} ${c.category}`.toLowerCase().includes(needle)))
+  }, [all.data, category, query, t])
+  const groups = useMemo(() => groupByCategory(shown), [shown])
   useEffect(() => {
     window.addEventListener(CHALLENGES_CHANGED, all.retry)
     return () => window.removeEventListener(CHALLENGES_CHANGED, all.retry)
@@ -38,11 +41,7 @@ export default function ChallengesHubPage() {
 
   return (
     <>
-      <PageHeader eyebrow={t('Challenges')} title={t('Your challenges')} description={t('Join a challenge, do it with friends, or make one of your own.')}>
-        <Button variant="contained" size="large" startIcon={<Plus size={18} aria-hidden="true" />} onClick={() => setCreating(true)} sx={onBrandButtons.solid}>
-          {t('Create a custom challenge')}
-        </Button>
-      </PageHeader>
+      <PageHeader eyebrow={t('Challenges')} title={t('Your challenges')} description={t('Join a challenge, do it with friends, or make one of your own.')} />
       {creating && <CreateChallengeDialog open onClose={() => setCreating(false)} />}
 
       <Container sx={{ maxWidth: `${contentWidths.page}px !important`, py: { xs: 4, md: 6 }, display: 'grid', gap: 5 }}>
@@ -65,15 +64,24 @@ export default function ChallengesHubPage() {
 
         <Box component="section" aria-labelledby="all-title">
           <Typography id="all-title" variant="h3" component="h2" sx={{ mb: 2 }}>{t('All challenges')}</Typography>
-          <TextField fullWidth type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t('Search challenges')} aria-label={t('Search challenges')} sx={{ mb: 3, maxWidth: 560 }}
-            slotProps={{ input: { startAdornment: <InputAdornment position="start"><Search size={18} aria-hidden="true" /></InputAdornment> } }} />
+          <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', alignItems: 'center', mb: 3 }}>
+            <TextField type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t('Search challenges')} aria-label={t('Search challenges')} sx={{ flex: '1 1 260px', maxWidth: 520, minWidth: 0 }}
+              slotProps={{ input: { startAdornment: <InputAdornment position="start"><Search size={18} aria-hidden="true" /></InputAdornment> } }} />
+            <TextField select value={category} onChange={(e) => setCategory(e.target.value)} aria-label={t('Category')} sx={{ flex: '0 1 220px', minWidth: 160 }}>
+              <MenuItem value={ALL}>{t('All categories')}</MenuItem>
+              {categories.map((c) => <MenuItem key={c} value={c}>{t(c)}</MenuItem>)}
+            </TextField>
+            <Button variant="contained" size="large" startIcon={<Plus size={18} aria-hidden="true" />} onClick={() => setCreating(true)} sx={{ whiteSpace: 'nowrap' }}>
+              {t('Create a custom challenge')}
+            </Button>
+          </Box>
           {all.status === 'loading' && !all.data && <Skeleton variant="rounded" height={220} />}
           {all.status === 'error' && !all.data && (
             <StatePanel tone="error" icon={TriangleAlert} title={t('We couldn’t load the challenges')} text={t('Something went wrong while loading. Please try again.')}
               action={<Button variant="contained" startIcon={<RefreshCw size={18} aria-hidden="true" />} onClick={all.retry}>{t('Try again')}</Button>} />
           )}
-          {all.data && all.data.length === 0 && <StatePanel icon={SearchX} title={t('No challenges match')} text={t('Try a different word, or create your own challenge.')} />}
-          {all.data && all.data.length > 0 && (
+          {all.data && shown.length === 0 && <StatePanel icon={SearchX} title={t('No challenges match')} text={t('Try a different word, or create your own challenge.')} />}
+          {all.data && shown.length > 0 && (
             <Box sx={{ display: 'grid', gap: 4 }}>
               {groups.map(({ category, items }, index) => (
                 // The id is by position, not the category's name: names have spaces and '&', which aria-labelledby would split into several ids.
