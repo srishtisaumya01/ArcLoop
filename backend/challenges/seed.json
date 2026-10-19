@@ -166,5 +166,614 @@
    "participation": "Invite only. Joining needs an invitation from the organizer.",
    "scoring": "One credit per weekly review."
   }
+ },
+ {
+  "slug": "coding-consistency-7",
+  "title": "7-Day Coding Consistency",
+  "featured": false,
+  "category": "Developers & tech",
+  "duration_days": 7,
+  "start_date": null,
+  "end_date": null,
+  "visibility": "public",
+  "summary": "Write code for a little while every day for a week, and finish each day with a one-line learning note.",
+  "description": "A week of small, steady coding practice. Each day you code for as long as you comfortably can (20 minutes is plenty) on a problem, a tutorial or a project of your choice, then write down one thing you learned. The aim is a habit you can keep, not a marathon: short sessions and a quick note build more than a rare long push.",
+  "details": {
+   "organizer": {
+    "name": "Sample organizer",
+    "role": "Community challenge (sample)"
+   },
+   "rules": [
+    "Code for at least 20 minutes, on anything you choose.",
+    "Write one sentence about what you learned or what got in your way.",
+    "A busy day can be a short session. A missed day is just a day."
+   ],
+   "habits": [
+    "Code for 20 minutes or more",
+    "Write a one-line learning note",
+    "Optional: note what you will try tomorrow"
+   ],
+   "participation": "Open to anyone with an Arcloop account. You can leave at any time.",
+   "scoring": "One credit per day you code and write your note."
+  }
+ },
+ {
+  "slug": "build-something-14",
+  "title": "Build Something in 14 Days",
+  "featured": false,
+  "category": "Developers & tech",
+  "duration_days": 14,
+  "start_date": null,
+  "end_date": null,
+  "visibility": "public",
+  "summary": "Turn a small idea into a working project through two weeks of small milestones.",
+  "description": "Pick one small project you can finish: a tool, a page, a bot, a game. Break it into tiny milestones across two weeks (scope, a first working piece, one feature at a time, a simple readme) and move it forward a little each day. Finishing something small teaches more than starting something big.",
+  "details": {
+   "organizer": {
+    "name": "Sample organizer",
+    "role": "Community challenge (sample)"
+   },
+   "rules": [
+    "Choose one small project and keep its scope small.",
+    "Move it forward each day: a milestone, a fix or a note.",
+    "Cutting a feature is fine. Shipping something small is the goal."
+   ],
+   "habits": [
+    "Work on your project for as long as you can spare (30 minutes is plenty)",
+    "Complete or advance one small milestone",
+    "Write one line about what comes next"
+   ],
+   "participation": "Open to anyone with an Arcloop account. You can leave at any time.",
+   "scoring": "One credit per day you move your project forward."
+  }
+ },
+ {
+  "slug": "github-green-week",
+  "title": "GitHub Green Week",
+  "featured": false,
+  "category": "Developers & tech",
+  "duration_days": 7,
+  "start_date": null,
+  "end_date": null,
+  "visibility": "public",
+  "summary": "A week of real improvements to your repositories: no empty commits, just useful work.",
+  "description": "Spend a few minutes each day making a repository genuinely better: fix a bug, add a test, clear a TODO, improve the readme, tidy a script, or review an issue. A green square is a side effect of useful work, never the goal, so there is no credit for empty or artificial commits.",
+  "details": {
+   "organizer": {
+    "name": "Sample organizer",
+    "role": "Community challenge (sample)"
+   },
+   "rules": [
+    "Each day make one meaningful improvement to a repository you care about.",
+    "No empty, trivial or artificial commits.",
+    "Private repositories and local work count. Nothing has to be public.",
+    "A busy day can be a tiny improvement, such as fixing a typo. A missed day is just a day."
+   ],
+   "habits": [
+    "Pick one small improvement: a fix, a test, a doc or a cleanup",
+    "Make it and commit it with a clear message",
+    "Optional: review or reply to one issue"
+   ],
+   "participation": "Open to anyone with an Arcloop account. You can leave at any time.",
+   "scoring": "One credit per day you make one real improvement."
+  }
+ },
+ {
+  "slug": "one-tech-concept-daily",
+  "title": "Learn One Tech Concept Daily",
+  "featured": false,
+  "category": "Developers & tech",
+  "duration_days": 14,
+  "start_date": null,
+  "end_date": null,
+  "visibility": "public",
+  "summary": "Understand, try and explain one technical idea a day in your own words.",
+  "description": "Each day choose one concept (for example caching, recursion, a database index or HTTP status codes), read or watch a short explanation, try it in a tiny example, then explain it in two or three sentences as if teaching a friend. Explaining is what turns recognising an idea into understanding it.",
+  "details": {
+   "organizer": {
+    "name": "Sample organizer",
+    "role": "Community challenge (sample)"
+   },
+   "rules": [
+    "One concept per day: understand it, apply it, explain it.",
+    "Free resources and your own words are all you need.",
+    "Repeat a concept on a hard day if you need to."
+   ],
+   "habits": [
+    "Learn one concept from a short article, video or doc",
+    "Try it in a small example",
+    "Explain it in two or three sentences"
+   ],
+   "participation": "Open to anyone with an Arcloop account. You can leave at any time.",
+   "scoring": "One credit per day you learn, try and explain a concept."
+  }
+ },
+ {
+  "slug": "revision-sprint-7",
+  "title": "7-Day Revision Sprint",
+  "featured": false,
+  "category": "Exam preparation",
+  "duration_days": 7,
+  "start_date": null,
+  "end_date": null,
+  "visibility": "public",
+  "summary": "Revise, recall from memory and test yourself a little every day for a week.",
+  "description": "A focused week for revision that sticks. Each day revise one topic, close the notes and write down everything you remember (active recall), then answer a few practice questions on it. Seeing what you forgot is the point: it tells you what to revisit.",
+  "details": {
+   "organizer": {
+    "name": "Sample organizer",
+    "role": "Community challenge (sample)"
+   },
+   "rules": [
+    "One topic per day, picked from your own syllabus.",
+    "Recall before you re-read.",
+    "Keep sessions realistic. A short, honest session beats a long, distracted one.",
+    "A short session on a busy day is enough. A missed day is just a day."
+   ],
+   "habits": [
+    "Revise one topic",
+    "Close the notes and write what you remember",
+    "Answer a few practice questions",
+    "List one thing to revisit"
+   ],
+   "participation": "Open to anyone with an Arcloop account. You can leave at any time.",
+   "scoring": "One credit per day you complete a revise, recall and test round."
+  }
+ },
+ {
+  "slug": "mcq-mastery",
+  "title": "Daily MCQ Mastery",
+  "featured": false,
+  "category": "Exam preparation",
+  "duration_days": 21,
+  "start_date": null,
+  "end_date": null,
+  "visibility": "public",
+  "summary": "Practise questions every day, understand each mistake and revisit your weak areas.",
+  "description": "Solve a set of multiple-choice questions daily, then spend as much time on the ones you got wrong as on the ones you got right: why was the right option right, and what tempted you towards the wrong one? Keep a short mistake log and return to those topics later in the challenge.",
+  "details": {
+   "organizer": {
+    "name": "Sample organizer",
+    "role": "Community challenge (sample)"
+   },
+   "rules": [
+    "Attempt a set of questions you choose (10 to 20 is a good start).",
+    "Review every wrong answer and note the reason.",
+    "Revisit one weak topic each day.",
+    "A short set is fine on a busy day. A missed day is just a day."
+   ],
+   "habits": [
+    "Solve a set of practice questions",
+    "Review each mistake and write the reason",
+    "Revisit one weak topic for 10 minutes"
+   ],
+   "participation": "Open to anyone with an Arcloop account. You can leave at any time.",
+   "scoring": "One credit per day you practise and review your mistakes."
+  }
+ },
+ {
+  "slug": "answer-writing",
+  "title": "Answer Writing Challenge",
+  "featured": false,
+  "category": "Exam preparation",
+  "duration_days": 14,
+  "start_date": null,
+  "end_date": null,
+  "visibility": "public",
+  "summary": "Write one structured, timed answer a day and learn from it.",
+  "description": "For mains-style exams, writing is a skill that needs practice. Each day pick one question, plan it in two minutes (an introduction, two or three points, a conclusion), write within a time limit, then check it against a model answer or your notes and write down one improvement. Structure and clarity matter more than length.",
+  "details": {
+   "organizer": {
+    "name": "Sample organizer",
+    "role": "Community challenge (sample)"
+   },
+   "rules": [
+    "One question a day, written within a time you set (10 to 15 minutes works well).",
+    "Plan before writing: introduction, key points, conclusion.",
+    "Compare with a model answer or your notes and note one improvement.",
+    "A shorter answer or a rough draft on a busy day is fine. A missed day is just a day."
+   ],
+   "habits": [
+    "Plan and write one timed answer",
+    "Compare it with a model answer or your notes",
+    "Write one thing to improve next time"
+   ],
+   "participation": "Open to anyone with an Arcloop account. You can leave at any time.",
+   "scoring": "One credit per day you write and review one answer."
+  }
+ },
+ {
+  "slug": "current-affairs-recall",
+  "title": "Current Affairs to Recall",
+  "featured": false,
+  "category": "Exam preparation",
+  "duration_days": 14,
+  "start_date": null,
+  "end_date": null,
+  "visibility": "public",
+  "summary": "Turn the day’s news into short, exam-relevant notes and recall them later.",
+  "description": "Skip the endless scroll. Read from one or two trusted sources, pick two or three items that matter for your exam, and write each in a line or two with the key fact, why it matters and a link to your syllabus. The next day, start by recalling yesterday’s notes before adding new ones.",
+  "details": {
+   "organizer": {
+    "name": "Sample organizer",
+    "role": "Community challenge (sample)"
+   },
+   "rules": [
+    "Use one or two trusted sources.",
+    "Keep notes short: the fact, why it matters, the syllabus link.",
+    "Recall yesterday’s notes before adding today’s.",
+    "One note on a busy day is enough. A missed day is just a day."
+   ],
+   "habits": [
+    "Read a trusted source for about 15 minutes",
+    "Write two or three concise notes",
+    "Recall yesterday’s notes from memory"
+   ],
+   "participation": "Open to anyone with an Arcloop account. You can leave at any time.",
+   "scoring": "One credit per day you make notes and recall the previous day’s."
+  }
+ },
+ {
+  "slug": "semester-success-sprint",
+  "title": "Semester Success Sprint",
+  "featured": false,
+  "category": "College life",
+  "duration_days": 21,
+  "start_date": null,
+  "end_date": null,
+  "visibility": "public",
+  "summary": "Break your syllabus, assignments and revision into small weekly milestones.",
+  "description": "Three weeks to get on top of the semester. In the first days list what is due and what is left to cover, and break it into small pieces. Then each day do one piece (a chapter, a section, an assignment step or a revision block) and tick it off. A short weekly check shows what to adjust, with no guilt about what slipped.",
+  "details": {
+   "organizer": {
+    "name": "Sample organizer",
+    "role": "Community challenge (sample)"
+   },
+   "rules": [
+    "Write your list of deadlines and topics once, then work in small pieces.",
+    "Do one piece each day, even a small one.",
+    "Adjust the plan each week instead of abandoning it.",
+    "A small piece on a busy day counts. A missed day is just a day."
+   ],
+   "habits": [
+    "Choose today’s one piece from your list",
+    "Work on it for 30 to 45 minutes",
+    "Tick it off and note what is next"
+   ],
+   "participation": "Open to anyone with an Arcloop account. You can leave at any time.",
+   "scoring": "One credit per day you complete one piece of your plan."
+  }
+ },
+ {
+  "slug": "career-ready-15",
+  "title": "Career Ready in 15 Days",
+  "featured": false,
+  "category": "College life",
+  "duration_days": 15,
+  "start_date": null,
+  "end_date": null,
+  "visibility": "public",
+  "summary": "Build your resume, projects, interview practice and profile in small daily steps.",
+  "description": "Fifteen days of small steps towards being ready when an opportunity comes. Rotate through four areas: your resume, a project write-up, interview practice (one question answered out loud) and your professional profile. Each day is one step of 20 to 30 minutes, so by day fifteen you have something real in every area.",
+  "details": {
+   "organizer": {
+    "name": "Sample organizer",
+    "role": "Community challenge (sample)"
+   },
+   "rules": [
+    "One small step a day, rotating through the four areas.",
+    "Asking a friend or mentor for feedback once is optional but helpful.",
+    "A rough draft counts. Progress, not perfection."
+   ],
+   "habits": [
+    "Resume: improve one section",
+    "Project: write or polish one project description",
+    "Interview: answer one question out loud",
+    "Profile: update one part of your professional profile"
+   ],
+   "participation": "Open to anyone with an Arcloop account. You can leave at any time.",
+   "scoring": "One credit per day you complete that day’s step."
+  }
+ },
+ {
+  "slug": "speak-with-confidence",
+  "title": "Speak with Confidence",
+  "featured": false,
+  "category": "College life",
+  "duration_days": 14,
+  "start_date": null,
+  "end_date": null,
+  "visibility": "public",
+  "summary": "A short speaking exercise each day, followed by a moment of reflection.",
+  "description": "Confidence in speaking grows with small, regular practice. Each day talk for two or three minutes on a topic (explain a concept, describe your day, give an opinion), on your own or to a friend, and record it only if you want to review it yourself. Then note what went well and one thing to try next. Private practice is completely fine.",
+  "details": {
+   "organizer": {
+    "name": "Sample organizer",
+    "role": "Community challenge (sample)"
+   },
+   "rules": [
+    "Speak for two or three minutes on any topic.",
+    "Practice can be private. Recording is optional and stays with you.",
+    "Note one thing that went well before one thing to improve."
+   ],
+   "habits": [
+    "Speak for two or three minutes",
+    "Note one thing that went well",
+    "Note one thing to try next time"
+   ],
+   "participation": "Open to anyone with an Arcloop account. You can leave at any time.",
+   "scoring": "One credit per day you speak and reflect."
+  }
+ },
+ {
+  "slug": "learn-beyond-classroom",
+  "title": "Learn Beyond the Classroom",
+  "featured": false,
+  "category": "College life",
+  "duration_days": 14,
+  "start_date": null,
+  "end_date": null,
+  "visibility": "public",
+  "summary": "Apply a practical skill through a mini-project or a real-world case study.",
+  "description": "Choose a skill you can use outside lectures (a spreadsheet model, a simple website, a design, a data analysis or a case study of a company) and work on it in short sessions over two weeks. Finish with something small you can show or explain. The learning comes from doing.",
+  "details": {
+   "organizer": {
+    "name": "Sample organizer",
+    "role": "Community challenge (sample)"
+   },
+   "rules": [
+    "Pick one skill and one small outcome at the start.",
+    "Work on it a little each day. Free resources are enough.",
+    "Finish with something small you can show or explain."
+   ],
+   "habits": [
+    "Work on your mini-project or case study for about 30 minutes",
+    "Note what you learned or where you got stuck",
+    "Decide the next small step"
+   ],
+   "participation": "Open to anyone with an Arcloop account. You can leave at any time.",
+   "scoring": "One credit per day you work on your project and note what you learned."
+  }
+ },
+ {
+  "slug": "move-every-day",
+  "title": "Move Every Day",
+  "featured": false,
+  "category": "Fitness",
+  "duration_days": 21,
+  "start_date": null,
+  "end_date": null,
+  "visibility": "public",
+  "summary": "Choose a movement level that suits you today (gentle, steady or active) and do it at any time.",
+  "description": "Energy, ability and schedules differ, and they change from day to day. Each day you pick a level (gentle: a short walk or a few stretches; steady: about 20 minutes of brisk movement; active: a workout you enjoy) and do it whenever suits you. Gentle days count in full, so tired and busy days still count. Listen to your body, and talk to a health professional if you are unsure what is right for you.",
+  "details": {
+   "organizer": {
+    "name": "Sample organizer",
+    "role": "Community challenge (sample)"
+   },
+   "rules": [
+    "Pick today’s level: gentle, steady or active. Every level counts.",
+    "Any time of day, any activity you can do comfortably.",
+    "Stop if something hurts. Rest is part of moving well."
+   ],
+   "habits": [
+    "Choose today’s level",
+    "Move at that level, at any time of day",
+    "Note how it felt"
+   ],
+   "participation": "Open to anyone with an Arcloop account. You can leave at any time.",
+   "scoring": "One credit per day you move at a level you chose."
+  }
+ },
+ {
+  "slug": "gym-consistency",
+  "title": "Gym Consistency Challenge",
+  "featured": false,
+  "category": "Fitness",
+  "duration_days": 28,
+  "start_date": null,
+  "end_date": null,
+  "visibility": "public",
+  "summary": "Follow a balanced training plan with planned rest, for four weeks.",
+  "description": "A four-week routine for people who train or are starting to. Plan three or four sessions a week that mix strength work with some cardio, add a warm-up and cool-down, and schedule at least two rest days. Your credit comes from following your plan, including resting when it says rest, not from lifting heavier. Start light, learn the movements, and ask a trainer if you need guidance.",
+  "details": {
+   "organizer": {
+    "name": "Sample organizer",
+    "role": "Community challenge (sample)"
+   },
+   "rules": [
+    "Plan your week: three or four sessions and at least two rest days.",
+    "Warm up before and cool down after each session.",
+    "Planned rest days count. Skip a session if you feel unwell or injured."
+   ],
+   "habits": [
+    "On session days: warm up, train as planned, cool down",
+    "On rest days: rest or take a gentle walk",
+    "Note what you did and how you feel"
+   ],
+   "participation": "Open to anyone with an Arcloop account. You can leave at any time.",
+   "scoring": "One credit per day you follow your plan, whether it is a session or a planned rest day."
+  }
+ },
+ {
+  "slug": "mobility-stretch-breaks",
+  "title": "Mobility & Stretch Breaks",
+  "featured": false,
+  "category": "Fitness",
+  "duration_days": 14,
+  "start_date": null,
+  "end_date": null,
+  "visibility": "public",
+  "summary": "Short, gentle movement breaks during the day to ease stiffness.",
+  "description": "If you sit or study for long stretches, a few minutes of mobility work helps. Take one or more short breaks a day to move your neck, shoulders, back and hips gently, staying within a comfortable range. This is about feeling better, not about touching your toes.",
+  "details": {
+   "organizer": {
+    "name": "Sample organizer",
+    "role": "Community challenge (sample)"
+   },
+   "rules": [
+    "Take at least one break of three to five minutes a day.",
+    "Move gently and never push into pain.",
+    "Skip any movement that does not feel right for you."
+   ],
+   "habits": [
+    "Stand up and stretch gently for three to five minutes",
+    "Roll your shoulders and neck, and move your hips and back comfortably",
+    "Notice how you feel afterwards"
+   ],
+   "participation": "Open to anyone with an Arcloop account. You can leave at any time.",
+   "scoring": "One credit per day you take at least one movement break."
+  }
+ },
+ {
+  "slug": "read-every-day",
+  "title": "Read Every Day",
+  "featured": false,
+  "category": "Learning",
+  "duration_days": 21,
+  "start_date": null,
+  "end_date": null,
+  "visibility": "public",
+  "summary": "Read for a little while each day and write one takeaway.",
+  "description": "Reading every day compounds. Read from any book, article or long-form piece you enjoy for 15 to 20 minutes (attention matters more than page count), then write one sentence you want to remember: an idea, a quote or a question it raised. Switch books freely. The habit matters more than finishing.",
+  "details": {
+   "organizer": {
+    "name": "Sample organizer",
+    "role": "Community challenge (sample)"
+   },
+   "rules": [
+    "Read for at least 15 minutes from anything you choose.",
+    "Write one takeaway sentence.",
+    "Changing books or reading on a screen is fine."
+   ],
+   "habits": [
+    "Read for 15 to 20 minutes",
+    "Write one takeaway sentence"
+   ],
+   "participation": "Open to anyone with an Arcloop account. You can leave at any time.",
+   "scoring": "One credit per day you read and write your takeaway."
+  }
+ },
+ {
+  "slug": "english-practice-sprint",
+  "title": "English Practice Sprint",
+  "featured": false,
+  "category": "Learning",
+  "duration_days": 14,
+  "start_date": null,
+  "end_date": null,
+  "visibility": "public",
+  "summary": "Listen, speak, learn words and write sentences in English every day.",
+  "description": "Two weeks of balanced, small English practice. Each day listen to something in English for a few minutes, learn three new words and use each in a sentence of your own, say a few sentences out loud, and write a couple of sentences about your day. Variety keeps it light and covers all four skills.",
+  "details": {
+   "organizer": {
+    "name": "Sample organizer",
+    "role": "Community challenge (sample)"
+   },
+   "rules": [
+    "A session of 20 to 30 minutes is enough.",
+    "Use your own sentences, not copied ones.",
+    "Mistakes are how you learn. No one needs to see your practice."
+   ],
+   "habits": [
+    "Listen to something in English for 5 to 10 minutes",
+    "Learn three new words and use each in a sentence",
+    "Say three to five sentences out loud",
+    "Write two or three sentences about your day"
+   ],
+   "participation": "Open to anyone with an Arcloop account. You can leave at any time.",
+   "scoring": "One credit per day you complete your practice."
+  }
+ },
+ {
+  "slug": "digital-distraction-reset",
+  "title": "Digital Distraction Reset",
+  "featured": false,
+  "category": "Wellness",
+  "duration_days": 7,
+  "start_date": null,
+  "end_date": null,
+  "visibility": "public",
+  "summary": "Cut one source of digital distraction a day and keep one phone-free window.",
+  "description": "This week is about noticing and reducing what pulls your attention, not about quitting technology. Each day make one small change (mute a noisy app, move an app off your home screen, turn off a notification, set a limit) and keep one window of at least 30 minutes with notifications off and your phone out of reach, for any activity you choose. Notice what you do with the time you get back.",
+  "details": {
+   "organizer": {
+    "name": "Sample organizer",
+    "role": "Community challenge (sample)"
+   },
+   "rules": [
+    "Make one small change a day to reduce a distraction.",
+    "Keep one 30-minute window with notifications off and the phone out of reach.",
+    "Messages and emergencies still come first. This is about balance.",
+    "One small change on a busy day is enough. A missed day is just a day."
+   ],
+   "habits": [
+    "Change one setting: a notification, an app or a limit",
+    "Keep a 30-minute notifications-off window",
+    "Note what you noticed"
+   ],
+   "participation": "Open to anyone with an Arcloop account. You can leave at any time.",
+   "scoring": "One credit per day you make a change and keep your window."
+  }
+ },
+ {
+  "slug": "kindness-in-action",
+  "title": "Kindness in Action",
+  "featured": false,
+  "category": "Personal growth",
+  "duration_days": 14,
+  "start_date": null,
+  "end_date": null,
+  "visibility": "public",
+  "summary": "One small, practical act of kindness or responsibility each day.",
+  "description": "Kindness is a habit you can practise. Each day do one practical thing that helps someone or something: help a classmate, call a relative, say thank you, tidy a shared space, return something you borrowed, or keep a promise you made. Small and real beats big and rare, and you can keep it private if you prefer.",
+  "details": {
+   "organizer": {
+    "name": "Sample organizer",
+    "role": "Community challenge (sample)"
+   },
+   "rules": [
+    "One act a day, small and practical.",
+    "It should be something you actually do, not just plan.",
+    "There is no need to share or post about it."
+   ],
+   "habits": [
+    "Choose one kind or responsible act",
+    "Do it",
+    "Note it in one line"
+   ],
+   "participation": "Open to anyone with an Arcloop account. You can leave at any time.",
+   "scoring": "One credit per day you complete an act."
+  }
+ },
+ {
+  "slug": "plan-reflect-restart",
+  "title": "Plan, Reflect & Restart",
+  "featured": false,
+  "category": "Personal growth",
+  "duration_days": 14,
+  "start_date": null,
+  "end_date": null,
+  "visibility": "public",
+  "summary": "Plan your day in the morning, reflect in the evening, and restart without guilt.",
+  "description": "A two-week daily rhythm. In the morning write the one to three things that matter today. In the evening look back on what happened with kindness, note one thing that worked and one thing to change, and adjust tomorrow. If a day falls apart, restart the next morning: a missed day is an event, not an identity.",
+  "details": {
+   "organizer": {
+    "name": "Sample organizer",
+    "role": "Community challenge (sample)"
+   },
+   "rules": [
+    "Plan one to three priorities in the morning (two minutes is enough).",
+    "Reflect in the evening: what worked, what to change.",
+    "If a day is missed, restart the next day without catching up."
+   ],
+   "habits": [
+    "Morning: write one to three priorities",
+    "Evening: note one thing that worked and one to change",
+    "Set tomorrow’s first step"
+   ],
+   "participation": "Open to anyone with an Arcloop account. You can leave at any time.",
+   "scoring": "One credit per day you plan and reflect. A missed day is simply a day."
+  }
  }
 ]

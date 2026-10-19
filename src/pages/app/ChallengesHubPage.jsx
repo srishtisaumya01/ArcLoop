@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
 import { Box, Button, Chip, Container, InputAdornment, Skeleton, TextField, Typography } from '@mui/material'
 import { Plus, RefreshCw, Search, SearchX, TriangleAlert } from 'lucide-react'
@@ -12,6 +12,7 @@ import { useMyChallenges } from '../../hooks/useMyChallenges.js'
 import { usePageMeta } from '../../hooks/usePageMeta.js'
 import { CHALLENGES_CHANGED, listAppChallenges } from '../../services/myChallengesService.js'
 import { appChallengePath } from '../../constants/navigation.js'
+import { groupByCategory } from '../../utils/groupByCategory.js'
 import { colors, contentWidths, onBrandButtons, radii } from '../../theme/tokens.js'
 
 // The signed-in Challenges page: make your own challenge, see the ones you are in, and search everything you can join.
@@ -29,6 +30,7 @@ export default function ChallengesHubPage() {
   }, [query])
   const load = useCallback(() => listAppChallenges(debounced), [debounced])
   const all = useAsync(load)
+  const groups = useMemo(() => groupByCategory(all.data ?? []), [all.data])
   useEffect(() => {
     window.addEventListener(CHALLENGES_CHANGED, all.retry)
     return () => window.removeEventListener(CHALLENGES_CHANGED, all.retry)
@@ -72,16 +74,26 @@ export default function ChallengesHubPage() {
           )}
           {all.data && all.data.length === 0 && <StatePanel icon={SearchX} title={t('No challenges match')} text={t('Try a different word, or create your own challenge.')} />}
           {all.data && all.data.length > 0 && (
-            <Box sx={{ display: 'grid', gap: 2.5, gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: 'repeat(2, minmax(0, 1fr))', lg: 'repeat(3, minmax(0, 1fr))' } }}>
-              {all.data.map((c) => (
-                <Box key={c.slug} component={RouterLink} to={appChallengePath(c.slug)} sx={{ display: 'grid', gap: 1, alignContent: 'start', p: 2.5, borderRadius: `${radii.lg}px`, border: `1px solid ${colors.border}`, bgcolor: colors.surface, color: 'inherit', textDecoration: 'none', '&:hover': { borderColor: colors.blue600 } }}>
-                  <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                    <Chip size="small" label={t(c.category)} />
-                    <Chip size="small" variant="outlined" label={t('{count} days', { count: c.duration_days })} />
-                    {c.enrollment && <Chip size="small" color="success" label={t('You are in')} />}
+            <Box sx={{ display: 'grid', gap: 4 }}>
+              {groups.map(({ category, items }, index) => (
+                // The id is by position, not the category's name: names have spaces and '&', which aria-labelledby would split into several ids.
+                <Box key={category} component="section" aria-labelledby={`challenge-category-${index}`}>
+                  <Typography id={`challenge-category-${index}`} variant="h4" component="h3" sx={{ mb: 1.5 }}>
+                    {t(category)} <Typography component="span" color="text.secondary">({items.length})</Typography>
+                  </Typography>
+                  <Box sx={{ display: 'grid', gap: 2.5, gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: 'repeat(2, minmax(0, 1fr))', lg: 'repeat(3, minmax(0, 1fr))' } }}>
+                    {items.map((c) => (
+                      <Box key={c.slug} component={RouterLink} to={appChallengePath(c.slug)} sx={{ display: 'grid', gap: 1, alignContent: 'start', p: 2.5, borderRadius: `${radii.lg}px`, border: `1px solid ${colors.border}`, bgcolor: colors.surface, color: 'inherit', textDecoration: 'none', '&:hover': { borderColor: colors.blue600 } }}>
+                        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                          <Chip size="small" label={t(c.category)} />
+                          <Chip size="small" variant="outlined" label={t('{count} days', { count: c.duration_days })} />
+                          {c.enrollment && <Chip size="small" color="success" label={t('You are in')} />}
+                        </Box>
+                        <Typography variant="h5" component="h4">{t(c.title)}</Typography>
+                        <Typography variant="body2" color="text.secondary">{t(c.summary)}</Typography>
+                      </Box>
+                    ))}
                   </Box>
-                  <Typography variant="h4" component="h3">{t(c.title)}</Typography>
-                  <Typography variant="body2" color="text.secondary">{t(c.summary)}</Typography>
                 </Box>
               ))}
             </Box>
