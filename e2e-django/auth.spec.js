@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { CSRF_COOKIE, OTHER_ORIGIN_API, PASSWORD, SESSION_COOKIE, apiAs, cookieOf, latestResetLink, logInViaForm, logOut, signUpViaForm, uniqueEmail } from './support/helpers.js'
+import { CSRF_COOKIE, OTHER_ORIGIN_API, PASSWORD, SESSION_COOKIE, apiAs, cookieOf, latestResetLink, logInViaForm, logOut, signUpViaForm, uniqueEmail, usernameFor } from './support/helpers.js'
 
 // Real browser, real React build, real Django API and SQLite database, ONE origin (the app proxies /api to Django), so the
 // browser really sets, keeps and sends the HttpOnly session cookie and the CSRF cookie (see playwright.django.config.js).
@@ -8,10 +8,13 @@ test.describe('registration and sessions', () => {
   test('registering signs the user in immediately; the session is an HttpOnly cookie that survives a reload', async ({ page, context }) => {
     const email = uniqueEmail('reg')
     await signUpViaForm(page, email)
-    await expect(page.getByText(email)).toBeVisible()
+    // The app greets the person by name (their username until they choose a display name); the address is no longer on this screen.
+    const greeting = page.getByRole('heading', { level: 1, name: new RegExp(`^Good (morning|afternoon|evening), ${usernameFor(email)}$`) })
+    await expect(greeting).toBeVisible()
+    expect((await apiAs(context).get('/auth/me/')).body).toMatchObject({ email, username: usernameFor(email) }) // the server agrees who is signed in
     await page.reload()
     await expect(page).toHaveURL(/\/app$/)
-    await expect(page.getByText(email)).toBeVisible()
+    await expect(greeting).toBeVisible()
 
     const session = await cookieOf(context, SESSION_COOKIE)
     expect(session).toMatchObject({ httpOnly: true, sameSite: 'Strict', path: '/api/', secure: false }) // secure only in production (https); see docs
@@ -33,6 +36,7 @@ test.describe('registration and sessions', () => {
     await signUpViaForm(page, email)
     await logOut(page)
     await page.goto('/signup')
+    await page.getByLabel('Username').fill(`${usernameFor(email)}2`) // a different username, so only the address is the duplicate
     await page.getByLabel('Email').fill(email)
     await page.getByRole('textbox', { name: 'Password' }).fill(PASSWORD)
     await page.getByRole('checkbox').check()
@@ -43,6 +47,7 @@ test.describe('registration and sessions', () => {
 
   test('a weak password is refused by the server with a clear message', async ({ page }) => {
     await page.goto('/signup')
+    await page.getByLabel('Username').fill('weakpassworduser')
     await page.getByLabel('Email').fill(uniqueEmail('weak'))
     await page.getByRole('textbox', { name: 'Password' }).fill('password123')
     await page.getByRole('checkbox').check()

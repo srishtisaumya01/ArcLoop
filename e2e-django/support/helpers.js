@@ -11,9 +11,14 @@ const EMAIL_DIR = resolve('e2e-django', '.tmp', 'emails')
 
 export { uniqueEmail } from '../../tests/support/uniqueEmail.js'
 
+// The sign-up form asks for a unique username of 3 to 30 letters, numbers, dots or underscores: made from the end of the address
+// (which carries the timestamp and counter), so it is as unique as the address is.
+export const usernameFor = (email) => email.split('@')[0].replace(/[^A-Za-z0-9_.]/g, '').slice(-30)
+
 // Registers through the real sign-up form. Registration signs the user in, so the app opens straight away.
-export async function signUpViaForm(page, email, password = PASSWORD) {
+export async function signUpViaForm(page, email, password = PASSWORD, username = usernameFor(email)) {
   await page.goto('/signup')
+  await page.getByLabel('Username').fill(username)
   await page.getByLabel('Email').fill(email)
   await page.getByRole('textbox', { name: 'Password' }).fill(password)
   await page.getByRole('checkbox').check()
@@ -21,10 +26,11 @@ export async function signUpViaForm(page, email, password = PASSWORD) {
   await expect(page).toHaveURL(/\/app$/)
 }
 
-export async function logInViaForm(page, email, password = PASSWORD) {
+// The log-in form asks for the username, not the address: the one the sign-up helper made from the address unless one is given.
+export async function logInViaForm(page, email, password = PASSWORD, username = usernameFor(email)) {
   await page.goto('/login')
   await expect(page.getByRole('heading', { level: 1, name: 'Welcome back' })).toBeVisible({ timeout: 30000 }) // the dev server can be slow to serve a cold page
-  await page.getByLabel('Email').fill(email)
+  await page.getByLabel('Username').fill(username)
   await page.getByRole('textbox', { name: 'Password' }).fill(password)
   await page.getByRole('button', { name: 'Log in' }).click()
 }
