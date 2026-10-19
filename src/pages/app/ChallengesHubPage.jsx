@@ -65,8 +65,8 @@ export default function ChallengesHubPage() {
         <Box component="section" aria-labelledby="all-title">
           <Typography id="all-title" variant="h3" component="h2" sx={{ mb: 2 }}>{t('All challenges')}</Typography>
           <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', alignItems: 'center', mb: 3 }}>
-            <TextField type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t('Search challenges')} aria-label={t('Search challenges')} sx={{ flex: '1 1 260px', maxWidth: 520, minWidth: 0 }}
-              slotProps={{ input: { startAdornment: <InputAdornment position="start"><Search size={18} aria-hidden="true" /></InputAdornment> } }} />
+            <TextField type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t('Search challenges')} sx={{ flex: '1 1 260px', maxWidth: 520, minWidth: 0 }}
+              slotProps={{ htmlInput: { 'aria-label': t('Search challenges') }, input: { startAdornment: <InputAdornment position="start"><Search size={18} aria-hidden="true" /></InputAdornment> } }} />
             <TextField select value={category} onChange={(e) => setCategory(e.target.value)} aria-label={t('Category')} sx={{ flex: '0 1 220px', minWidth: 160 }}>
               <MenuItem value={ALL}>{t('All categories')}</MenuItem>
               {categories.map((c) => <MenuItem key={c} value={c}>{t(c)}</MenuItem>)}

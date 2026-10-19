@@ -4,7 +4,6 @@ import { formatMinutes } from './weekFormat.js'
 // Gentle checks on a day's schedule. Plain functions of the day's open tasks (and, for today, the time of day): nothing here changes a task
 // or blocks anything, it only finds things worth a second look. Times are minutes after midnight.
 const DAY = 24 * 60
-export const LONG_DAY_MINUTES = 16 * 60 // more work planned than one day can hold, however early it starts
 
 const pad = (n) => String(n).padStart(2, '0')
 export const clockText = (minutes) => `${pad(Math.floor(minutes / 60))}:${pad(minutes % 60)}`
@@ -47,22 +46,19 @@ export function findOverlaps(tasks) {
 }
 
 // How long a task is expected to take: its block when it has both times, else its estimate, else unknown (0).
-function durationOf(task) {
+export function durationOf(task) {
   if (task.plannedStart && task.plannedEnd) return parseTime(task.plannedEnd) - parseTime(task.plannedStart)
   return task.estimatedMinutes ?? 0
 }
 
 // The checks for one day. `nowMinutes` is the time of day when the day is today, else null.
-//   -> { overlaps: [{ first, second }], load: null | { kind: 'left-today' | 'too-long', minutes, left } }
+//   -> { overlaps: [{ first, second }], load: null | { kind: 'left-today', minutes, left } }
+// (How full a whole day is against the person's own available time is capacity.js; this is only what is left of today.)
 export function checkSchedule({ tasks, nowMinutes = null }) {
   const overlaps = findOverlaps(tasks)
   const minutes = tasks.filter(isOpen).reduce((sum, t) => sum + durationOf(t), 0)
   let load = null
-  if (nowMinutes !== null && minutes > 0 && minutes > DAY - nowMinutes && DAY - nowMinutes < LONG_DAY_MINUTES) {
-    load = { kind: 'left-today', minutes, left: DAY - nowMinutes }
-  } else if (minutes > LONG_DAY_MINUTES) {
-    load = { kind: 'too-long', minutes, left: null }
-  }
+  if (nowMinutes !== null && minutes > 0 && minutes > DAY - nowMinutes) load = { kind: 'left-today', minutes, left: DAY - nowMinutes }
   return { overlaps, load }
 }
 
@@ -77,8 +73,6 @@ export function describeChecks({ overlaps, load }) {
   const lines = overlaps.map(({ first, second }) => `${label(first)} overlaps ${label(second)}.`)
   if (load?.kind === 'left-today') {
     lines.push(`About ${formatMinutes(load.minutes)} of tasks are still planned, and about ${formatMinutes(load.left)} are left today. Moving one or two to another day is fine.`)
-  } else if (load?.kind === 'too-long') {
-    lines.push(`About ${formatMinutes(load.minutes)} of tasks are planned for this day, which is more than a day can hold. Moving some to another day would help.`)
   }
   return lines
 }

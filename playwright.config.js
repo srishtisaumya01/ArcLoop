@@ -23,6 +23,15 @@ export default defineConfig({
   projects: [
     { name: 'desktop', use: { browserName: 'chromium', viewport: { width: 1440, height: 900 } } },
     { name: 'mobile', use: { browserName: 'chromium', viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true } },
+    // Firefox and Safari's engine (WebKit) only when asked for: `ALL_BROWSERS=1 npx playwright test --project=firefox`. They need
+    // `npx playwright install firefox webkit` once, so the default run stays on Chromium.
+    ...(process.env.ALL_BROWSERS
+      ? [
+          { name: 'firefox', use: { browserName: 'firefox', viewport: { width: 1440, height: 900 } } },
+          { name: 'webkit', use: { browserName: 'webkit', viewport: { width: 1440, height: 900 } } },
+          { name: 'webkit-mobile', use: { browserName: 'webkit', viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true } },
+        ]
+      : []),
   ],
   webServer: {
     command: `node node_modules/vite/bin/vite.js --port ${PORT} --strictPort --host 127.0.0.1`,

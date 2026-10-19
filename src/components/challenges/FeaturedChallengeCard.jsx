@@ -7,7 +7,8 @@ import { colors, gradients, onBrandButtons, radii, shadows } from '../../theme/t
 
 // Featured campaign panel. Entirely data-driven from the challenge record, so
 // any campaign (not only Winter Arc 90) can be featured.
-export default function FeaturedChallengeCard({ challenge, ctaLabel = 'See challenge details' }) {
+// `headingLevel` is the heading of the card's title: h3 under a section heading (the home page), h2 straight under the page's h1.
+export default function FeaturedChallengeCard({ challenge, ctaLabel = 'See challenge details', headingLevel = 'h3' }) {
   const { t } = useI18n()
   return (
     <Box
@@ -26,7 +27,7 @@ export default function FeaturedChallengeCard({ challenge, ctaLabel = 'See chall
     >
       <Box>
         <Chip label={t('Featured campaign')} size="small" sx={{ bgcolor: colors.mint300, color: colors.navy900, mb: 2.5 }} />
-        <Typography variant="h2" component="h3" id="featured-challenge-title" sx={{ mb: 2 }}>
+        <Typography variant="h2" component={headingLevel} id="featured-challenge-title" sx={{ mb: 2 }}>
           {t(challenge.title)}
         </Typography>
         <Typography variant="subtitle1" sx={{ color: 'rgba(255, 255, 255, 0.86)', mb: 3 }}>
@@ -43,7 +44,7 @@ export default function FeaturedChallengeCard({ challenge, ctaLabel = 'See chall
         </Button>
       </Box>
       <Box sx={{ p: { xs: 2.5, md: 3 }, borderRadius: `${radii.md}px`, bgcolor: 'rgba(255, 255, 255, 0.08)', border: '1px solid rgba(255, 255, 255, 0.2)', alignSelf: 'start' }}>
-        <Typography variant="overline" component="h4" sx={{ color: colors.mint300, display: 'block', mb: 2 }}>
+        <Typography variant="overline" component={headingLevel === 'h2' ? 'h3' : 'h4'} sx={{ color: colors.mint300, display: 'block', mb: 2 }}>
           {t('How it works')}
         </Typography>
         <Box component="ul" sx={{ listStyle: 'none', m: 0, p: 0, display: 'grid', gap: 2 }}>

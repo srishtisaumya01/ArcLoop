@@ -39,6 +39,7 @@ import {
   PlannerError,
   RECURRENCE,
 } from '../../utils/planner/index.js'
+import { withLevelFromFlag } from '../../utils/planner/priority.js'
 import { PlannerServiceError, SERVICE_ERROR, toServiceError } from './errors.js'
 import {
   DAY_COLUMNS,
@@ -395,8 +396,8 @@ export function createPlannerService({ getClient, clock = () => Date.now() }) {
       assertEditableDate(occurrence.planDate, today, config)
       const merged = {
         title: occurrence.title, description: occurrence.description, category: occurrence.category,
-        isPriority: occurrence.isPriority, plannedStart: occurrence.plannedStart, plannedEnd: occurrence.plannedEnd,
-        estimatedMinutes: occurrence.estimatedMinutes, ...(changes ?? {}),
+        priorityLevel: occurrence.priorityLevel, plannedStart: occurrence.plannedStart, plannedEnd: occurrence.plannedEnd,
+        estimatedMinutes: occurrence.estimatedMinutes, ...withLevelFromFlag(occurrence, changes ?? {}),
         recurrence: RECURRENCE.ONCE, weekdays: null, startsOn: occurrence.planDate, endsOn: occurrence.planDate,
       }
       const checked = validateTemplateInput(merged, { config })

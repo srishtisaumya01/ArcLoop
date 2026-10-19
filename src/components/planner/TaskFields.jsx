@@ -1,12 +1,12 @@
-import { Box, Checkbox, FormControlLabel, TextField } from '@mui/material'
-import { PLANNER_CONFIG } from '../../utils/planner/index.js'
+import { Box, TextField } from '@mui/material'
+import { PLANNER_CONFIG, PRIORITY_LABELS, PRIORITY_LEVELS } from '../../utils/planner/index.js'
 
 const { titleMax, descriptionMax, categoryMax } = PLANNER_CONFIG.limits
 
 // The fields shared by adding and editing a task. `idPrefix` keeps labels unique on the page. Every
 // field except the title is optional; the planner's own validation messages are shown per field.
 export default function TaskFields({ values, errors, onChange, idPrefix }) {
-  const set = (name) => (e) => onChange({ ...values, [name]: e.target.type === 'checkbox' ? e.target.checked : e.target.value })
+  const set = (name) => (e) => onChange({ ...values, [name]: e.target.value })
   const shrink = { inputLabel: { shrink: true } }
   return (
     <>
@@ -20,7 +20,9 @@ export default function TaskFields({ values, errors, onChange, idPrefix }) {
         <TextField id={`${idPrefix}-category`} label="Category (optional)" value={values.category} onChange={set('category')} error={Boolean(errors.category)} helperText={errors.category ?? 'For example Health, Work or Home.'} slotProps={{ htmlInput: { maxLength: categoryMax } }} />
       </Box>
       <TextField id={`${idPrefix}-description`} label="Description (optional)" value={values.description} onChange={set('description')} error={Boolean(errors.description)} helperText={errors.description} multiline minRows={2} slotProps={{ htmlInput: { maxLength: descriptionMax } }} />
-      <FormControlLabel control={<Checkbox checked={values.isPriority} onChange={set('isPriority')} />} label="Priority" />
+      <TextField id={`${idPrefix}-priority`} label="Priority" select value={values.priorityLevel} onChange={set('priorityLevel')} error={Boolean(errors.priorityLevel)} helperText={errors.priorityLevel ?? 'High is for what matters most today.'} slotProps={{ select: { native: true } }}>
+        {PRIORITY_LEVELS.map((level) => <option key={level} value={level}>{PRIORITY_LABELS[level]}</option>)}
+      </TextField>
     </>
   )
 }

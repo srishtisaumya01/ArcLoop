@@ -24,13 +24,13 @@ export default function QuoteCard({ now = new Date(), sx }) {
         color: '#FFFFFF',
         boxShadow: shadows.sm,
         ...sx,
-        background: 'radial-gradient(200px 140px at 100% 0%, rgba(124, 92, 255, 0.55), transparent 70%), radial-gradient(220px 160px at 0% 100%, rgba(46, 214, 139, 0.5), transparent 70%), linear-gradient(160deg, #0A1F66 0%, #17698F 100%)',
+        background: 'radial-gradient(200px 140px at 100% 0%, rgba(124, 92, 255, 0.55), transparent 70%), radial-gradient(220px 160px at 0% 100%, rgba(46, 214, 139, 0.32), transparent 70%), linear-gradient(160deg, #0A1F66 0%, #17698F 100%)',
       }}
     >
       <Typography component="blockquote" title={text} sx={{ m: 0, fontSize: '0.8rem', lineHeight: 1.4, fontWeight: 600, whiteSpace: { xs: 'normal', md: 'nowrap' }, overflow: 'hidden', textOverflow: 'ellipsis' }}>
         <Typewriter speed={28} segments={[{ text: `“${text}”` }]} />
       </Typography>
-      <Typography variant="caption" component="p" sx={{ m: 0, mt: 0.25, color: 'rgba(255, 255, 255, 0.85)', fontWeight: 600 }}>— {author}</Typography>
+      <Typography variant="caption" component="p" sx={{ m: 0, mt: 0.25, color: '#FFFFFF', fontWeight: 600 }}>— {author}</Typography>
     </Box>
   )
 }

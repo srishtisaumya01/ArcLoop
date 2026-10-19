@@ -20,7 +20,9 @@ class TaskTemplate(models.Model):
     title = models.CharField(max_length=120)
     description = models.CharField(max_length=1000, null=True, blank=True)
     category = models.CharField(max_length=40, null=True, blank=True)
+    # Priority has three levels. `is_priority` is kept for older clients and always means "high" (a constraint below keeps the two in step).
     is_priority = models.BooleanField(default=False)
+    priority_level = models.CharField(max_length=6, default='medium')
     planned_start = models.TimeField(null=True, blank=True)
     planned_end = models.TimeField(null=True, blank=True)
     estimated_minutes = models.SmallIntegerField(null=True, blank=True)
@@ -35,6 +37,11 @@ class TaskTemplate(models.Model):
     class Meta:
         constraints = [
             models.CheckConstraint(condition=Q(recurrence__in=['once', 'daily', 'weekly']), name='task_templates_recurrence_valid'),
+            models.CheckConstraint(condition=Q(priority_level__in=['high', 'medium', 'low']), name='task_templates_priority_level_valid'),
+            models.CheckConstraint(
+                condition=(Q(is_priority=True) & Q(priority_level='high')) | (Q(is_priority=False) & ~Q(priority_level='high')),
+                name='task_templates_priority_matches',
+            ),
             models.CheckConstraint(condition=Q(estimated_minutes__isnull=True) | Q(estimated_minutes__range=(1, 1440)), name='task_templates_estimate_range'),
             models.CheckConstraint(
                 condition=Q(planned_end__isnull=True) | (Q(planned_start__isnull=False) & Q(planned_end__gt=models.F('planned_start'))),
@@ -78,7 +85,8 @@ class TaskOccurrence(models.Model):
     title = models.CharField(max_length=120)
     description = models.CharField(max_length=1000, null=True, blank=True)
     category = models.CharField(max_length=40, null=True, blank=True)
-    is_priority = models.BooleanField(default=False)
+    is_priority = models.BooleanField(default=False)  # always "priority_level is high", as on the template
+    priority_level = models.CharField(max_length=6, default='medium')
     planned_start = models.TimeField(null=True, blank=True)
     planned_end = models.TimeField(null=True, blank=True)
     estimated_minutes = models.SmallIntegerField(null=True, blank=True)
@@ -107,6 +115,11 @@ class TaskOccurrence(models.Model):
                 name='task_occurrences_time_order',
             ),
             models.CheckConstraint(condition=Q(completion__in=[0, 0.5, 1]), name='task_occurrences_completion_valid'),
+            models.CheckConstraint(condition=Q(priority_level__in=['high', 'medium', 'low']), name='task_occurrences_priority_level_valid'),
+            models.CheckConstraint(
+                condition=(Q(is_priority=True) & Q(priority_level='high')) | (Q(is_priority=False) & ~Q(priority_level='high')),
+                name='task_occurrences_priority_matches',
+            ),
             models.CheckConstraint(condition=Q(plan_state__in=['active', 'excluded']), name='task_occurrences_plan_state_valid'),
             models.CheckConstraint(
                 condition=Q(excluded_reason__isnull=True) | Q(excluded_reason__in=['rescheduled', 'busy_day', 'rest_day', 'removed']),

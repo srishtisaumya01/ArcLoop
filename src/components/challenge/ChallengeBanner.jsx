@@ -66,7 +66,7 @@ export default function ChallengeBanner({ now }) {
           <Link
             component={RouterLink}
             to={challengePath(challenge.slug)}
-            sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5, color: colors.textOnDark, fontWeight: 700, textDecorationColor: 'rgba(255, 255, 255, 0.6)', '&:hover': { color: colors.mint300 } }}
+            sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5, minHeight: 32, color: colors.textOnDark, fontWeight: 700, textDecorationColor: 'rgba(255, 255, 255, 0.6)', '&:hover': { color: colors.mint300 } }}
           >
             {t('Join now')}
             <ArrowRight size={14} aria-hidden="true" />

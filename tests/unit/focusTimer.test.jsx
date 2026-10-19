@@ -206,6 +206,19 @@ describe('the summary', () => {
     expect(screen.getByRole('status')).toHaveTextContent('You focused for 12 minutes on “Write the report”. That still counts.')
   })
 
+  it('after a long stretch it suggests a break, gently, and only then', () => {
+    renderPanel({ focus: focusValue({ result: record({ plannedMs: 60 * MIN, focusedMs: 50 * MIN, outcome: 'ended_early' }) }) })
+    expect(screen.getByRole('status')).toHaveTextContent('A break of about 5 minutes away from the screen would help, if you like.')
+  })
+
+  it('suggests ten minutes after a full hour, and nothing after an ordinary session', () => {
+    const { unmount } = render(h(ThemeProvider, { theme }, h(FocusTimer, { focus: focusValue({ result: record({ plannedMs: 60 * MIN, focusedMs: 60 * MIN }) }), target: null, viewDate: '2026-03-10', onClearTarget: vi.fn(), canMarkDone: () => true, onMarkDone: vi.fn() })))
+    expect(screen.getByRole('status')).toHaveTextContent('about 10 minutes')
+    unmount()
+    renderPanel({ focus: focusValue({ result: record({ focusedMs: 25 * MIN }) }) })
+    expect(screen.getByRole('status')).not.toHaveTextContent(/break/)
+  })
+
   it('a very short session is not rounded up to a minute', () => {
     renderPanel({ focus: focusValue({ result: record({ outcome: 'ended_early', focusedMs: 10 * 1000 }) }) })
     expect(screen.getByRole('status')).toHaveTextContent('less than a minute')

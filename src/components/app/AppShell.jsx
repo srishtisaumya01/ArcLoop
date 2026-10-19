@@ -33,7 +33,12 @@ export default function AppShell() {
   const close = () => setOpen(false)
 
   const load = useCallback(() => getMyProfile(user.id), [user.id])
-  const { status, data: profile, retry } = useAsync(load)
+  const { status, data: loaded, retry } = useAsync(load)
+  // While the profile is read again after a change (a new photo, name or timezone) the page keeps showing the last one, so a screen does not
+  // flash to its loading state and lose the message it was showing ("Photo updated.").
+  const [kept, setKept] = useState(null)
+  if (loaded && loaded !== kept) setKept(loaded)
+  const profile = loaded ?? (kept && String(kept.id) === String(user.id) ? kept : null)
   useEffect(() => {
     window.addEventListener(PROFILE_CHANGED, retry) // a saved name or timezone shows up straight away
     return () => window.removeEventListener(PROFILE_CHANGED, retry)

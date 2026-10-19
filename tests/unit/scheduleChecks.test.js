@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { LONG_DAY_MINUTES, blockOf, checkSchedule, checkSignature, clockText, describeChecks, findOverlaps, hasFindings } from '../../src/components/planner/scheduleChecks.js'
+import { blockOf, checkSchedule, checkSignature, clockText, describeChecks, findOverlaps, hasFindings } from '../../src/components/planner/scheduleChecks.js'
 
 // The schedule checks as plain functions of a day's tasks. Times are written as 'HH:MM'; `at(h, m)` is minutes after midnight.
 const task = (id, over = {}) => ({ id, title: id, plannedStart: null, plannedEnd: null, estimatedMinutes: null, completion: 0, ...over })
@@ -78,15 +78,12 @@ describe('checkSchedule: how much is planned', () => {
     expect(checkSchedule({ tasks: [hours(4)], nowMinutes: at(20) }).load).toBeNull()
   })
 
-  it('today: early in the day the long-day limit applies instead', () => {
-    expect(checkSchedule({ tasks: [hours(10), hours(7)], nowMinutes: at(6) }).load).toMatchObject({ kind: 'too-long', minutes: 17 * 60 })
-    expect(checkSchedule({ tasks: [hours(10), hours(6)], nowMinutes: at(6) }).load).toBeNull() // 16 hours is not over the limit
+  it('today: early in the day, a long day is left to the capacity note', () => {
+    expect(checkSchedule({ tasks: [hours(10), hours(7)], nowMinutes: at(6) }).load).toBeNull()
   })
 
-  it('another day: only the long-day limit applies', () => {
-    expect(checkSchedule({ tasks: [hours(9), hours(8)], nowMinutes: null }).load).toMatchObject({ kind: 'too-long' })
-    expect(checkSchedule({ tasks: [hours(9), hours(7)], nowMinutes: null }).load).toBeNull()
-    expect(LONG_DAY_MINUTES).toBe(16 * 60)
+  it('another day: there is no time-of-day to run out of, so nothing is said here', () => {
+    expect(checkSchedule({ tasks: [hours(9), hours(8)], nowMinutes: null }).load).toBeNull()
   })
 
   it('counts a block by its times, a task by its estimate, and ignores finished ones and ones with no length', () => {
@@ -117,9 +114,7 @@ describe('the words', () => {
   it('says how much is planned and how much is left, without blame', () => {
     const [line] = describeChecks({ overlaps: [], load: { kind: 'left-today', minutes: 300, left: 150 } })
     expect(line).toBe('About 5 h of tasks are still planned, and about 2 h 30 min are left today. Moving one or two to another day is fine.')
-    const [long] = describeChecks({ overlaps: [], load: { kind: 'too-long', minutes: 1020, left: null } })
-    expect(long).toContain('more than a day can hold')
-    expect(`${line}${long}`).not.toMatch(/fail|behind|should have|late|lazy/i)
+    expect(line).not.toMatch(/fail|behind|should have|late|lazy/i)
   })
 
   it('formats the time of day', () => {
@@ -135,7 +130,7 @@ describe('signature and findings', () => {
   it('has findings only when something was found', () => {
     expect(hasFindings({ overlaps: [], load: null })).toBe(false)
     expect(hasFindings(checkSchedule({ tasks: [a, b], nowMinutes: null }))).toBe(true)
-    expect(hasFindings({ overlaps: [], load: { kind: 'too-long', minutes: 1000, left: null } })).toBe(true)
+    expect(hasFindings({ overlaps: [], load: { kind: 'left-today', minutes: 1000, left: 10 } })).toBe(true)
   })
 
   it('stays the same for the same findings and changes for new ones', () => {

@@ -11,7 +11,7 @@ describe('validateTemplateInput: valid input', () => {
     expect(ok).toBe(true)
     expect(errors).toEqual({})
     expect(value).toEqual({
-      title: 'Read', description: null, category: null, isPriority: false,
+      title: 'Read', description: null, category: null, isPriority: false, priorityLevel: 'medium',
       plannedStart: null, plannedEnd: null, estimatedMinutes: null,
       recurrence: 'daily', weekdays: null, startsOn: '2026-03-10', endsOn: null,
     })
@@ -40,6 +40,20 @@ describe('validateTemplateInput: valid input', () => {
   it('accepts free-text custom categories (D3) and a single priority flag (D2)', () => {
     expect(check({ category: 'Learn the guitar' }).value.category).toBe('Learn the guitar')
     expect(check({ isPriority: false }).value.isPriority).toBe(false)
+  })
+
+  it('has three priority levels; the level wins over the old on/off flag, which still means high or medium', () => {
+    for (const [priorityLevel, isPriority] of [['high', true], ['medium', false], ['low', false]]) {
+      expect(check({ priorityLevel }).value).toMatchObject({ priorityLevel, isPriority })
+    }
+    expect(check({ isPriority: true }).value).toMatchObject({ priorityLevel: 'high', isPriority: true })
+    expect(check({ isPriority: false }).value).toMatchObject({ priorityLevel: 'medium', isPriority: false })
+    expect(check({ priorityLevel: 'low', isPriority: true }).value).toMatchObject({ priorityLevel: 'low', isPriority: false })
+    expect(check({}).value.priorityLevel).toBe('medium')
+  })
+
+  it('refuses an unknown level with a message for the field', () => {
+    for (const bad of ['urgent', 'HIGH', '', 3, true]) expect(check({ priorityLevel: bad }).errors.priorityLevel, String(bad)).toMatch(/High, Medium or Low/)
   })
 
   it('normalises selected weekdays: sorted, de-duplicated', () => {

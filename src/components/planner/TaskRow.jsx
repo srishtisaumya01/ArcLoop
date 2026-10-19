@@ -5,6 +5,7 @@ import TaskReminderControl from '../reminders/TaskReminderControl.jsx'
 import MoveTaskForm from './MoveTaskForm.jsx'
 import TaskFields from './TaskFields.jsx'
 import TaskTimeControl from './TaskTimeControl.jsx'
+import { levelOf } from '../../utils/planner/priority.js'
 import { taskToValues, toTaskInput } from './taskForm.js'
 import { EXCLUDED_LABEL, formatDay, formatMinutes, timeRange, weekdayName } from './weekFormat.js'
 
@@ -104,6 +105,7 @@ export default function TaskRow({ task, canRecord, canEdit, busy, moveRange, mar
         <Typography sx={{ fontWeight: 600, overflowWrap: 'anywhere', ...(task.completion >= 1 && !excluded ? { textDecoration: 'line-through', color: 'text.secondary' } : {}) }}>
           {task.title}
           {task.isPriority ? ' (priority)' : ''}
+          {levelOf(task) === 'low' && !excluded && <Chip component="span" label="Low priority" size="small" variant="outlined" sx={{ ml: 1, verticalAlign: 'middle' }} />}
           {task.isMinimum && !excluded && <Chip label="Minimum" size="small" variant="outlined" color="primary" sx={{ ml: 1, verticalAlign: 'middle' }} />}
           {marker && !excluded && <Chip component="span" label={marker === 'now' ? 'Now' : 'Next up'} size="small" color={marker === 'now' ? 'primary' : 'default'} sx={{ ml: 1, verticalAlign: 'middle' }} />}
           {focusing && !excluded && <Chip component="span" label="Focusing" size="small" color="success" variant="outlined" sx={{ ml: 1, verticalAlign: 'middle' }} />}
