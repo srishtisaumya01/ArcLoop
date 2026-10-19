@@ -120,11 +120,9 @@ export default function DashboardPage() {
                 </Box>
                 <Box sx={{ display: 'grid', gap: 3, gridTemplateColumns: { xs: 'minmax(0, 1fr)', lg: 'minmax(0, 1.5fr) minmax(0, 1fr)' }, alignItems: 'start' }}>
                   <TrendCard points={trendPoints(data.weeks)} />
-                  <Box sx={{ display: 'grid', gap: 3 }}>
-                    <ChallengeCard status={mine.status} ongoing={mine.ongoing} />
-                    <HabitsCard habits={topHabits(data.habits.habits)} />
-                  </Box>
+                  <HabitsCard habits={topHabits(data.habits.habits)} />
                 </Box>
+                <ChallengeCard status={mine.status} ongoing={mine.ongoing} />
               </>
             )}
           </>
