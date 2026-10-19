@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
-  PRESET_MINUTES, STALE_PAUSE_MS, completedRecord, elapsedMs, endedEarlyRecord, formatClock, isFinished, pauseSession,
-  progressFraction, remainingMs, restoreSession, resumeSession, startSession, wholeMinutes,
+  GAP_MS, PRESET_MINUTES, STALE_PAUSE_MS, completedRecord, dropGap, elapsedMs, endedEarlyRecord, formatClock, gapMs, hasGap, isFinished, keepGap,
+  markGap, pauseSession, progressFraction, remainingMs, restoreSession, resumeSession, startSession, wholeMinutes,
 } from '../../src/utils/focus/focusSession.js'
 
 // The timer's rules as functions of a saved session and a clock reading. Every time below is a plain number of milliseconds, so nothing
@@ -145,5 +145,98 @@ describe('what the screen shows', () => {
   it('rounds focused time to whole minutes', () => {
     expect(wholeMinutes(25 * MIN)).toBe(25)
     expect(wholeMinutes(90 * 1000)).toBe(2)
+  })
+})
+
+describe('a gap in the timer (the computer slept, the page was frozen)', () => {
+  // A 45 minute session, seen up to minute 5, not seen again until minute 45 (so the whole session would have run out unseen).
+  const seen = (m) => T0 + m * MIN
+  const gapped = () => markGap(begin(45), seen(5))
+
+  it('is two looks more than two minutes apart', () => {
+    expect(GAP_MS).toBe(2 * MIN)
+  })
+
+  it('marks the time since the timer was last seen as not yet counted, and stands the clock still there', () => {
+    const s = gapped()
+    expect(hasGap(s)).toBe(true)
+    expect(s.gapFrom).toBe(seen(5))
+    expect(elapsedMs(s, seen(45))).toBe(5 * MIN) // not 45
+    expect(remainingMs(s, seen(45))).toBe(40 * MIN)
+    expect(isFinished(s, seen(300))).toBe(false) // however long, it does not finish by itself
+    expect(gapMs(s, seen(45))).toBe(40 * MIN)
+  })
+
+  it('does nothing to a session with no gap, a paused one, or one that already has a gap waiting', () => {
+    expect(hasGap(begin(25))).toBe(false)
+    expect(gapMs(begin(25), seen(30))).toBe(0)
+    const paused = pauseSession(begin(25), seen(3))
+    expect(markGap(paused, seen(1))).toBe(paused)
+    const first = gapped()
+    expect(markGap(first, seen(20))).toBe(first) // the first gap stands; it is not moved later
+  })
+
+  it('never starts a gap before the running stretch began', () => {
+    const resumed = resumeSession(pauseSession(begin(45), seen(10)), seen(30))
+    expect(markGap(resumed, seen(12)).gapFrom).toBe(seen(30))
+  })
+
+  it('"Yes, count it" keeps the whole time', () => {
+    const kept = keepGap(gapped())
+    expect(hasGap(kept)).toBe(false)
+    expect(elapsedMs(kept, seen(40))).toBe(40 * MIN) // the gap counts as focus
+    expect(isFinished(kept, seen(45))).toBe(true)
+    expect(completedRecord(kept, seen(45))).toMatchObject({ outcome: 'completed', focusedMs: 45 * MIN })
+  })
+
+  it('"No, don’t count it" leaves the gap out and carries on from now with what was seen', () => {
+    const dropped = dropGap(gapped(), seen(45))
+    expect(hasGap(dropped)).toBe(false)
+    expect(dropped).toMatchObject({ status: 'running', accumulatedMs: 5 * MIN, segmentStartedAt: seen(45) })
+    expect(elapsedMs(dropped, seen(45))).toBe(5 * MIN)
+    expect(remainingMs(dropped, seen(50))).toBe(35 * MIN) // 5 seen + 5 more since
+    expect(isFinished(dropped, seen(50))).toBe(false)
+    expect(isFinished(dropped, seen(85))).toBe(true) // 40 more minutes to go from minute 45
+  })
+
+  it('keep and drop do nothing when there is no gap', () => {
+    const s = begin(25)
+    expect(keepGap(s)).toBe(s)
+    expect(dropGap(s, seen(10))).toBe(s)
+  })
+
+  it('ending the session while the gap waits keeps only the time that was seen', () => {
+    const record = endedEarlyRecord(gapped(), seen(45))
+    expect(record).toMatchObject({ outcome: 'ended_early', focusedMs: 5 * MIN })
+  })
+
+  it('pausing while the gap waits keeps only the time that was seen, and the gap is gone', () => {
+    const paused = pauseSession(gapped(), seen(45))
+    expect(paused).toMatchObject({ status: 'paused', accumulatedMs: 5 * MIN, gapFrom: null })
+    expect(hasGap(paused)).toBe(false)
+    expect(elapsedMs(resumeSession(paused, seen(50)), seen(60))).toBe(15 * MIN)
+  })
+
+  it('a gap waiting for an answer survives a reload, and is not closed as completed even though the time has long run out', () => {
+    const { session, record } = restoreSession(JSON.stringify(gapped()), seen(600))
+    expect(record).toBeNull()
+    expect(hasGap(session)).toBe(true)
+    expect(remainingMs(session, seen(600))).toBe(40 * MIN)
+  })
+
+  it('a session saved without a gap (before this existed) restores as it always did', () => {
+    const old = { ...begin(25) }
+    delete old.gapFrom
+    expect(restoreSession(JSON.stringify(old), seen(10)).session.gapFrom).toBeNull()
+    expect(restoreSession(JSON.stringify(old), seen(200)).record.outcome).toBe('completed')
+  })
+
+  it('a damaged gap marker makes the whole session unusable rather than guessed at', () => {
+    expect(restoreSession(JSON.stringify({ ...begin(25), gapFrom: 'soon' }), seen(1))).toEqual({ session: null, record: null })
+  })
+
+  it('a paused session carries no gap, whatever was saved', () => {
+    const odd = { ...pauseSession(begin(25), seen(3)), gapFrom: seen(2) }
+    expect(restoreSession(JSON.stringify(odd), seen(4)).session.gapFrom).toBeNull()
   })
 })

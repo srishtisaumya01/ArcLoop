@@ -3,11 +3,19 @@
 // tab cannot make it drift. A session is one saved object, so the page, a reload and a second tab all read the same facts.
 //
 //   session = { v, id, taskId, planDate, title, plannedMs, status: 'running' | 'paused', startedAt,
-//               segmentStartedAt (when the current running stretch began, null while paused), accumulatedMs (focused before it), pausedAt }
+//               segmentStartedAt (when the current running stretch began, null while paused), accumulatedMs (focused before it), pausedAt,
+//               gapFrom (null, or when the timer stopped being seen: see below) }
+//
+// A gap. A browser cannot tell a computer that slept from any other long silence, but it can see that the timer was not looked at: while
+// My Day is open the timer is looked at every second (hooks/useFocusSession.js), and when two looks are more than GAP_MS apart the session is
+// marked with `gapFrom`, the time of the last look. From then on the time after `gapFrom` is NOT counted as focus until the person answers
+// (keepGap counts it, dropGap leaves it out); the countdown stands still, and ending or pausing the session keeps only the time that was seen.
+// The functions here only apply that rule to a session; they never decide that a gap happened.
 //   record  = { id, taskId, planDate, title, plannedMs, focusedMs, outcome: 'completed' | 'ended_early', startedAt, endedAt }
 
 export const PRESET_MINUTES = [15, 25, 45, 60]
 export const STALE_PAUSE_MS = 24 * 60 * 60 * 1000 // a session left paused for a day is closed as ended early, with what it had
+export const GAP_MS = 2 * 60 * 1000 // two looks at the running timer this far apart mean it was not running in between (asleep, frozen)
 const VERSION = 1
 const MINUTE = 60 * 1000
 
@@ -16,11 +24,14 @@ const isText = (value) => typeof value === 'string' && value.length > 0
 
 export function startSession({ id, taskId, planDate, title, minutes, now }) {
   if (!PRESET_MINUTES.includes(minutes)) throw new Error(`A focus session lasts ${PRESET_MINUTES.join(', ')} minutes.`)
-  return { v: VERSION, id, taskId, planDate, title, plannedMs: minutes * MINUTE, status: 'running', startedAt: now, segmentStartedAt: now, accumulatedMs: 0, pausedAt: null }
+  return { v: VERSION, id, taskId, planDate, title, plannedMs: minutes * MINUTE, status: 'running', startedAt: now, segmentStartedAt: now, accumulatedMs: 0, pausedAt: null, gapFrom: null }
 }
 
 // Time focused so far, uncapped: what was banked before this stretch plus this stretch up to `now`. A clock that went backwards adds nothing.
-const rawElapsedMs = (session, now) => session.accumulatedMs + (session.status === 'running' ? Math.max(0, now - session.segmentStartedAt) : 0)
+// While a gap waits for an answer, time stands still at the moment the timer was last seen.
+export const hasGap = (session) => session.status === 'running' && isNumber(session.gapFrom)
+const rawElapsedMs = (session, now) => session.accumulatedMs + (session.status === 'running' ? Math.max(0, (hasGap(session) ? session.gapFrom : now) - session.segmentStartedAt) : 0)
+export const gapMs = (session, now) => (hasGap(session) ? Math.max(0, now - session.gapFrom) : 0)
 
 export const elapsedMs = (session, now) => Math.min(session.plannedMs, rawElapsedMs(session, now))
 export const remainingMs = (session, now) => session.plannedMs - elapsedMs(session, now)
@@ -29,12 +40,29 @@ export const isFinished = (session, now) => rawElapsedMs(session, now) >= sessio
 
 export function pauseSession(session, now) {
   if (session.status !== 'running') return session
-  return { ...session, status: 'paused', accumulatedMs: rawElapsedMs(session, now), segmentStartedAt: null, pausedAt: now }
+  return { ...session, status: 'paused', accumulatedMs: rawElapsedMs(session, now), segmentStartedAt: null, pausedAt: now, gapFrom: null }
 }
 
 export function resumeSession(session, now) {
   if (session.status !== 'paused') return session
-  return { ...session, status: 'running', segmentStartedAt: now, pausedAt: null }
+  return { ...session, status: 'running', segmentStartedAt: now, pausedAt: null, gapFrom: null }
+}
+
+// The timer was last seen at `from` and not again until now: mark the time since as unverified (once; a gap already waiting is kept).
+export function markGap(session, from) {
+  if (session.status !== 'running' || hasGap(session)) return session
+  return { ...session, gapFrom: Math.max(from, session.segmentStartedAt) }
+}
+
+// The person says they were focusing through the gap: it counts.
+export function keepGap(session) {
+  return hasGap(session) ? { ...session, gapFrom: null } : session
+}
+
+// The person says they were not: the gap is left out, and the session carries on from now with what had been seen.
+export function dropGap(session, now) {
+  if (!hasGap(session)) return session
+  return { ...session, accumulatedMs: rawElapsedMs(session, now), segmentStartedAt: now, gapFrom: null }
 }
 
 const recordOf = (session, focusedMs, outcome, endedAt) => ({
@@ -65,14 +93,15 @@ export function restoreSession(raw, now) {
     return { session: null, record: null }
   }
   if (!value || typeof value !== 'object' || value.v !== VERSION) return { session: null, record: null }
-  const { id, taskId, planDate, title, plannedMs, status, startedAt, segmentStartedAt, accumulatedMs, pausedAt } = value
+  const { id, taskId, planDate, title, plannedMs, status, startedAt, segmentStartedAt, accumulatedMs, pausedAt, gapFrom } = value
   const shape =
     isText(id) && isText(taskId) && /^\d{4}-\d{2}-\d{2}$/.test(planDate ?? '') && isText(title) &&
     isNumber(plannedMs) && PRESET_MINUTES.some((m) => m * MINUTE === plannedMs) &&
     isNumber(startedAt) && isNumber(accumulatedMs) && accumulatedMs >= 0 && accumulatedMs <= plannedMs &&
-    ((status === 'running' && isNumber(segmentStartedAt)) || (status === 'paused' && isNumber(pausedAt)))
+    ((status === 'running' && isNumber(segmentStartedAt)) || (status === 'paused' && isNumber(pausedAt))) &&
+    (gapFrom === undefined || gapFrom === null || isNumber(gapFrom))
   if (!shape) return { session: null, record: null }
-  const session = { v: VERSION, id, taskId, planDate, title, plannedMs, status, startedAt, segmentStartedAt: status === 'running' ? segmentStartedAt : null, accumulatedMs, pausedAt: status === 'paused' ? pausedAt : null }
+  const session = { v: VERSION, id, taskId, planDate, title, plannedMs, status, startedAt, segmentStartedAt: status === 'running' ? segmentStartedAt : null, accumulatedMs, pausedAt: status === 'paused' ? pausedAt : null, gapFrom: status === 'running' && isNumber(gapFrom) ? gapFrom : null }
   if (isFinished(session, now)) return { session: null, record: completedRecord(session, now) }
   if (session.status === 'paused' && now - session.pausedAt > STALE_PAUSE_MS) return { session: null, record: recordOf(session, session.accumulatedMs, 'ended_early', session.pausedAt) }
   return { session, record: null }
