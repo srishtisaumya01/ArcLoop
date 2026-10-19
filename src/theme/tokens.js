@@ -129,6 +129,11 @@ export const motion = {
 
 export const navHeight = 84
 
+// The tab bar fixed to the bottom of a phone screen (components/layout/BottomNav.jsx). Things that sit at the bottom of the screen
+// on a phone (the page's last line, messages, the timezone suggestion) keep clear of it by this much, plus the device's safe area.
+export const bottomNavHeight = 64
+export const bottomNavClearance = `calc(${bottomNavHeight}px + env(safe-area-inset-bottom, 0px))`
+
 // The navbar floats as a card with this much space above and below it.
 export const navGap = 16
 

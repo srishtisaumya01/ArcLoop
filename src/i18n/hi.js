@@ -757,4 +757,7 @@ export const hi = {
   "One small, practical act of kindness or responsibility each day.": "रोज़ दयालुता या ज़िम्मेदारी का एक छोटा, व्यावहारिक काम करें।",
   "Plan, Reflect & Restart": "योजना बनाएँ, सोचें और फिर शुरू करें",
   "Plan your day in the morning, reflect in the evening, and restart without guilt.": "सुबह दिन की योजना बनाएँ, शाम को सोचें और बिना अपराध-बोध के फिर शुरू करें।",
+  "Home": "होम",
+  "How to join": "कैसे जुड़ें",
+  "Quick navigation": "त्वरित नेविगेशन",
 }

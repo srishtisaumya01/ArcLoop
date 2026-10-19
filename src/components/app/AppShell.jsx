@@ -5,12 +5,14 @@ import { Menu } from 'lucide-react'
 import Sidebar from './Sidebar.jsx'
 import UserMenu from './UserMenu.jsx'
 import Logo from '../ui/Logo.jsx'
+import BottomNav, { BottomNavSpace } from '../layout/BottomNav.jsx'
 import ScrollManager from '../layout/ScrollManager.jsx'
 import { AppShellContext } from '../../context/appShellContext.js'
 import { NavOffsetContext } from '../../context/navOffsetContext.js'
 import { useAsync } from '../../hooks/useAsync.js'
 import { useAuth } from '../../hooks/useAuth.js'
 import { useI18n } from '../../hooks/useI18n.js'
+import { APP_TABS } from '../../constants/navigation.js'
 import { PROFILE_CHANGED } from '../../hooks/profileEvents.js'
 import { getMyProfile } from '../../services/profileService.js'
 import { nameFor } from '../../utils/greeting.js'
@@ -79,7 +81,9 @@ export default function AppShell() {
               </Suspense>
               <Outlet />
             </Box>
+            <BottomNavSpace />
           </Box>
+          <BottomNav items={APP_TABS} label={t('Quick navigation')} />
 
           <Drawer anchor="left" open={open} onClose={close} slotProps={{ paper: { id: 'app-menu', sx: { width: 'min(88vw, 320px)', backgroundImage: 'none', background: gradients.sidebar } } }}>
             <Sidebar navLabel="Mobile" onNavigate={close} />

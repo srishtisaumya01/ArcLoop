@@ -1,6 +1,6 @@
 import { createElement as h } from 'react'
 import { describe, expect, it, vi } from 'vitest'
-import { render, screen, within } from '@testing-library/react'
+import { cleanup, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ThemeProvider } from '@mui/material'
 import theme from '../../src/theme/theme.js'
@@ -163,5 +163,69 @@ describe('TaskRow: Partly lives in Edit', () => {
     await user.click(within(form).getByRole('button', { name: 'Cancel' }))
     expect(onCompletion).not.toHaveBeenCalled()
     expect(onEdit).not.toHaveBeenCalled()
+  })
+})
+
+describe('TaskRow: My Day planning and focus', () => {
+  it('has a Focus button for an open task, which hands the task over without changing it', async () => {
+    const user = userEvent.setup()
+    const onFocus = vi.fn()
+    const { onCompletion, onEdit } = renderRow({ onFocus })
+    await user.click(screen.getByRole('button', { name: 'Focus on Walk' }))
+    expect(onFocus).toHaveBeenCalledWith(expect.objectContaining({ id: 't1', title: 'Walk' }))
+    expect(onCompletion).not.toHaveBeenCalled()
+    expect(onEdit).not.toHaveBeenCalled()
+  })
+
+  it('has no Focus button for a done task, a set-aside task, or when focus is not offered', () => {
+    const onFocus = vi.fn()
+    renderRow({ task: task({ completion: 1 }), onFocus })
+    expect(screen.queryByRole('button', { name: /Focus on/ })).toBeNull()
+    cleanup()
+    renderRow({ task: task({ title: 'Aside', planState: 'excluded', excludedReason: 'busy_day' }), onFocus })
+    expect(screen.queryByRole('button', { name: 'Focus on Aside' })).toBeNull()
+    cleanup()
+    renderRow({ task: task({ title: 'Plain' }) })
+    expect(screen.queryByRole('button', { name: 'Focus on Plain' })).toBeNull()
+  })
+
+  it('a task being focused on says so and cannot be started again', () => {
+    renderRow({ onFocus: vi.fn(), focusing: true })
+    expect(screen.getByText('Focusing')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Focus on Walk' })).toBeDisabled()
+  })
+
+  it('while a session runs on another task, Focus is off for this one and says why', () => {
+    renderRow({ onFocus: vi.fn(), focusLocked: true })
+    const button = screen.getByRole('button', { name: 'Focus on Walk' })
+    expect(button).toBeDisabled()
+    expect(button).toHaveAttribute('title', expect.stringContaining('already running'))
+  })
+
+  it('shows the time already focused on the task, once it is at least half a minute', () => {
+    renderRow({ onFocus: vi.fn(), focusedMs: 35 * 60 * 1000 })
+    expect(screen.getByText(/35 min focused/)).toBeInTheDocument()
+    cleanup()
+    renderRow({ task: task({ title: 'Brief' }), onFocus: vi.fn(), focusedMs: 10 * 1000 })
+    expect(screen.queryByText(/focused/)).toBeNull()
+  })
+
+  it('shows Now and Next up on scheduled tasks, next to the title and not instead of anything', () => {
+    renderRow({ task: task({ title: 'Report', plannedStart: '09:00', plannedEnd: '11:00' }), marker: 'now' })
+    expect(screen.getByText('Now')).toBeInTheDocument()
+    expect(screen.getByText(/09:00 to 11:00/)).toBeInTheDocument()
+    cleanup()
+    renderRow({ task: task({ title: 'Gym', plannedStart: '17:00' }), marker: 'next' })
+    expect(screen.getByText('Next up')).toBeInTheDocument()
+  })
+
+  it('a time is set with the existing Edit form, and saving it changes the time and nothing else', async () => {
+    const user = userEvent.setup()
+    const { onEdit } = renderRow({ task: task({ title: 'Report', isPriority: true, estimatedMinutes: 60 }) })
+    await user.click(screen.getByRole('button', { name: 'Edit Report' }))
+    await user.type(screen.getByLabelText(/Start time/), '09:30')
+    await user.click(screen.getByRole('button', { name: 'Save changes' }))
+    expect(onEdit).toHaveBeenCalledTimes(1)
+    expect(onEdit.mock.calls[0][1]).toMatchObject({ title: 'Report', plannedStart: '09:30', isPriority: true, estimatedMinutes: 60 })
   })
 })

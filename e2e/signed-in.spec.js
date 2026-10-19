@@ -122,7 +122,7 @@ test.describe('My Day', () => {
     const edit = page.getByRole('form', { name: 'Edit Water the plants' })
     await edit.getByLabel(/Category/).fill('Home')
     await edit.getByRole('button', { name: 'Save changes' }).click()
-    await expect(page.getByText(/^Home/)).toBeVisible() // the row shows the category (a one-off task also says "repeats": an existing quirk, not part of this change)
+    await expect(page.getByRole('main').getByText(/^Home/)).toBeVisible() // the row shows the category (in the page, not the phone tab bar's "Home") (a one-off task also says "repeats": an existing quirk, not part of this change)
     // Quick add has only a title: no time, estimate, category, description, priority or repeat fields.
     for (const label of [/Start time/, /Estimate/, /Category/, /Description/, 'Repeats']) await expect(add.getByLabel(label)).toHaveCount(0)
   })

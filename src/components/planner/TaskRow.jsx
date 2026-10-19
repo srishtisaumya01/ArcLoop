@@ -15,7 +15,7 @@ const STATES = [
 
 // One task in the day's checklist. Completion is 0 / half / done; set-aside tasks can be put back.
 // Editing changes this day's task only; removing follows the planner's removal rules.
-export default function TaskRow({ task, canRecord, canEdit, busy, moveRange, onCompletion, onSetAside, onRestore, onEdit, onRemove, onStopRepeating, canRemind, reminder, remindersOn, onSetReminder, onRemoveReminder, move, onMove, onUndoMove }) {
+export default function TaskRow({ task, canRecord, canEdit, busy, moveRange, marker, onFocus, focusing, focusLocked, focusedMs, onCompletion, onSetAside, onRestore, onEdit, onRemove, onStopRepeating, canRemind, reminder, remindersOn, onSetReminder, onRemoveReminder, move, onMove, onUndoMove }) {
   const [editing, setEditing] = useState(false)
   const [values, setValues] = useState(null)
   const [errors, setErrors] = useState({})
@@ -24,7 +24,7 @@ export default function TaskRow({ task, canRecord, canEdit, busy, moveRange, onC
   const [moving, setMoving] = useState(false)
   const [progress, setProgress] = useState(0) // the progress chosen in the edit form
   const excluded = task.planState === 'excluded'
-  const meta = [timeRange(task), task.estimatedMinutes ? formatMinutes(task.estimatedMinutes) : null, task.category].filter(Boolean).join(' · ')
+  const meta = [timeRange(task), task.estimatedMinutes ? formatMinutes(task.estimatedMinutes) : null, task.category, focusedMs >= 30000 ? `${formatMinutes(Math.max(1, Math.round(focusedMs / 60000)))} focused` : null].filter(Boolean).join(' · ')
   const repeats = Boolean(task.templateId) && !excluded
 
   const startEdit = () => {
@@ -103,6 +103,8 @@ export default function TaskRow({ task, canRecord, canEdit, busy, moveRange, onC
           {task.title}
           {task.isPriority ? ' (priority)' : ''}
           {task.isMinimum && !excluded && <Chip label="Minimum" size="small" variant="outlined" color="primary" sx={{ ml: 1, verticalAlign: 'middle' }} />}
+          {marker && !excluded && <Chip component="span" label={marker === 'now' ? 'Now' : 'Next up'} size="small" color={marker === 'now' ? 'primary' : 'default'} sx={{ ml: 1, verticalAlign: 'middle' }} />}
+          {focusing && !excluded && <Chip component="span" label="Focusing" size="small" color="success" variant="outlined" sx={{ ml: 1, verticalAlign: 'middle' }} />}
         </Typography>
         </Box>
         {(meta || repeats) && <Typography variant="body2" color="text.secondary">{[meta, repeats ? 'repeats' : null].filter(Boolean).join(' · ')}</Typography>}
@@ -129,6 +131,10 @@ export default function TaskRow({ task, canRecord, canEdit, busy, moveRange, onC
         </Box>
       ) : (
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center' }}>
+          {onFocus && task.completion < 1 && (
+            <Button size="small" disabled={busy || focusing || focusLocked} onClick={() => onFocus(task)} aria-label={`Focus on ${task.title}`}
+              title={focusLocked && !focusing ? 'A focus session is already running. End it to focus on something else.' : undefined}>Focus</Button>
+          )}
           {canEdit && (
             <Button size="small" disabled={busy} onClick={startEdit} aria-label={`Edit ${task.title}`}>Edit</Button>
           )}
