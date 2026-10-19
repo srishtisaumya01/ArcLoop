@@ -39,7 +39,7 @@ describe('secrets hygiene', () => {
   })
 
   it('keeps .env.example to placeholder, public-only values', () => {
-    const lines = readFileSync(join(root, '.env.example'), 'utf8').split('\n').filter((l) => l.trim() && !l.startsWith('#'))
+    const lines = readFileSync(join(root, '.env.example'), 'utf8').split(/\r?\n/).filter((l) => l.trim() && !l.startsWith('#'))
     // The variable is commented out by default (development has a default); anything set must be the one public address.
     for (const line of lines) {
       const [key, value] = line.split('=')
@@ -49,7 +49,7 @@ describe('secrets hygiene', () => {
   })
 
   it('keeps backend/.env.example to placeholders and git-ignores the real backend files', () => {
-    const example = readFileSync(join(root, 'backend', '.env.example'), 'utf8').split('\n').filter((l) => l.trim() && !l.startsWith('#'))
+    const example = readFileSync(join(root, 'backend', '.env.example'), 'utf8').split(/\r?\n/).filter((l) => l.trim() && !l.startsWith('#'))
     expect(example).toEqual(['DJANGO_DEBUG=true']) // everything else is commented out: nothing secret can be copied from it
     const ignore = readFileSync(join(root, '.gitignore'), 'utf8').split('\n').map((l) => l.trim())
     for (const entry of ['backend/.env', 'backend/db.sqlite3', 'backend/.venv', 'sent_emails/']) expect(ignore).toContain(entry)

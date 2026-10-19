@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link as RouterLink, useLocation } from 'react-router-dom'
 import { Alert, Box, Button } from '@mui/material'
 import { useAuth } from '../../hooks/useAuth.js'
@@ -6,7 +6,7 @@ import { notifyProfileChanged } from '../../hooks/profileEvents.js'
 import { getMyTimezone, updateMyProfile } from '../../services/profileService.js'
 import { detectDeviceTimeZone } from '../../utils/profile.js'
 import { ROUTES } from '../../constants/navigation.js'
-import { colors, shadows } from '../../theme/tokens.js'
+import { bottomNavClearance, colors, shadows } from '../../theme/tokens.js'
 
 const key = (userId) => `arcloop.timezonePrompt.dismissed.${userId}`
 const read = (userId) => {
@@ -28,6 +28,24 @@ export default function TimezonePrompt() {
   const [dismissed, setDismissed] = useState(() => read(user.id))
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  const noticeRef = useRef(null)
+  const visible = !(dismissed || pathname === ROUTES.settings || current !== 'UTC' || !device || device === 'UTC')
+
+  // On a phone the card is fixed to the bottom of the screen. Tell the page how tall it is, so that keyboard focus scrolls a field
+  // clear of it instead of leaving the field underneath (the theme's `scroll-padding-bottom` reads this).
+  useEffect(() => {
+    const node = noticeRef.current
+    if (!visible || !node || !window.matchMedia?.('(max-width: 899.95px)').matches) return undefined
+    const root = document.documentElement
+    const publish = () => root.style.setProperty('--floating-notice-height', `${node.offsetHeight + 12}px`)
+    publish()
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(publish)
+    observer?.observe(node)
+    return () => {
+      observer?.disconnect()
+      root.style.removeProperty('--floating-notice-height')
+    }
+  }, [visible])
 
   useEffect(() => {
     let cancelled = false
@@ -67,11 +85,11 @@ export default function TimezonePrompt() {
     }
   }
 
-  if (dismissed || pathname === ROUTES.settings || current !== 'UTC' || !device || device === 'UTC') return null
+  if (!visible) return null
   // A card outside the page flow. On wide screens it sits in the empty top-right of the header band and scrolls away with
   // the page, so it never covers a form; on phones it is fixed to the bottom of the screen.
   return (
-    <Box sx={{ position: { xs: 'fixed', md: 'absolute' }, left: { xs: 12, md: 'auto' }, right: { xs: 12, md: 24 }, bottom: { xs: 12, md: 'auto' }, top: { md: 12 }, zIndex: 1200, width: { md: 440 } }}>
+    <Box ref={noticeRef} sx={{ position: { xs: 'fixed', md: 'absolute' }, left: { xs: 12, md: 'auto' }, right: { xs: 12, md: 24 }, bottom: { xs: `calc(${bottomNavClearance} + 12px)`, md: 'auto' }, top: { md: 12 }, zIndex: 1200, width: { md: 440 } }}>
       <Alert severity="info" role="region" aria-label="Timezone suggestion" sx={{ borderRadius: '14px', boxShadow: shadows.lg, border: `1px solid ${colors.border}`, bgcolor: colors.bgAlt, color: colors.textPrimary }}>
         Your timezone is set to UTC, but this device is in {device}. The right timezone keeps “today”, your week and your reminders on your clock.
         {error && <strong role="alert"> {error}</strong>}

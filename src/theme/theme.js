@@ -1,5 +1,6 @@
 import { createTheme } from '@mui/material/styles'
 import {
+  bottomNavClearance,
   breakpoints,
   colors,
   focusRing,
@@ -76,6 +77,9 @@ export function createAppTheme(mode = 'light') {
               scrollBehavior: 'auto !important',
             },
           },
+          // On a phone the tab bar (and sometimes a notice) is fixed to the bottom of the screen: keyboard focus scrolls a field clear of
+          // them rather than to the very edge, where they would cover it.
+          '@media (max-width: 899.95px)': { html: { scrollPaddingBottom: `calc(${bottomNavClearance} + var(--floating-notice-height, 0px) + 16px)` } },
           'a:focus-visible, button:focus-visible, [tabindex]:focus-visible, summary:focus-visible': focusRing,
         },
       },

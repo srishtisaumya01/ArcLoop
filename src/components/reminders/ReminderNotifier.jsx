@@ -2,6 +2,7 @@ import { Link as RouterLink } from 'react-router-dom'
 import { Alert, Button, Snackbar } from '@mui/material'
 import { useReminderScheduler } from '../../hooks/useReminderScheduler.js'
 import { ROUTES } from '../../constants/navigation.js'
+import { bottomNavClearance } from '../../theme/tokens.js'
 
 // In-app delivery of reminders: one calm notice at a time, bottom of the screen. Mounted for signed-in
 // users only. Browser notifications (if allowed) are sent by the scheduler alongside this.
@@ -9,7 +10,7 @@ export default function ReminderNotifier({ now, tickMs }) {
   const { notices, dismiss } = useReminderScheduler({ now, tickMs })
   const notice = notices[0]
   return (
-    <Snackbar open={Boolean(notice)} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }} onClose={(_, reason) => reason !== 'clickaway' && notice && dismiss(notice.key)}>
+    <Snackbar open={Boolean(notice)} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }} sx={{ bottom: { xs: `calc(${bottomNavClearance} + 8px) !important`, md: undefined } }} onClose={(_, reason) => reason !== 'clickaway' && notice && dismiss(notice.key)}>
       {notice ? (
         <Alert
           severity="info"
