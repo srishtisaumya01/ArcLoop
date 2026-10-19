@@ -1,13 +1,18 @@
-import { useRef, useState } from 'react'
+import { useContext, useRef, useState } from 'react'
 import { Link as RouterLink, useSearchParams } from 'react-router-dom'
 import { Box, Button, Chip, Container, LinearProgress, Skeleton, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material'
 import { CalendarCheck, ChevronLeft, ChevronRight, RefreshCw, TriangleAlert } from 'lucide-react'
 import PageHeader from '../../components/common/PageHeader.jsx'
 import StatePanel from '../../components/common/StatePanel.jsx'
 import TaskRow from '../../components/planner/TaskRow.jsx'
+import DaySchedule from '../../components/planner/DaySchedule.jsx'
+import FocusTimer from '../../components/planner/FocusTimer.jsx'
 import QuickAddTask from '../../components/planner/QuickAddTask.jsx'
 import { formatDay, weekdayName } from '../../components/planner/weekFormat.js'
+import { AuthContext } from '../../context/authContext.js'
 import { useDayPlan } from '../../hooks/useDayPlan.js'
+import { focusTotals, useFocusSession } from '../../hooks/useFocusSession.js'
+import { useNow } from '../../hooks/useNow.js'
 import { useDayReminders } from '../../hooks/useDayReminders.js'
 import { useDismissible } from '../../hooks/useDismissible.js'
 import { useRecoveryStatus } from '../../hooks/useRecoveryStatus.js'
@@ -61,6 +66,9 @@ export default function MyDayPage() {
   const [undoBusy, setUndoBusy] = useState(false)
   const [undoError, setUndoError] = useState('')
   const undoing = useRef(false) // a second press while one is in flight does nothing
+  const focus = useFocusSession(useContext(AuthContext)?.user?.id) // without a signed-in person the focus timer is simply not offered
+  const [focusTarget, setFocusTarget] = useState(null) // the task whose Focus button was pressed, until its session starts or is cancelled
+  const clock = useNow(undefined, 60000) // the time of day for "Now" and "Next up", to the minute
   const noticeCount = useRef(0)
 
   const perform = async (change, options) => {
@@ -83,6 +91,8 @@ export default function MyDayPage() {
   const canEdit = access === 'today' || access === 'editable_past' || access === 'future'
   const canRecord = access === 'today' || access === 'editable_past'
   const target = plan?.planDate
+  const focused = focusTotals(focus.log, target).byTask
+  const nowMinutes = access === 'today' ? clock.getHours() * 60 + clock.getMinutes() : null
   const canRemind = (access === 'today' || access === 'future') && Boolean(plan?.exists)
   const reminders = useDayReminders(target, plan, canRemind)
   // Shown only on today, only when the last planned day had no progress, and only until dismissed.
@@ -208,6 +218,10 @@ export default function MyDayPage() {
                 onSave={(ids) => run((s) => s.setMinimum(target, ids))} />
             )}
 
+            <FocusTimer focus={focus} target={access === 'today' ? focusTarget : null} viewDate={target} onClearTarget={() => setFocusTarget(null)}
+              canMarkDone={(id) => canRecord && active.some((o) => o.id === id && o.completion < 1)}
+              onMarkDone={(id) => { const task = active.find((o) => o.id === id); if (task) complete(task, 1) }} />
+
             <Box component="section" aria-label="Tasks">
               {!plan.exists && canEdit && (
                 <StatePanel icon={CalendarCheck} title="Nothing planned for this day yet"
@@ -224,21 +238,21 @@ export default function MyDayPage() {
                 <StatePanel icon={CalendarCheck} title="No tasks on this day" text={canEdit ? 'Add a task below, or enjoy the open day.' : 'There were no tasks on this day.'} />
               )}
               {active.length > 0 && (
-                <Box component="ul" aria-label="Today’s tasks" sx={{ listStyle: 'none', m: 0, p: 0, display: 'grid', gap: 1.5 }}>
-                  {active.map((task) => (
-                    <TaskRow key={task.id} task={task} canRecord={canRecord} canEdit={canEdit} busy={busy}
-                      onCompletion={complete} moveRange={moveRange}
-                      onSetAside={(t) => perform((s) => s.setAside(t.id, mode === 'rest' ? 'rest_day' : 'busy_day'))}
-                      onRestore={(t) => perform((s) => s.restore(t.id))}
-                      move={plan.moves?.[task.id]}
-                      onMove={move}
-                      onEdit={(t, input) => run((s) => s.updateOccurrence(t.id, input))}
-                      onRemove={(t) => perform((s) => s.removeOccurrence(t.id))}
-                      onStopRepeating={(t) => perform((s) => s.archiveTemplate(t.templateId))}
-                      canRemind={canRemind} reminder={reminders.byOccurrence.get(task.id)} remindersOn={reminders.remindersOn}
-                      onSetReminder={(t, time) => reminders.set(t.id, time)} onRemoveReminder={(t) => reminders.remove(t.id)} />
-                  ))}
-                </Box>
+                <DaySchedule tasks={active} nowMinutes={nowMinutes} renderTask={(task, marker) => (
+                  <TaskRow key={task.id} task={task} canRecord={canRecord} canEdit={canEdit} busy={busy}
+                    marker={marker} focusing={focus.session?.taskId === task.id} focusLocked={Boolean(focus.session)} focusedMs={focused.get(task.id)}
+                    onFocus={access === 'today' && focus.ready ? setFocusTarget : undefined}
+                    onCompletion={complete} moveRange={moveRange}
+                    onSetAside={(t) => perform((s) => s.setAside(t.id, mode === 'rest' ? 'rest_day' : 'busy_day'))}
+                    onRestore={(t) => perform((s) => s.restore(t.id))}
+                    move={plan.moves?.[task.id]}
+                    onMove={move}
+                    onEdit={(t, input) => run((s) => s.updateOccurrence(t.id, input))}
+                    onRemove={(t) => perform((s) => s.removeOccurrence(t.id))}
+                    onStopRepeating={(t) => perform((s) => s.archiveTemplate(t.templateId))}
+                    canRemind={canRemind} reminder={reminders.byOccurrence.get(task.id)} remindersOn={reminders.remindersOn}
+                    onSetReminder={(t, time) => reminders.set(t.id, time)} onRemoveReminder={(t) => reminders.remove(t.id)} />
+                )} />
               )}
               {setAside.length > 0 && (
                 <Box sx={{ mt: 3 }}>

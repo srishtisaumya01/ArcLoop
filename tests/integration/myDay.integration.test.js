@@ -5,6 +5,7 @@ import { setupUser } from './user.js'
 import { MemoryRouter } from 'react-router-dom'
 import { ThemeProvider } from '@mui/material'
 import theme from '../../src/theme/theme.js'
+import { AuthContext } from '../../src/context/authContext.js'
 import { createPlannerService } from '../../src/services/planner/createPlannerService.js'
 import { countRows, createTestClient, createUser, createWorld } from './harness.js'
 import { CLOCK, TODAY } from '../support/plannerSeed.js'
@@ -934,5 +935,166 @@ describe('Move and its Undo on My Day, against the real service and database', (
     expect(await within(moveForm('Dentist')).findByText(/ahead|far|plan/i)).toBeTruthy()
     expect(screen.queryByRole('button', { name: /^Undo:/ })).toBeNull()
     expect((await persisted('Dentist')).planState).toBe('active')
+  })
+})
+
+// The daily schedule and the focus timer on the real page. Focus needs a signed-in person, so these render inside an auth context.
+const renderSignedIn = (path = '/app/day') =>
+  render(h(AuthContext.Provider, { value: { status: 'authenticated', session: null, user: { id: `focus-user-${userId}`, email: 'me@example.com' }, signOut: vi.fn() } }, h(ThemeProvider, { theme }, h(MemoryRouter, { initialEntries: [path] }, h(MyDayPage)))))
+const occurrence = async (title) => (await service.getDayPlan(TODAY)).occurrences.find((o) => o.title === title)
+
+describe('The daily schedule', () => {
+  it('shows tasks with a time in time order, apart from the ones with no time', async () => {
+    await service.createTask(TODAY, { title: 'Read' })
+    await service.createTask(TODAY, { title: 'Gym', plannedStart: '17:00', plannedEnd: '18:00' })
+    await service.createTask(TODAY, { title: 'Report', plannedStart: '09:00', plannedEnd: '11:00', isPriority: true })
+    await service.createTask(TODAY, { title: 'Call mum' })
+    renderDay()
+    const scheduled = await screen.findByRole('list', { name: 'Scheduled tasks' })
+    expect(within(scheduled).getAllByRole('checkbox').map((c) => c.getAttribute('aria-label'))).toEqual(['Done: Report', 'Done: Gym'])
+    expect(within(scheduled).getByText(/09:00 to 11:00/)).toBeInTheDocument()
+    expect(within(scheduled).getByText(/Report \(priority\)/)).toBeInTheDocument()
+    const anytime = screen.getByRole('list', { name: 'Unscheduled tasks' })
+    expect(within(anytime).getAllByRole('checkbox').map((c) => c.getAttribute('aria-label')).sort()).toEqual(['Done: Call mum', 'Done: Read'])
+  })
+
+  it('is the plain list when no task has a time', async () => {
+    await service.createTask(TODAY, { title: 'Read' })
+    renderDay()
+    expect(await screen.findByRole('list', { name: 'Today’s tasks' })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Scheduled' })).toBeNull()
+  })
+
+  it('giving a task a time with Edit moves it into the schedule and changes nothing else about it', async () => {
+    const user = setupUser()
+    await service.createTask(TODAY, { title: 'Gym', plannedStart: '17:00' })
+    await service.createTask(TODAY, { title: 'Read', isPriority: true, estimatedMinutes: 30, category: 'Study' })
+    const before = await occurrence('Read')
+    await service.setCompletion(before.id, 0.5)
+    renderDay()
+    await user.click(await screen.findByRole('button', { name: 'Edit Read' }))
+    const form = screen.getByRole('form', { name: 'Edit Read' })
+    await user.type(within(form).getByLabelText(/Start time/), '14:00')
+    await user.click(within(form).getByRole('button', { name: 'Save changes' }))
+    const scheduled = await screen.findByRole('list', { name: 'Scheduled tasks' })
+    await waitFor(() => expect(within(scheduled).getAllByRole('checkbox').map((c) => c.getAttribute('aria-label'))).toEqual(['Done: Read', 'Done: Gym']))
+    expect(screen.queryByRole('list', { name: 'Unscheduled tasks' })).toBeNull()
+    const after = await occurrence('Read')
+    expect(after).toMatchObject({ id: before.id, planDate: TODAY, completion: 0.5, isPriority: true, estimatedMinutes: 30, category: 'Study', plannedStart: '14:00', planState: 'active' })
+  })
+
+  it('taking a time away with Edit moves the task back to the tasks with no time, with its id and progress kept', async () => {
+    const user = setupUser()
+    await service.createTask(TODAY, { title: 'Report', plannedStart: '09:00', plannedEnd: '10:00' })
+    await service.createTask(TODAY, { title: 'Gym', plannedStart: '17:00' })
+    const before = await occurrence('Report')
+    await service.setCompletion(before.id, 1)
+    renderDay()
+    await user.click(await screen.findByRole('button', { name: 'Edit Report' }))
+    const form = screen.getByRole('form', { name: 'Edit Report' })
+    await user.clear(within(form).getByLabelText(/Start time/))
+    await user.clear(within(form).getByLabelText(/End time/))
+    await user.click(within(form).getByRole('button', { name: 'Save changes' }))
+    const anytime = await screen.findByRole('list', { name: 'Unscheduled tasks' })
+    expect(within(anytime).getByRole('checkbox', { name: 'Done: Report' })).toBeChecked()
+    const after = await occurrence('Report')
+    expect(after).toMatchObject({ id: before.id, completion: 1, plannedStart: null, plannedEnd: null })
+  })
+})
+
+describe('The focus timer on My Day', () => {
+  it('has a Focus button on an open task only', async () => {
+    await service.createTask(TODAY, { title: 'Read' })
+    await service.createTask(TODAY, { title: 'Finished' })
+    await service.setCompletion((await occurrence('Finished')).id, 1)
+    renderSignedIn()
+    expect(await screen.findByRole('button', { name: 'Focus on Read' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Focus on Finished' })).toBeNull()
+  })
+
+  it('is not offered without a signed-in person', async () => {
+    await service.createTask(TODAY, { title: 'Read' })
+    renderDay()
+    await findBox('Read')
+    expect(screen.queryByRole('button', { name: /Focus on/ })).toBeNull()
+  })
+
+  it('choose a task and a length, start, pause, resume and end: the task itself is never changed', async () => {
+    const user = setupUser()
+    await service.createTask(TODAY, { title: 'Read', isPriority: true })
+    const before = await occurrence('Read')
+    renderSignedIn()
+    await user.click(await screen.findByRole('button', { name: 'Focus on Read' }))
+    expect(screen.getByRole('heading', { name: 'Focus on “Read”' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '15 minutes' }))
+    await user.click(screen.getByRole('button', { name: 'Start focus' }))
+    expect(await screen.findByRole('heading', { name: 'Focusing on “Read”' })).toBeInTheDocument()
+    expect(screen.getByRole('timer', { name: 'Time left' })).toHaveTextContent(/^1[45]:\d\d$/)
+    expect(screen.getByText('Focusing')).toBeInTheDocument() // marked on the task's own row
+    await user.click(screen.getByRole('button', { name: 'Pause' }))
+    expect(screen.getByText('Paused. This time is not counted.')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Resume' }))
+    expect(screen.getByText(/^Running\./)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'End session' }))
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'End session' }))
+    expect(await screen.findByRole('heading', { name: 'Session ended early' })).toBeInTheDocument()
+    expect(box('Read')).not.toBeChecked() // the timer did not complete the task
+    expect(await occurrence('Read')).toMatchObject({ id: before.id, completion: 0, planState: 'active', isPriority: true })
+  })
+
+  it('a session survives a page reload: the same session, the same task, time still running', async () => {
+    const user = setupUser()
+    await service.createTask(TODAY, { title: 'Read' })
+    const first = renderSignedIn()
+    await user.click(await screen.findByRole('button', { name: 'Focus on Read' }))
+    await user.click(screen.getByRole('button', { name: '45 minutes' }))
+    await user.click(screen.getByRole('button', { name: 'Start focus' }))
+    await screen.findByRole('heading', { name: 'Focusing on “Read”' })
+    first.unmount() // a reload
+    renderSignedIn()
+    expect(await screen.findByRole('heading', { name: 'Focusing on “Read”' })).toBeInTheDocument()
+    expect(screen.getByRole('timer', { name: 'Time left' })).toHaveTextContent(/^4[45]:\d\d$/)
+    expect(screen.getByText('Running. 45 minutes session.')).toBeInTheDocument()
+  })
+
+  it('a paused session is still paused after a reload', async () => {
+    const user = setupUser()
+    await service.createTask(TODAY, { title: 'Read' })
+    const first = renderSignedIn()
+    await user.click(await screen.findByRole('button', { name: 'Focus on Read' }))
+    await user.click(screen.getByRole('button', { name: 'Start focus' }))
+    await user.click(await screen.findByRole('button', { name: 'Pause' }))
+    first.unmount()
+    renderSignedIn()
+    expect(await screen.findByRole('button', { name: 'Resume' })).toBeInTheDocument()
+    expect(screen.getByText('Paused. This time is not counted.')).toBeInTheDocument()
+  })
+
+  it('the summary offers “Mark it done”, which completes the task only when chosen, through the normal path', async () => {
+    const user = setupUser()
+    await service.createTask(TODAY, { title: 'Read' })
+    renderSignedIn()
+    await user.click(await screen.findByRole('button', { name: 'Focus on Read' }))
+    await user.click(screen.getByRole('button', { name: 'Start focus' }))
+    await user.click(await screen.findByRole('button', { name: 'End session' }))
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'End session' }))
+    await screen.findByRole('heading', { name: 'Session ended early' })
+    expect((await occurrence('Read')).completion).toBe(0)
+    await user.click(screen.getByRole('button', { name: 'Mark it done' }))
+    await waitFor(() => expect(box('Read')).toBeChecked())
+    expect((await occurrence('Read')).completion).toBe(1)
+    expect(screen.queryByRole('heading', { name: 'Session ended early' })).toBeNull()
+  })
+
+  it('the day shows the time focused, and the task shows its own share', async () => {
+    await service.createTask(TODAY, { title: 'Read' })
+    const task = await occurrence('Read')
+    localStorage.setItem(`arcloop.focus.log.focus-user-${userId}`, JSON.stringify([
+      { id: 'a', taskId: task.id, planDate: TODAY, title: 'Read', plannedMs: 1500000, focusedMs: 1500000, outcome: 'completed', startedAt: 1, endedAt: 2 },
+      { id: 'b', taskId: task.id, planDate: TODAY, title: 'Read', plannedMs: 900000, focusedMs: 600000, outcome: 'ended_early', startedAt: 3, endedAt: 4 },
+    ]))
+    renderSignedIn()
+    expect(await screen.findByLabelText('Focus time on this day')).toHaveTextContent('35 minutes in 2 sessions')
+    expect(screen.getByText(/35 min focused/)).toBeInTheDocument()
   })
 })
