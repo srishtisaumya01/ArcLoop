@@ -45,7 +45,7 @@ test.describe('on the public site', () => {
     await page.goto('/challenges')
     const footer = page.getByRole('contentinfo')
     await footer.scrollIntoViewIfNeeded()
-    await page.mouse.wheel(0, 100000) // all the way down, whatever scrolls
+    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight)) // all the way down (a mouse wheel does not exist in mobile WebKit)
     await expect.poll(async () => (await rect(footer)).bottom).toBeLessThanOrEqual((await rect(bar(page))).top + 1) // the footer ends above the bar
   })
 

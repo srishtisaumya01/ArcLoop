@@ -44,7 +44,7 @@ export default function GroupPlan() {
       sx={{
         p: { xs: 2.5, md: 3.5 },
         borderRadius: `${radii.lg}px`,
-        bgcolor: 'rgba(255, 255, 255, 0.08)',
+        bgcolor: 'rgba(255, 255, 255, 0.04)',
         border: '1px solid rgba(255, 255, 255, 0.22)',
         backdropFilter: 'blur(8px)',
         boxShadow: '0 24px 60px rgba(6, 18, 43, 0.35)',
@@ -100,7 +100,7 @@ export default function GroupPlan() {
                       pr: 1.25,
                       py: 0.5,
                       borderRadius: '999px',
-                      bgcolor: 'rgba(255, 255, 255, 0.12)',
+                      bgcolor: 'rgba(255, 255, 255, 0.06)',
                       border: '1px solid rgba(255, 255, 255, 0.24)',
                       opacity: play ? 1 : 0,
                       animation: play ? `${popIn} 500ms ease ${600 + k * 220}ms both` : 'none',

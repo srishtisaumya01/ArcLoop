@@ -154,7 +154,7 @@ async function auditPage(page) {
     const total = await page.evaluate(() => document.documentElement.scrollHeight)
     let pending = [...onImage]
     for (let y = 0; y < total && pending.length; y += (height - 2 * pad) / 2) {
-      const top = await page.evaluate(async (to) => { window.scrollTo(0, to); await new Promise((r) => setTimeout(r, 200)); return window.scrollY }, y)
+      const top = await page.evaluate(async (to) => { window.scrollTo(0, to); await new Promise((r) => setTimeout(r, 350)); return window.scrollY }, y)
       const here = pending.filter((it) => it.y >= (top === 0 ? 0 : top + pad) && it.y + it.h <= top + height - pad)
       if (!here.length) continue
       pending = pending.filter((it) => !here.includes(it))
@@ -184,6 +184,7 @@ for (const dark of [false, true]) {
         await page.emulateMedia({ colorScheme: dark ? 'dark' : 'light', reducedMotion: 'reduce' })
         await page.goto(path)
         await page.waitForLoadState('networkidle')
+        await expect(page.locator('h1').first()).toBeVisible()
         await settle(page)
         expect(await auditPage(page), `${name} (${dark ? 'dark' : 'light'})`).toEqual([])
       })
@@ -243,6 +244,7 @@ test.describe('reflow and focus', () => {
     await page.emulateMedia({ reducedMotion: 'reduce' })
     await page.goto('/app/day')
     await page.waitForLoadState('networkidle')
+    await expect(page.locator('.MuiCircularProgress-indeterminate')).toHaveCount(0) // a spinner while the day loads is not decoration: wait for it to go
     const running = await page.evaluate(() => document.getAnimations().filter((a) => a.playState === 'running' && a.effect?.getTiming().iterations === Infinity).length)
     expect(running).toBe(0)
   })
@@ -257,6 +259,7 @@ test.describe('Hindi', () => {
       await page.goto(path)
       await page.waitForLoadState('networkidle')
       await expect(page.locator('html')).toHaveAttribute('lang', 'hi')
+      await expect(page.locator('h1').first()).toBeVisible()
       await settle(page)
       expect(await auditPage(page), `${name} (Hindi)`).toEqual([])
       await expectNoHorizontalScroll(page)
