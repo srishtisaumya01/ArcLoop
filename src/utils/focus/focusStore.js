@@ -5,6 +5,7 @@ import { restoreSession } from './focusSession.js'
 
 const activeKey = (userId) => `arcloop.focus.active.${userId}`
 const logKey = (userId) => `arcloop.focus.log.${userId}`
+const seenKey = (userId) => `arcloop.focus.seen.${userId}`
 const MAX_RECORDS = 200
 
 const defaultStorage = () => {
@@ -37,8 +38,28 @@ export function writeActive(userId, session, storage = defaultStorage()) {
 export function clearActive(userId, storage = defaultStorage()) {
   try {
     storage?.removeItem(activeKey(userId))
+    storage?.removeItem(seenKey(userId))
   } catch {
     // Not remembered.
+  }
+}
+
+// When the running timer was last looked at in ANY tab of this person (the tab that is showing it writes this every few seconds). A tab
+// that was frozen for a while uses it to tell "the timer was not running" from "another tab kept it running".
+export function readSeen(userId, storage = defaultStorage()) {
+  try {
+    const value = Number(storage?.getItem(seenKey(userId)))
+    return Number.isFinite(value) && value > 0 ? value : null
+  } catch {
+    return null
+  }
+}
+
+export function writeSeen(userId, now, storage = defaultStorage()) {
+  try {
+    storage?.setItem(seenKey(userId), String(now))
+  } catch {
+    // Not remembered: a second tab may then ask about a gap that was not one.
   }
 }
 

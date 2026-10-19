@@ -15,7 +15,7 @@ const TASK = { id: 't1', planDate: '2026-03-10', title: 'Write the report' }
 const session = (over = {}) => ({ v: 1, id: 's1', taskId: 't1', planDate: '2026-03-10', title: 'Write the report', plannedMs: 25 * MIN, status: 'running', startedAt: T0, segmentStartedAt: T0, accumulatedMs: 0, pausedAt: null, ...over })
 const focusValue = (over = {}) => ({
   ready: true, session: null, now: T0 + 10 * MIN, result: null, log: [],
-  refresh: vi.fn(), start: vi.fn().mockReturnValue({ ok: true }), pause: vi.fn(), resume: vi.fn(), end: vi.fn(), dismissResult: vi.fn(), ...over,
+  refresh: vi.fn(), look: vi.fn(), keepGap: vi.fn(), dropGap: vi.fn(), start: vi.fn().mockReturnValue({ ok: true }), pause: vi.fn(), resume: vi.fn(), end: vi.fn(), dismissResult: vi.fn(), ...over,
 })
 function renderPanel({ focus = focusValue(), target = null, ...rest } = {}) {
   const props = { focus, target, viewDate: '2026-03-10', onClearTarget: vi.fn(), canMarkDone: () => true, onMarkDone: vi.fn(), ...rest }
@@ -56,6 +56,21 @@ describe('choosing a length', () => {
     await user.click(screen.getByRole('button', { name: 'Start focus' }))
     expect(screen.getByRole('alert')).toHaveTextContent('already running')
     expect(onClearTarget).not.toHaveBeenCalled()
+  })
+})
+
+describe('keyboard focus', () => {
+  it('moves to the heading when a task is chosen, so the panel is reached and brought into view', () => {
+    renderPanel({ target: TASK })
+    expect(screen.getByRole('heading', { name: 'Focus on “Write the report”' })).toHaveFocus()
+  })
+
+  it('does not take focus when the page opens on a running session, a paused one or a summary', () => {
+    const { unmount } = render(h(ThemeProvider, { theme }, h(FocusTimer, { focus: focusValue({ session: session() }), target: null, viewDate: '2026-03-10', onClearTarget: vi.fn(), canMarkDone: () => true, onMarkDone: vi.fn() })))
+    expect(document.body).toHaveFocus()
+    unmount()
+    renderPanel({ focus: focusValue({ result: { id: 's1', taskId: 't1', planDate: '2026-03-10', title: 'Write the report', plannedMs: 25 * MIN, focusedMs: 25 * MIN, outcome: 'completed', startedAt: T0, endedAt: T0 + 25 * MIN } }) })
+    expect(document.body).toHaveFocus()
   })
 })
 
@@ -117,6 +132,48 @@ describe('the countdown', () => {
     act(() => { vi.advanceTimersByTime(60 * 1000) })
     expect(screen.getByRole('timer', { name: 'Time left' })).toHaveTextContent('15:00')
     expect(focus.refresh).not.toHaveBeenCalled()
+  })
+})
+
+describe('a gap in the timer', () => {
+  afterEach(() => vi.useRealTimers())
+  const gapSession = () => session({ gapFrom: T0 + 10 * MIN })
+
+  it('asks the person, plainly, when the timer was not running for a while, and counts nothing until they answer', async () => {
+    const user = userEvent.setup()
+    const { focus } = renderPanel({ focus: focusValue({ session: gapSession(), now: T0 + 40 * MIN }) })
+    expect(screen.getByRole('alert')).toHaveTextContent('The timer wasn’t running for about 30 minutes.')
+    expect(screen.getByRole('alert')).toHaveTextContent('The computer may have slept, or this page was inactive.')
+    expect(screen.getByRole('timer', { name: 'Time left' })).toHaveTextContent('15:00') // 25 planned, 10 seen: the clock stands still
+    expect(screen.getByRole('status')).toHaveTextContent('Waiting for your answer.')
+    await user.click(screen.getByRole('button', { name: 'Yes, count that time' }))
+    expect(focus.keepGap).toHaveBeenCalledTimes(1)
+    await user.click(screen.getByRole('button', { name: 'No, don’t count it' }))
+    expect(focus.dropGap).toHaveBeenCalledTimes(1)
+  })
+
+  it('still offers Pause and End session while it waits', () => {
+    renderPanel({ focus: focusValue({ session: gapSession(), now: T0 + 40 * MIN }) })
+    expect(screen.getByRole('button', { name: 'Pause' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'End session' })).toBeInTheDocument()
+  })
+
+  it('shows no question when nothing was missed', () => {
+    renderPanel({ focus: focusValue({ session: session() }) })
+    expect(screen.queryByRole('alert')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Yes, count that time' })).toBeNull()
+  })
+
+  it('looks at the timer every second, so the hook can notice a gap, and does not look while paused', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(T0 + 5 * MIN)
+    const { focus } = renderPanel({ focus: focusValue({ session: session(), now: T0 + 5 * MIN }) })
+    act(() => { vi.advanceTimersByTime(3000) })
+    expect(focus.look).toHaveBeenCalledTimes(3)
+    const paused = session({ status: 'paused', segmentStartedAt: null, accumulatedMs: 5 * MIN, pausedAt: T0 + 5 * MIN })
+    const other = renderPanel({ focus: focusValue({ session: paused, now: T0 + 5 * MIN }) })
+    act(() => { vi.advanceTimersByTime(3000) })
+    expect(other.focus.look).not.toHaveBeenCalled()
   })
 })
 

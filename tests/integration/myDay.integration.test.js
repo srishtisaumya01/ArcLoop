@@ -1025,10 +1025,10 @@ describe('The focus timer on My Day', () => {
     const before = await occurrence('Read')
     renderSignedIn()
     await user.click(await screen.findByRole('button', { name: 'Focus on Read' }))
-    expect(screen.getByRole('heading', { name: 'Focus on “Read”' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Focus on “Read”' })).toHaveFocus() // the button that was used is gone: focus follows to the panel
     await user.click(screen.getByRole('button', { name: '15 minutes' }))
     await user.click(screen.getByRole('button', { name: 'Start focus' }))
-    expect(await screen.findByRole('heading', { name: 'Focusing on “Read”' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Focusing on “Read”' })).toHaveFocus()
     expect(screen.getByRole('timer', { name: 'Time left' })).toHaveTextContent(/^1[45]:\d\d$/)
     expect(screen.getByText('Focusing')).toBeInTheDocument() // marked on the task's own row
     await user.click(screen.getByRole('button', { name: 'Pause' }))
@@ -1037,7 +1037,7 @@ describe('The focus timer on My Day', () => {
     expect(screen.getByText(/^Running\./)).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'End session' }))
     await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'End session' }))
-    expect(await screen.findByRole('heading', { name: 'Session ended early' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Session ended early' })).toHaveFocus()
     expect(box('Read')).not.toBeChecked() // the timer did not complete the task
     expect(await occurrence('Read')).toMatchObject({ id: before.id, completion: 0, planState: 'active', isPriority: true })
   })
@@ -1053,6 +1053,7 @@ describe('The focus timer on My Day', () => {
     first.unmount() // a reload
     renderSignedIn()
     expect(await screen.findByRole('heading', { name: 'Focusing on “Read”' })).toBeInTheDocument()
+    expect(document.body).toHaveFocus() // a page that opens on a running session does not grab focus
     expect(screen.getByRole('timer', { name: 'Time left' })).toHaveTextContent(/^4[45]:\d\d$/)
     expect(screen.getByText('Running. 45 minutes session.')).toBeInTheDocument()
   })
@@ -1096,5 +1097,111 @@ describe('The focus timer on My Day', () => {
     renderSignedIn()
     expect(await screen.findByLabelText('Focus time on this day')).toHaveTextContent('35 minutes in 2 sessions')
     expect(screen.getByText(/35 min focused/)).toBeInTheDocument()
+  })
+})
+
+describe('Planning help: quick times and the schedule check', () => {
+  const idOf = async (title) => (await occurrence(title)).id
+
+  it('giving a task a time moves it into the schedule and changes nothing else about it', async () => {
+    const user = setupUser()
+    await service.createTask(TODAY, { title: 'Gym', plannedStart: '17:00' })
+    await service.createTask(TODAY, { title: 'Read', isPriority: true, estimatedMinutes: 30, category: 'Study', description: 'Chapter 3' })
+    const before = await occurrence('Read')
+    await service.setCompletion(before.id, 0.5)
+    renderDay()
+    await user.click(await screen.findByRole('button', { name: 'Set a time for Read' }))
+    await user.type(screen.getByLabelText('Start time'), '14:00')
+    await user.click(screen.getByRole('button', { name: 'Save time' }))
+    const scheduled = await screen.findByRole('list', { name: 'Scheduled tasks' })
+    await waitFor(() => expect(within(scheduled).getAllByRole('checkbox').map((c) => c.getAttribute('aria-label'))).toEqual(['Done: Read', 'Done: Gym']))
+    expect(await screen.findByText('“Read” is now at 14:00.')).toBeInTheDocument()
+    expect(await occurrence('Read')).toMatchObject({ id: before.id, planDate: TODAY, completion: 0.5, isPriority: true, estimatedMinutes: 30, category: 'Study', description: 'Chapter 3', plannedStart: '14:00', plannedEnd: null, planState: 'active' })
+  })
+
+  it('the 15 minute buttons move the whole block, saving each time, and the task stays where it is in the list', async () => {
+    const user = setupUser()
+    await service.createTask(TODAY, { title: 'Gym', plannedStart: '17:00', plannedEnd: '18:00' })
+    renderDay()
+    await user.click(await screen.findByRole('button', { name: 'Change the time of Gym' }))
+    await user.click(screen.getByRole('button', { name: 'Move Gym 15 minutes later' }))
+    await waitFor(async () => expect(await occurrence('Gym')).toMatchObject({ plannedStart: '17:15', plannedEnd: '18:15' }))
+    await user.click(await screen.findByRole('button', { name: 'Move Gym 15 minutes earlier' }))
+    await user.click(await screen.findByRole('button', { name: 'Move Gym 15 minutes earlier' }))
+    await waitFor(async () => expect(await occurrence('Gym')).toMatchObject({ plannedStart: '16:45', plannedEnd: '17:45' }))
+    expect(await screen.findByText('“Gym” is now at 16:45 to 17:45.')).toBeInTheDocument()
+  })
+
+  it('removing the time moves the task back to the ones with no time, with its id and progress kept', async () => {
+    const user = setupUser()
+    await service.createTask(TODAY, { title: 'Report', plannedStart: '09:00', plannedEnd: '10:00', isPriority: true })
+    await service.createTask(TODAY, { title: 'Gym', plannedStart: '17:00' })
+    const before = await occurrence('Report')
+    await service.setCompletion(before.id, 0.5)
+    renderDay()
+    await user.click(await screen.findByRole('button', { name: 'Change the time of Report' }))
+    await user.click(screen.getByRole('button', { name: 'Remove the time' }))
+    const anytime = await screen.findByRole('list', { name: 'Unscheduled tasks' })
+    expect(within(anytime).getByRole('checkbox', { name: 'Done: Report' })).toBeInTheDocument()
+    expect(await screen.findByText('“Report” no longer has a time.')).toBeInTheDocument()
+    expect(await occurrence('Report')).toMatchObject({ id: before.id, completion: 0.5, isPriority: true, plannedStart: null, plannedEnd: null })
+  })
+
+  it('shows the planner’s own message when the times are not allowed, and saves nothing', async () => {
+    const user = setupUser()
+    await service.createTask(TODAY, { title: 'Read' })
+    renderDay()
+    await user.click(await screen.findByRole('button', { name: 'Set a time for Read' }))
+    await user.type(screen.getByLabelText('Start time'), '10:00')
+    await user.type(screen.getByLabelText('End time (optional)'), '09:00')
+    await user.click(screen.getByRole('button', { name: 'Save time' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('The end time needs to be after the start time.')
+    expect(await occurrence('Read')).toMatchObject({ plannedStart: null, plannedEnd: null })
+  })
+
+  it('points out two tasks that overlap, without changing either, and the note goes when one is moved clear', async () => {
+    const user = setupUser()
+    await service.createTask(TODAY, { title: 'Dentist', plannedStart: '09:00', plannedEnd: '09:45' })
+    await service.createTask(TODAY, { title: 'Call mum', plannedStart: '09:30', plannedEnd: '10:00' })
+    renderDay()
+    const note = await screen.findByRole('region', { name: 'Schedule check' })
+    expect(note).toHaveTextContent('“Dentist” (09:00 to 09:45) overlaps “Call mum” (09:30 to 10:00).')
+    expect(await occurrence('Dentist')).toMatchObject({ plannedStart: '09:00', plannedEnd: '09:45' }) // nothing changed by showing it
+    await user.click(screen.getByRole('button', { name: 'Change the time of Call mum' }))
+    await user.click(screen.getByRole('button', { name: 'Move Call mum 15 minutes later' }))
+    await waitFor(() => expect(screen.queryByRole('region', { name: 'Schedule check' })).toBeNull()) // 09:45 to 10:15 only touches the dentist's end
+    expect(await occurrence('Call mum')).toMatchObject({ plannedStart: '09:45', plannedEnd: '10:15' })
+  })
+
+  it('“Not now” hides the note for the day and it stays hidden when the day is opened again', async () => {
+    const user = setupUser()
+    await service.createTask(TODAY, { title: 'Dentist', plannedStart: '09:00', plannedEnd: '09:45' })
+    await service.createTask(TODAY, { title: 'Call mum', plannedStart: '09:30', plannedEnd: '10:00' })
+    const first = renderDay()
+    await screen.findByRole('region', { name: 'Schedule check' })
+    await user.click(screen.getByRole('button', { name: 'Not now' }))
+    expect(screen.queryByRole('region', { name: 'Schedule check' })).toBeNull()
+    first.unmount()
+    renderDay()
+    await screen.findByRole('list', { name: 'Scheduled tasks' })
+    expect(screen.queryByRole('region', { name: 'Schedule check' })).toBeNull()
+  })
+
+  it('points out a day that holds more than a day can, and offers nothing automatic', async () => {
+    for (const title of ['Project A', 'Project B', 'Project C']) await service.createTask(TODAY, { title, estimatedMinutes: 360 }) // 18 hours in all
+    renderDay()
+    const note = await screen.findByRole('region', { name: 'Schedule check' })
+    expect(note).toHaveTextContent('About 18 h of tasks')
+    expect(note).toHaveTextContent('Moving')
+    expect(await occurrence('Project A')).toMatchObject({ estimatedMinutes: 360, planState: 'active' }) // nothing was moved or removed
+  })
+
+  it('says nothing about a day that fits', async () => {
+    await service.createTask(TODAY, { title: 'Dentist', plannedStart: '09:00', plannedEnd: '09:45' })
+    await service.createTask(TODAY, { title: 'Call mum', plannedStart: '10:00', plannedEnd: '10:30' })
+    renderDay()
+    await screen.findByRole('list', { name: 'Scheduled tasks' })
+    expect(screen.queryByRole('region', { name: 'Schedule check' })).toBeNull()
+    expect(await idOf('Dentist')).toBeTruthy()
   })
 })

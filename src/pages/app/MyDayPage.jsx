@@ -7,6 +7,8 @@ import StatePanel from '../../components/common/StatePanel.jsx'
 import TaskRow from '../../components/planner/TaskRow.jsx'
 import DaySchedule from '../../components/planner/DaySchedule.jsx'
 import FocusTimer from '../../components/planner/FocusTimer.jsx'
+import ScheduleNotice from '../../components/planner/ScheduleNotice.jsx'
+import { checkSchedule } from '../../components/planner/scheduleChecks.js'
 import QuickAddTask from '../../components/planner/QuickAddTask.jsx'
 import { formatDay, weekdayName } from '../../components/planner/weekFormat.js'
 import { AuthContext } from '../../context/authContext.js'
@@ -67,6 +69,7 @@ export default function MyDayPage() {
   const [undoError, setUndoError] = useState('')
   const undoing = useRef(false) // a second press while one is in flight does nothing
   const focus = useFocusSession(useContext(AuthContext)?.user?.id) // without a signed-in person the focus timer is simply not offered
+  const [timeNotice, setTimeNotice] = useState(null) // what the last time change did, read out politely: the task may jump to another list
   const [focusTarget, setFocusTarget] = useState(null) // the task whose Focus button was pressed, until its session starts or is cancelled
   const clock = useNow(undefined, 60000) // the time of day for "Now" and "Next up", to the minute
   const noticeCount = useRef(0)
@@ -99,6 +102,7 @@ export default function MyDayPage() {
   const returning = useRecoveryStatus(plan, access === 'today')
   const [welcomeDismissed, dismissWelcome] = useDismissible(`welcomeBack:${plan?.today ?? 'none'}`)
   const active = plan?.occurrences.filter((o) => o.planState === 'active') ?? []
+  const scheduleChecks = checkSchedule({ tasks: active, nowMinutes })
   const setAside = plan?.occurrences.filter((o) => o.planState === 'excluded') ?? []
   const summary = plan?.summary
   const mode = plan?.day?.dayMode ?? 'normal'
@@ -108,6 +112,16 @@ export default function MyDayPage() {
   const noticeTask = undo && plan ? plan.occurrences.find((o) => o.id === (undo.occurrenceId ?? undo.sourceId)) : null
   const stillCurrent = undo?.kind === 'move' ? noticeTask?.planState === 'excluded' && noticeTask.excludedReason === 'rescheduled' : noticeTask?.completion === undo?.from
   const activeUndo = undo && undo.planDate === target && stillCurrent ? undo : null
+
+  // Giving, changing or removing a task's time: only the times go to the planner, which merges them into the task and validates them.
+  const setTime = async (task, times) => {
+    const outcome = await run((s) => s.updateOccurrence(task.id, times))
+    if (outcome.ok) {
+      const when = times.plannedStart ? `${times.plannedStart}${times.plannedEnd ? ` to ${times.plannedEnd}` : ''}` : null
+      setTimeNotice({ planDate: target, text: when ? `“${task.title}” is now at ${when}.` : `“${task.title}” no longer has a time.` })
+    }
+    return outcome
+  }
 
   const complete = async (task, value) => {
     const outcome = await perform((s) => s.setCompletion(task.id, value))
@@ -237,11 +251,14 @@ export default function MyDayPage() {
               {plan.exists && active.length === 0 && setAside.length === 0 && (
                 <StatePanel icon={CalendarCheck} title="No tasks on this day" text={canEdit ? 'Add a task below, or enjoy the open day.' : 'There were no tasks on this day.'} />
               )}
+              {canEdit && active.length > 0 && <ScheduleNotice date={target} checks={scheduleChecks} />}
+              {timeNotice?.planDate === target && <Typography role="status" variant="body2" color="text.secondary" sx={{ mb: 1 }}>{timeNotice.text}</Typography>}
               {active.length > 0 && (
                 <DaySchedule tasks={active} nowMinutes={nowMinutes} renderTask={(task, marker) => (
                   <TaskRow key={task.id} task={task} canRecord={canRecord} canEdit={canEdit} busy={busy}
                     marker={marker} focusing={focus.session?.taskId === task.id} focusLocked={Boolean(focus.session)} focusedMs={focused.get(task.id)}
                     onFocus={access === 'today' && focus.ready ? setFocusTarget : undefined}
+                    onSetTime={setTime}
                     onCompletion={complete} moveRange={moveRange}
                     onSetAside={(t) => perform((s) => s.setAside(t.id, mode === 'rest' ? 'rest_day' : 'busy_day'))}
                     onRestore={(t) => perform((s) => s.restore(t.id))}

@@ -118,15 +118,73 @@ test.describe('The focus timer', () => {
     await expect(page.getByRole('heading', { name: /^Focus on “/ })).toHaveCount(0)
   })
 
+  // `fastForward` jumps the clock without running the seconds in between: what a computer going to sleep looks like to the page.
+  const gapNotice = (page) => page.getByRole('alert').filter({ hasText: 'The timer wasn’t running' })
+
+  test('a long silence (the computer asleep) is not counted until the person says so: “No” leaves it out', async ({ page }) => {
+    await day(page)
+    await begin(page, 'Morning walk', 45)
+    await page.clock.runFor('05:00')
+    await expect(timer(page)).toHaveText('40:00')
+    await page.clock.fastForward('30:00')
+    await expect(gapNotice(page)).toContainText('about 30 minutes')
+    await expect(timer(page)).toHaveText('40:00') // the clock stood still at what was seen
+    await expect(page.getByRole('heading', { name: 'Session complete' })).toHaveCount(0)
+    await page.getByRole('button', { name: 'No, don’t count it' }).click()
+    await expect(gapNotice(page)).toHaveCount(0)
+    await expect(timer(page)).toHaveText('40:00')
+    await page.clock.runFor('01:00')
+    await expect(timer(page)).toHaveText('39:00')
+  })
+
+  test('“Yes” counts the silence as focus', async ({ page }) => {
+    await day(page)
+    await begin(page, 'Morning walk', 45)
+    await page.clock.runFor('05:00')
+    await page.clock.fastForward('30:00')
+    await expect(gapNotice(page)).toBeVisible()
+    await page.getByRole('button', { name: 'Yes, count that time' }).click()
+    await expect(gapNotice(page)).toHaveCount(0)
+    await expect(timer(page)).toHaveText('10:00') // 45 minutes planned, 35 passed
+  })
+
+  test('sleeping through the whole session does not quietly complete it', async ({ page }) => {
+    await day(page)
+    await begin(page, 'Morning walk', 15)
+    await page.clock.runFor('02:00')
+    await page.clock.fastForward('01:00:00')
+    await expect(gapNotice(page)).toContainText('about 60 minutes')
+    await expect(page.getByRole('heading', { name: 'Session complete' })).toHaveCount(0)
+    await expect(page.getByLabel('Focus time on this day')).toHaveCount(0) // nothing recorded
+    await page.getByRole('button', { name: 'No, don’t count it' }).click()
+    await expect(timer(page)).toHaveText('13:00')
+  })
+
+  test('the question is still there after a reload, and ending then keeps only the time that was seen', async ({ page }) => {
+    await day(page)
+    await begin(page, 'Morning walk', 45)
+    await page.clock.runFor('05:00')
+    await page.clock.fastForward('30:00')
+    await expect(gapNotice(page)).toBeVisible()
+    await page.reload()
+    await expect(gapNotice(page)).toContainText('about 30 minutes')
+    await expect(timer(page)).toHaveText('40:00')
+    await page.getByRole('button', { name: 'End session' }).click()
+    await page.getByRole('dialog').getByRole('button', { name: 'End session' }).click()
+    await expect(page.getByText('You focused for 5 minutes on “Morning walk”. That still counts.')).toBeVisible()
+  })
+
   test('works from the keyboard', async ({ page }) => {
     await day(page)
     await focusOn(page, 'Morning walk').focus()
     await page.keyboard.press('Enter')
+    await expect(page.getByRole('heading', { name: 'Focus on “Morning walk”' })).toBeFocused() // the pressed button is gone: focus follows to the panel
     await page.getByRole('button', { name: '45 minutes', exact: true }).focus()
     await page.keyboard.press('Enter')
     await expect(page.getByRole('button', { name: '45 minutes', exact: true })).toHaveAttribute('aria-pressed', 'true')
     await page.getByRole('button', { name: 'Start focus' }).focus()
     await page.keyboard.press('Enter')
+    await expect(page.getByRole('heading', { name: 'Focusing on “Morning walk”' })).toBeFocused()
     await expect(timer(page)).toHaveText('45:00')
     await page.getByRole('button', { name: 'Pause' }).focus()
     await page.keyboard.press('Enter')
