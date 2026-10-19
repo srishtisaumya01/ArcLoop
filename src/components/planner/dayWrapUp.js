@@ -3,15 +3,17 @@
 // What happened to the day's planned tasks (set-aside, moved and removed ones are not part of it):
 //   done: ticked off    open: not done (partly done ones included)    partly: open with some progress
 //   carryable: open one-off tasks, which can be carried to tomorrow    repeating: open repeating tasks, which come back on their own days
-export function wrapUpOf(occurrences) {
+// A task made once also has a template (recurrence "once"), so a task's `templateId` does not say whether it repeats: `repeatingTemplateIds`
+// is the set of ids of the person's templates that really repeat.
+export function wrapUpOf(occurrences, repeatingTemplateIds = new Set()) {
   const planned = occurrences.filter((o) => o.planState === 'active')
   const open = planned.filter((o) => o.completion < 1)
   return {
     done: planned.filter((o) => o.completion >= 1),
     open,
     partly: open.filter((o) => o.completion > 0),
-    carryable: open.filter((o) => !o.templateId),
-    repeating: open.filter((o) => o.templateId),
+    carryable: open.filter((o) => !repeatingTemplateIds.has(o.templateId)),
+    repeating: open.filter((o) => repeatingTemplateIds.has(o.templateId)),
   }
 }
 

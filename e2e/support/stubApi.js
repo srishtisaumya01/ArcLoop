@@ -20,10 +20,10 @@ const clone = (value) => JSON.parse(JSON.stringify(value))
 
 export function seedData() {
   let n = 100
-  const tpl = (id, o) => ({ id: uid(id), user_id: USER_ID, description: null, category: null, is_priority: false, planned_start: null, planned_end: null, estimated_minutes: null, weekdays: null, ends_on: null, archived_at: null, created_at: '2026-03-01T00:00:00Z', starts_on: '2026-03-01', recurrence: 'daily', ...o })
+  const tpl = (id, o) => ({ id: uid(id), user_id: USER_ID, description: null, category: null, is_priority: false, priority_level: 'medium', planned_start: null, planned_end: null, estimated_minutes: null, weekdays: null, ends_on: null, archived_at: null, created_at: '2026-03-01T00:00:00Z', starts_on: '2026-03-01', recurrence: 'daily', ...o })
   const occ = (templateId, date, title, completion = 0, o = {}) => ({
     id: uid((n += 1)), user_id: USER_ID, template_id: templateId ? uid(templateId) : null, plan_date: date, title, description: null, category: null,
-    is_priority: false, planned_start: null, planned_end: null, estimated_minutes: null, completion, completed_at: completion > 0 ? `${date}T20:00:00Z` : null,
+    is_priority: false, priority_level: 'medium', planned_start: null, planned_end: null, estimated_minutes: null, completion, completed_at: completion > 0 ? `${date}T20:00:00Z` : null,
     plan_state: 'active', excluded_reason: null, excluded_at: null, rescheduled_from_id: null, in_original_plan: true, is_customized: false, is_minimum: false,
     created_at: `${date}T08:00:00Z`, ...o,
   })
@@ -47,7 +47,7 @@ export function seedData() {
       occ(1, '2026-03-09', 'Morning walk', 0), read('2026-03-09', 0),
       occ(1, TODAY, 'Morning walk', 0), read(TODAY, 0),
       occ(3, TODAY, 'Gym session', 0, { planned_start: '18:00:00', estimated_minutes: 60 }),
-      occ(null, TODAY, 'Call the dentist', 0, { is_priority: true, planned_start: '09:00:00', estimated_minutes: 15 }),
+      occ(null, TODAY, 'Call the dentist', 0, { is_priority: true, priority_level: 'high', planned_start: '09:00:00', estimated_minutes: 15 }),
     ],
     reminder_preferences: [],
     task_reminders: [],
@@ -63,9 +63,9 @@ const RESOURCES = {
 }
 
 const DEFAULTS = {
-  task_templates: () => ({ id: null, description: null, category: null, is_priority: false, planned_start: null, planned_end: null, estimated_minutes: null, weekdays: null, ends_on: null, archived_at: null, created_at: NOW_ISO }),
+  task_templates: () => ({ id: null, description: null, category: null, is_priority: false, priority_level: 'medium', planned_start: null, planned_end: null, estimated_minutes: null, weekdays: null, ends_on: null, archived_at: null, created_at: NOW_ISO }),
   day_plans: () => ({ day_mode: 'normal', baseline_at: null, suppressed_template_ids: [] }),
-  task_occurrences: () => ({ id: null, template_id: null, description: null, category: null, is_priority: false, planned_start: null, planned_end: null, estimated_minutes: null, completion: 0, completed_at: null, plan_state: 'active', excluded_reason: null, excluded_at: null, rescheduled_from_id: null, in_original_plan: true, is_customized: false, is_minimum: false, created_at: NOW_ISO }),
+  task_occurrences: () => ({ id: null, template_id: null, description: null, category: null, is_priority: false, priority_level: 'medium', planned_start: null, planned_end: null, estimated_minutes: null, completion: 0, completed_at: null, plan_state: 'active', excluded_reason: null, excluded_at: null, rescheduled_from_id: null, in_original_plan: true, is_customized: false, is_minimum: false, created_at: NOW_ISO }),
   reminder_preferences: () => ({ enabled: false, remind_time: '09:00:00', weekdays: [1, 2, 3, 4, 5, 6, 7], last_notified_on: '1970-01-01' }),
   task_reminders: () => ({ id: null, plan_date: null, notified_at: null, created_at: NOW_ISO }),
 }

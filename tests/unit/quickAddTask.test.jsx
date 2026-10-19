@@ -27,7 +27,7 @@ describe('Quick add (My Day)', () => {
     const { onAdd, input } = renderQuickAdd()
     await user.type(input, 'Call the dentist{Enter}')
     expect(onAdd).toHaveBeenCalledTimes(1)
-    expect(onAdd).toHaveBeenCalledWith({ title: 'Call the dentist', description: null, category: null, plannedStart: null, plannedEnd: null, estimatedMinutes: null, isPriority: false })
+    expect(onAdd).toHaveBeenCalledWith({ title: 'Call the dentist', description: null, category: null, plannedStart: null, plannedEnd: null, estimatedMinutes: null, priorityLevel: 'medium' })
     await waitFor(() => expect(input).toHaveValue(''))
   })
 

@@ -33,7 +33,7 @@ describe('payload builders emit only writable columns', () => {
   it('template insert / update', () => {
     expect(keys(templateInsertRow('u', template))).toEqual([...WRITABLE.templateInsert.filter((c) => c !== 'archived_at')].sort())
     expect(keys(templateUpdateRow(template))).toEqual([...WRITABLE.templateUpdate.filter((c) => c !== 'archived_at')].sort())
-    expect(templateInsertRow('u', template)).toMatchObject({ user_id: 'u', is_priority: true, weekdays: [1, 3], planned_start: '07:00' })
+    expect(templateInsertRow('u', template)).toMatchObject({ user_id: 'u', is_priority: true, priority_level: 'high', weekdays: [1, 3], planned_start: '07:00' })
   })
 
   it('occurrence insert ignores any state the draft carries (new rows start pending and active)', () => {
@@ -48,7 +48,9 @@ describe('payload builders emit only writable columns', () => {
     const details = occurrenceDetailsRow({ title: 'T', isPriority: true })
     expect(details.is_customized).toBe(true)
     expect(keys(details).every((c) => WRITABLE.occurrenceUpdate.includes(c))).toBe(true)
-    expect(occurrenceDiffRow({ title: 'New', plannedStart: null, bogus: 1, isPriority: true })).toEqual({ title: 'New', planned_start: null, is_priority: true })
+    expect(occurrenceDiffRow({ title: 'New', plannedStart: null, bogus: 1, priorityLevel: 'low' })).toEqual({ title: 'New', planned_start: null, is_priority: false, priority_level: 'low' })
+    expect(occurrenceDiffRow({ isPriority: true })).toEqual({ is_priority: true, priority_level: 'high' })
+    expect(occurrenceDiffRow({ title: 'Only' })).toEqual({ title: 'Only' })
   })
 
   it('day insert', () => {
@@ -56,10 +58,27 @@ describe('payload builders emit only writable columns', () => {
   })
 })
 
+describe('priority levels in rows', () => {
+  const base = { id: 'o', plan_date: '2026-03-10', title: 'T', completion: 0, plan_state: 'active' }
+  it('reads the level, and a row from before levels existed from its old flag', () => {
+    expect(occurrenceFromRow({ ...base, priority_level: 'low', is_priority: false })).toMatchObject({ priorityLevel: 'low', isPriority: false })
+    expect(occurrenceFromRow({ ...base, priority_level: 'high', is_priority: true })).toMatchObject({ priorityLevel: 'high', isPriority: true })
+    expect(occurrenceFromRow({ ...base, is_priority: true })).toMatchObject({ priorityLevel: 'high', isPriority: true })
+    expect(occurrenceFromRow({ ...base, is_priority: false })).toMatchObject({ priorityLevel: 'medium', isPriority: false })
+    expect(occurrenceFromRow({ ...base, priority_level: 'nonsense', is_priority: false })).toMatchObject({ priorityLevel: 'medium' })
+  })
+  it('writes both columns, always in step', () => {
+    expect(occurrenceDetailsRow({ title: 'T', priorityLevel: 'low' })).toMatchObject({ priority_level: 'low', is_priority: false })
+    expect(occurrenceDetailsRow({ title: 'T', priorityLevel: 'high' })).toMatchObject({ priority_level: 'high', is_priority: true })
+    expect(occurrenceDetailsRow({ title: 'T', isPriority: true })).toMatchObject({ priority_level: 'high', is_priority: true })
+    expect(occurrenceDetailsRow({ title: 'T' })).toMatchObject({ priority_level: 'medium', is_priority: false })
+  })
+})
+
 describe('row -> domain', () => {
   it('maps a template row, trimming PostgREST times to HH:MM', () => {
     const t = templateFromRow({ id: 'i', title: 'A', description: null, category: null, is_priority: true, planned_start: '07:00:00', planned_end: '08:30:00', estimated_minutes: 90, recurrence: 'weekly', weekdays: ['1', 3], starts_on: '2026-03-10', ends_on: null, archived_at: null, created_at: 'c' })
-    expect(t).toMatchObject({ id: 'i', isPriority: true, plannedStart: '07:00', plannedEnd: '08:30', estimatedMinutes: 90, weekdays: [1, 3], startsOn: '2026-03-10', endsOn: null })
+    expect(t).toMatchObject({ id: 'i', isPriority: true, priorityLevel: 'high', plannedStart: '07:00', plannedEnd: '08:30', estimatedMinutes: 90, weekdays: [1, 3], startsOn: '2026-03-10', endsOn: null })
   })
 
   it('maps an occurrence row, including numeric completion that arrives as a string', () => {

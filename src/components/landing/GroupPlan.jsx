@@ -79,7 +79,7 @@ export default function GroupPlan() {
           </Box>
           <Box sx={{ minWidth: 0, pt: 0.25, animation: play ? `${activeText} ${cycle}s ease-in-out ${i * STEP_SECONDS}s infinite` : 'none', ...noMotion }}>
             <Typography sx={{ fontWeight: 800 }}>
-              <Box component="span" sx={{ color: colors.mint300, mr: 1 }}>
+              <Box component="span" sx={{ color: '#C9FFE9', mr: 1 }}>
                 {i + 1}.
               </Box>
               {t(title)}
@@ -111,7 +111,7 @@ export default function GroupPlan() {
                       {m.name[0]}
                     </Box>
                     <Typography variant="body2" sx={{ fontWeight: 600, color: colors.textOnDark }}>
-                      {m.name} <Box component="span" sx={{ color: colors.textOnDarkMuted, fontWeight: 400 }}>@{m.username}</Box>
+                      {m.name} <Box component="span" sx={{ color: colors.textOnDark, fontWeight: 400 }}>@{m.username}</Box>
                     </Typography>
                   </Box>
                 ))}

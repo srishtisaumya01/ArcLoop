@@ -4,12 +4,13 @@ import { stampBaseline, suppressTemplate } from './dayModes.js'
 import { ERR, PlannerError } from './errors.js'
 import { occursOn } from './recurrence.js'
 import { SNAPSHOT_FIELDS } from './templates.js'
+import { levelOf } from './priority.js'
 import { assertCompletion } from './progress.js'
 import { assertCanRecordProgress, assertEditableDate } from './window.js'
 
 // Occurrence = one task on one local date, holding its own snapshot of the
 // task details plus completion and plan state. Shape:
-//   { id, templateId, planDate, title, description, category, isPriority,
+//   { id, templateId, planDate, title, description, category, isPriority, priorityLevel,
 //     plannedStart, plannedEnd, estimatedMinutes, completion, completedAt,
 //     planState, excludedReason, excludedAt, rescheduledFromId,
 //     inOriginalPlan, isCustomized, createdAt }
@@ -40,7 +41,8 @@ export function createOccurrenceDraft(template, planDate, day) {
     isCustomized: false,
   }
   for (const field of SNAPSHOT_FIELDS) draft[field] = template[field] ?? null
-  draft.isPriority = Boolean(template.isPriority)
+  draft.priorityLevel = levelOf(template)
+  draft.isPriority = draft.priorityLevel === 'high'
   return draft
 }
 
@@ -66,7 +68,8 @@ export const expectedTaskView = (t, planDate) => ({
   title: t.title,
   description: t.description ?? null,
   category: t.category ?? null,
-  isPriority: Boolean(t.isPriority),
+  isPriority: levelOf(t) === 'high',
+  priorityLevel: levelOf(t),
   plannedStart: t.plannedStart ?? null,
   plannedEnd: t.plannedEnd ?? null,
   estimatedMinutes: t.estimatedMinutes ?? null,

@@ -8,14 +8,14 @@ export const uuid = () => `00000000-0000-4000-8000-${String(++seq).padStart(12, 
 const clone = (v) => JSON.parse(JSON.stringify(v))
 
 export const occRow = (o = {}) => ({
-  id: uuid(), template_id: null, plan_date: '2026-03-10', title: 'Task', description: null, category: null, is_priority: false,
+  id: uuid(), template_id: null, plan_date: '2026-03-10', title: 'Task', description: null, category: null, is_priority: false, priority_level: 'medium',
   planned_start: null, planned_end: null, estimated_minutes: null, completion: 0, completed_at: null, plan_state: 'active',
   excluded_reason: null, excluded_at: null, rescheduled_from_id: null, in_original_plan: true, is_customized: false, is_minimum: false,
   created_at: '2026-03-10T08:00:00+00:00', ...o,
 })
 export const dayRow = (o = {}) => ({ plan_date: '2026-03-10', day_mode: 'normal', baseline_at: null, suppressed_template_ids: [], ...o })
 export const tplRow = (o = {}) => ({
-  id: uuid(), title: 'Walk', description: null, category: null, is_priority: false, planned_start: null, planned_end: null,
+  id: uuid(), title: 'Walk', description: null, category: null, is_priority: false, priority_level: 'medium', planned_start: null, planned_end: null,
   estimated_minutes: null, recurrence: 'daily', weekdays: null, starts_on: '2026-01-01', ends_on: null, archived_at: null,
   created_at: '2026-01-01T00:00:00+00:00', ...o,
 })

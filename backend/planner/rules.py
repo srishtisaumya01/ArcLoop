@@ -62,8 +62,26 @@ def validate_weekdays(days):
     )
 
 
+PRIORITY_LEVELS = ('high', 'medium', 'low')
+
+
+def sync_priority(obj, values):
+    """The two spellings of priority never disagree. `priority_level` (high, medium, low) is the one to use; `is_priority` stays for older
+    clients and means "high". `values` is what the client sent: if it sent the level, the level wins; if it sent only the old flag, that is
+    turned into a level (turning it off leaves a low level alone and lowers high to medium)."""
+    if 'priority_level' in values:
+        obj.is_priority = obj.priority_level == 'high'
+    elif 'is_priority' in values:
+        if obj.is_priority:
+            obj.priority_level = 'high'
+        elif obj.priority_level == 'high':
+            obj.priority_level = 'medium'
+
+
 def validate_task_fields(obj):
     """Shared by templates and occurrences (the CHECK constraints of both tables)."""
+    if obj.priority_level not in PRIORITY_LEVELS:
+        raise constraint_violation(fields={'priority_level': 'Choose High, Medium or Low.'})
     if not _length(obj.title, 1, 120):
         raise constraint_violation(fields={'title': 'Use 1 to 120 characters.'})
     if obj.description is not None and len(obj.description) > 1000:

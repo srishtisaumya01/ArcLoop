@@ -1205,3 +1205,263 @@ describe('Planning help: quick times and the schedule check', () => {
     expect(await idOf('Dentist')).toBeTruthy()
   })
 })
+
+describe('Wrap up the day', () => {
+  const TOMORROW = '2026-03-11'
+  const onDay = async (date, title) => (await service.getDayPlan(date)).occurrences.find((o) => o.title === title)
+  const openWrapUp = async (user) => {
+    await user.click(await screen.findByRole('button', { name: 'Look back on the day' }))
+    await waitFor(() => expect(screen.queryByText(/One moment/)).toBeNull()) // the panel first asks which of the tasks really repeat
+  }
+  async function seedDay() {
+    await service.createTask(TODAY, { title: 'Read' })
+    await service.createTask(TODAY, { title: 'Walk', isPriority: true, estimatedMinutes: 20, category: 'Health' })
+    await service.createTask(TODAY, { title: 'Call mum' })
+    await service.setCompletion((await occurrence('Read')).id, 1)
+    await service.setCompletion((await occurrence('Walk')).id, 0.5)
+  }
+
+  it('looks back on the day: what was done, what is partly done, what is open, and what repeats anyway', async () => {
+    const user = setupUser()
+    await seedDay()
+    await service.createTemplate(daily('Stretch'))
+    renderDay()
+    await openWrapUp(user)
+    const done = screen.getByRole('region', { name: 'Done today' })
+    expect(within(done).getByText('Read')).toBeInTheDocument()
+    expect(within(done).getByText('1 more is partly done. Partly done counts.')).toBeInTheDocument()
+    const group = screen.getByRole('group', { name: /^Carry to Wednesday 11 Mar/ })
+    expect(within(group).getByRole('checkbox', { name: 'Walk (partly done)' })).toBeChecked()
+    expect(within(group).getByRole('checkbox', { name: 'Call mum' })).toBeChecked()
+    expect(screen.getByText(/These repeat anyway, so they will be on their own days: Stretch\./)).toBeInTheDocument()
+  })
+
+  it('carries the ticked tasks to tomorrow through the planner’s own move, and touches nothing else', async () => {
+    const user = setupUser()
+    await seedDay()
+    await service.createTemplate(daily('Stretch'))
+    renderDay()
+    await openWrapUp(user)
+    await user.click(screen.getByRole('button', { name: 'Carry 2 to Wednesday 11 Mar' }))
+    expect(await screen.findByText('2 tasks moved to Wednesday 11 Mar. Each one can be undone under “Set aside or moved”.')).toBeInTheDocument()
+    expect(await onDay(TOMORROW, 'Walk')).toMatchObject({ planState: 'active', isPriority: true, estimatedMinutes: 20, category: 'Health' })
+    expect(await onDay(TOMORROW, 'Call mum')).toMatchObject({ planState: 'active' })
+    expect(await occurrence('Walk')).toMatchObject({ planState: 'excluded', excludedReason: 'rescheduled' })
+    expect(await occurrence('Call mum')).toMatchObject({ planState: 'excluded', excludedReason: 'rescheduled' })
+    expect(await occurrence('Read')).toMatchObject({ planState: 'active', completion: 1 }) // done tasks stay as they were
+    expect(await occurrence('Stretch')).toMatchObject({ planState: 'active' }) // the repeating task was not part of it
+    expect(screen.getByRole('list', { name: 'Set aside tasks' })).toBeInTheDocument()
+  })
+
+  it('carries only what was left ticked', async () => {
+    const user = setupUser()
+    await seedDay()
+    renderDay()
+    await openWrapUp(user)
+    await user.click(screen.getByRole('checkbox', { name: 'Call mum' }))
+    await user.click(screen.getByRole('button', { name: 'Carry 1 to Wednesday 11 Mar' }))
+    expect(await screen.findByText(/^1 task moved to Wednesday 11 Mar\./)).toBeInTheDocument()
+    expect(await onDay(TOMORROW, 'Walk')).toBeTruthy()
+    expect(await onDay(TOMORROW, 'Call mum')).toBeUndefined()
+    expect(await occurrence('Call mum')).toMatchObject({ planState: 'active' })
+  })
+
+  it('a move can still be undone on the moved task', async () => {
+    const user = setupUser()
+    await seedDay()
+    renderDay()
+    await openWrapUp(user)
+    await user.click(screen.getByRole('button', { name: 'Carry 2 to Wednesday 11 Mar' }))
+    await screen.findByText(/moved to Wednesday 11 Mar/)
+    await user.click(await screen.findByRole('button', { name: 'Undo move of Call mum' }))
+    await waitFor(async () => expect(await occurrence('Call mum')).toMatchObject({ planState: 'active' }))
+    expect(await onDay(TOMORROW, 'Call mum')).toBeUndefined()
+  })
+
+  it('if one move fails, the ones already moved stay moved, the rest stay put, and it says so', async () => {
+    const user = setupUser()
+    await seedDay()
+    renderDay()
+    await openWrapUp(user)
+    let inserts = 0
+    failNext = (state) => state.table === 'task_occurrences' && state.op === 'insert' && (inserts += 1) === 2 // the second move's copy cannot be made
+    await user.click(screen.getByRole('button', { name: 'Carry 2 to Wednesday 11 Mar' }))
+    expect(await screen.findByText(/^1 task moved to Wednesday 11 Mar before something went wrong:/)).toBeInTheDocument()
+    expect(await onDay(TOMORROW, 'Walk')).toBeTruthy()
+    expect(await occurrence('Call mum')).toMatchObject({ planState: 'active' }) // still on today
+    expect(await onDay(TOMORROW, 'Call mum')).toBeUndefined()
+  })
+
+  it('is offered on today only, not on an earlier or a later day', async () => {
+    await seedDay()
+    renderDay('/app/day?date=2026-03-09')
+    await screen.findByRole('heading', { name: /Monday, / })
+    expect(screen.queryByRole('region', { name: 'Wrap up the day' })).toBeNull()
+  })
+
+  it('shows the focus time recorded in this browser for the day', async () => {
+    const user = setupUser()
+    await seedDay()
+    const task = await occurrence('Read')
+    localStorage.setItem(`arcloop.focus.log.focus-user-${userId}`, JSON.stringify([
+      { id: 'a', taskId: task.id, planDate: TODAY, title: 'Read', plannedMs: 1500000, focusedMs: 1500000, outcome: 'completed', startedAt: 1, endedAt: 2 },
+      { id: 'b', taskId: task.id, planDate: TODAY, title: 'Read', plannedMs: 900000, focusedMs: 600000, outcome: 'ended_early', startedAt: 3, endedAt: 4 },
+    ]))
+    renderSignedIn()
+    await openWrapUp(user)
+    expect(screen.getByRole('region', { name: 'Focus time today' })).toHaveTextContent('35 min in 2 sessions (kept in this browser).')
+  })
+})
+
+describe('A break after a long focus session', () => {
+  it('suggests one, gently, in the summary of a session that ran long, and does not touch the task', async () => {
+    const user = setupUser()
+    await service.createTask(TODAY, { title: 'Read' })
+    const read = await occurrence('Read')
+    const startedAt = Date.now() - 50 * 60 * 1000 // a 60 minute session that has been running for 50
+    localStorage.setItem(`arcloop.focus.active.focus-user-${userId}`, JSON.stringify({
+      v: 1, id: 'long-one', taskId: read.id, planDate: TODAY, title: 'Read', plannedMs: 60 * 60 * 1000, status: 'running',
+      startedAt, segmentStartedAt: startedAt, accumulatedMs: 0, pausedAt: null, gapFrom: null,
+    }))
+    renderSignedIn()
+    await user.click(await screen.findByRole('button', { name: 'End session' }))
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'End session' }))
+    const summary = await screen.findByRole('heading', { name: 'Session ended early' })
+    expect(summary.closest('section')).toHaveTextContent('A break of about 5 minutes away from the screen would help, if you like.')
+    expect((await occurrence('Read')).completion).toBe(0)
+  })
+
+  it('suggests nothing after a short session', async () => {
+    const user = setupUser()
+    await service.createTask(TODAY, { title: 'Read' })
+    const read = await occurrence('Read')
+    const startedAt = Date.now() - 10 * 60 * 1000
+    localStorage.setItem(`arcloop.focus.active.focus-user-${userId}`, JSON.stringify({
+      v: 1, id: 'short-one', taskId: read.id, planDate: TODAY, title: 'Read', plannedMs: 25 * 60 * 1000, status: 'running',
+      startedAt, segmentStartedAt: startedAt, accumulatedMs: 0, pausedAt: null, gapFrom: null,
+    }))
+    renderSignedIn()
+    await user.click(await screen.findByRole('button', { name: 'End session' }))
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'End session' }))
+    const summary = await screen.findByRole('heading', { name: 'Session ended early' })
+    expect(summary.closest('section')).not.toHaveTextContent(/break/)
+  })
+})
+
+describe('Priority levels and the time for the day', () => {
+  const TOMORROW = '2026-03-11'
+  const onDay = async (date, title) => (await service.getDayPlan(date)).occurrences.find((o) => o.title === title)
+  const capacity = () => screen.findByRole('region', { name: 'Day capacity' })
+  // 8 hours planned: one high, one low and one medium task.
+  async function overloadedDay() {
+    await service.createTask(TODAY, { title: 'Report', priorityLevel: 'high', estimatedMinutes: 240 })
+    await service.createTask(TODAY, { title: 'Tidy desk', priorityLevel: 'low', estimatedMinutes: 120 })
+    await service.createTask(TODAY, { title: 'Emails', priorityLevel: 'medium', estimatedMinutes: 120 })
+  }
+
+  it('a task has three levels, and the one chosen in Edit is saved with the old flag in step', async () => {
+    const user = setupUser()
+    await service.createTask(TODAY, { title: 'Walk' })
+    expect(await occurrence('Walk')).toMatchObject({ priorityLevel: 'medium', isPriority: false })
+    renderDay()
+    await screen.findByText('Walk')
+    await user.click(screen.getByRole('button', { name: 'Edit Walk' }))
+    const form = screen.getByRole('form', { name: 'Edit Walk' })
+    expect([...within(form).getByLabelText('Priority').options].map((o) => o.textContent)).toEqual(['High', 'Medium', 'Low'])
+    await user.selectOptions(within(form).getByLabelText('Priority'), 'low')
+    await user.click(within(form).getByRole('button', { name: 'Save changes' }))
+    expect(await screen.findByText('Low priority')).toBeInTheDocument()
+    expect(await occurrence('Walk')).toMatchObject({ priorityLevel: 'low', isPriority: false })
+    await user.click(screen.getByRole('button', { name: 'Edit Walk' }))
+    await user.selectOptions(within(screen.getByRole('form', { name: 'Edit Walk' })).getByLabelText('Priority'), 'high')
+    await user.click(within(screen.getByRole('form', { name: 'Edit Walk' })).getByRole('button', { name: 'Save changes' }))
+    expect(await screen.findByText(/Walk \(priority\)/)).toBeInTheDocument()
+    expect(await occurrence('Walk')).toMatchObject({ priorityLevel: 'high', isPriority: true })
+  })
+
+  it('a repeating task has its level on the tasks it makes, and the old flag still means high', async () => {
+    await service.createTemplate(daily('Stretch', { priorityLevel: 'low' }))
+    await service.createTemplate(daily('Plan', { isPriority: true }))
+    renderDay()
+    await screen.findByText('Stretch')
+    expect(await occurrence('Stretch')).toMatchObject({ priorityLevel: 'low', isPriority: false })
+    expect(await occurrence('Plan')).toMatchObject({ priorityLevel: 'high', isPriority: true })
+  })
+
+  it('refuses an unknown level with the planner message and saves nothing', async () => {
+    await expect(service.createTask(TODAY, { title: 'Odd', priorityLevel: 'urgent' })).rejects.toMatchObject({ code: 'VALIDATION', details: { fields: { priorityLevel: 'Choose High, Medium or Low.' } } })
+    expect(await countRows(world, userId, 'task-occurrences')).toBe(0)
+  })
+
+  it('shows planned time against the time available, and says nothing about moving anything while the day fits', async () => {
+    await service.createTask(TODAY, { title: 'Report', estimatedMinutes: 120 })
+    renderDay()
+    const note = await capacity()
+    expect(note).toHaveTextContent('2 h planned of 6 h available.')
+    expect(screen.queryByText(/If you like, you could move/)).toBeNull()
+  })
+
+  it('on a day that holds more than the time available, gently suggests the lowest priority task, and moves nothing by itself', async () => {
+    await overloadedDay()
+    renderDay()
+    const note = await capacity()
+    expect(note).toHaveTextContent('8 h planned of 6 h available: 2 h more than the time you have.')
+    expect(await within(note).findByText(/If you like, you could move “Tidy desk” to Wednesday 11 Mar/)).toBeInTheDocument()
+    expect(within(note).queryByText(/“Report”/)).toBeNull() // high priority is never suggested
+    expect(await occurrence('Tidy desk')).toMatchObject({ planState: 'active' })
+    expect(await onDay(TOMORROW, 'Tidy desk')).toBeUndefined()
+  })
+
+  it('moves the suggested task to the next day with its details kept, and the move can be undone', async () => {
+    const user = setupUser()
+    await overloadedDay()
+    renderDay()
+    await user.click(await screen.findByRole('button', { name: 'Move 1 to Wednesday 11 Mar' }))
+    expect(await screen.findByText('1 task moved to Wednesday 11 Mar. Each one can be undone under “Set aside or moved”.')).toBeInTheDocument()
+    expect(await onDay(TOMORROW, 'Tidy desk')).toMatchObject({ planState: 'active', priorityLevel: 'low', estimatedMinutes: 120 })
+    expect(await occurrence('Tidy desk')).toMatchObject({ planState: 'excluded', excludedReason: 'rescheduled' })
+    expect(await occurrence('Report')).toMatchObject({ planState: 'active', priorityLevel: 'high' })
+    expect(await occurrence('Emails')).toMatchObject({ planState: 'active' })
+    expect(await capacity()).toHaveTextContent('6 h planned of 6 h available: nearly full.')
+    await user.click(await screen.findByRole('button', { name: 'Undo move of Tidy desk' }))
+    await waitFor(async () => expect(await occurrence('Tidy desk')).toMatchObject({ planState: 'active' }))
+    expect(await onDay(TOMORROW, 'Tidy desk')).toBeUndefined()
+  })
+
+  it('never suggests a repeating task, however low its priority', async () => {
+    await service.createTemplate(daily('Stretch', { priorityLevel: 'low', estimatedMinutes: 420 }))
+    await service.createTask(TODAY, { title: 'One-off', priorityLevel: 'low', estimatedMinutes: 60 })
+    renderDay()
+    const note = await capacity()
+    expect(await within(note).findByText(/If you like, you could move “One-off” to/)).toBeInTheDocument()
+    expect(within(note).queryByText(/“Stretch”/)).toBeNull()
+  })
+
+  it('"Not now" hides the suggestion for the day and keeps the figures', async () => {
+    const user = setupUser()
+    await overloadedDay()
+    renderDay()
+    await user.click(await screen.findByRole('button', { name: 'Not now' }))
+    expect(screen.queryByText(/If you like, you could move/)).toBeNull()
+    expect(await capacity()).toHaveTextContent('2 h more than the time you have')
+  })
+
+  it('the time available is chosen by the person: changing it changes the finding and is remembered', async () => {
+    const user = setupUser()
+    await overloadedDay()
+    const view = renderDay()
+    await user.selectOptions(await screen.findByLabelText('Time you have for tasks'), '600')
+    expect(await capacity()).toHaveTextContent('8 h planned of 10 h available.')
+    expect(screen.queryByText(/If you like, you could move/)).toBeNull()
+    view.unmount()
+    renderDay()
+    expect(await capacity()).toHaveTextContent('8 h planned of 10 h available.')
+  })
+
+  it('a task without a time or an estimate is not counted, and the note says so', async () => {
+    await service.createTask(TODAY, { title: 'Think', estimatedMinutes: null })
+    await service.createTask(TODAY, { title: 'Report', estimatedMinutes: 60 })
+    renderDay()
+    expect(await capacity()).toHaveTextContent('1 task has no time or estimate, so not counted')
+  })
+})

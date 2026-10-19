@@ -4,6 +4,7 @@ import { Pause, Play, Square, Timer } from 'lucide-react'
 import GrowingTree from './GrowingTree.jsx'
 import { PRESET_MINUTES, elapsedMs, formatClock, gapMs, hasGap, isFinished, progressFraction, remainingMs, wholeMinutes } from '../../utils/focus/focusSession.js'
 import { focusTotals } from '../../hooks/useFocusSession.js'
+import { breakSuggestion } from '../../utils/focus/focusBreak.js'
 import { colors, radii } from '../../theme/tokens.js'
 
 const minutesText = (n) => (n === 1 ? '1 minute' : `${n} minutes`)
@@ -67,6 +68,7 @@ export default function FocusTimer({ focus, target, viewDate, onClearTarget, can
                 ? `You focused for ${focusedText(result.focusedMs)} on “${result.title}”.`
                 : `You focused for ${focusedText(result.focusedMs)} on “${result.title}”. That still counts.`}
             </Typography>
+            {breakSuggestion(result.focusedMs) && <Typography variant="body2" color="text.secondary">{breakSuggestion(result.focusedMs).text}</Typography>}
           </Box>
         </Box>
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>

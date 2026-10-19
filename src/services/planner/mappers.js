@@ -1,3 +1,5 @@
+import { DEFAULT_PRIORITY, isPriorityLevel, levelOf } from '../../utils/planner/priority.js'
+
 // Row <-> domain mapping for the planner tables (database snake_case <-> the pure
 // planner's camelCase). Writes are built ONLY from the column lists below, which
 // mirror the columns the API lets a client write (backend/planner/resources.py; a test
@@ -5,20 +7,28 @@
 // such as in_original_plan, baseline_at or completed_at.
 
 export const TEMPLATE_COLUMNS =
-  'id, title, description, category, is_priority, planned_start, planned_end, estimated_minutes, recurrence, weekdays, starts_on, ends_on, archived_at, created_at'
+  'id, title, description, category, is_priority, priority_level, planned_start, planned_end, estimated_minutes, recurrence, weekdays, starts_on, ends_on, archived_at, created_at'
 export const DAY_COLUMNS = 'plan_date, day_mode, baseline_at, suppressed_template_ids'
 export const OCCURRENCE_COLUMNS =
-  'id, template_id, plan_date, title, description, category, is_priority, planned_start, planned_end, estimated_minutes, completion, completed_at, plan_state, excluded_reason, excluded_at, rescheduled_from_id, in_original_plan, is_customized, is_minimum, created_at'
+  'id, template_id, plan_date, title, description, category, is_priority, priority_level, planned_start, planned_end, estimated_minutes, completion, completed_at, plan_state, excluded_reason, excluded_at, rescheduled_from_id, in_original_plan, is_customized, is_minimum, created_at'
 
 // Columns clients may write (must equal the migration's grants).
 export const WRITABLE = Object.freeze({
-  templateInsert: ['user_id', 'title', 'description', 'category', 'is_priority', 'planned_start', 'planned_end', 'estimated_minutes', 'recurrence', 'weekdays', 'starts_on', 'ends_on', 'archived_at'],
-  templateUpdate: ['title', 'description', 'category', 'is_priority', 'planned_start', 'planned_end', 'estimated_minutes', 'recurrence', 'weekdays', 'starts_on', 'ends_on', 'archived_at'],
+  templateInsert: ['user_id', 'title', 'description', 'category', 'is_priority', 'priority_level', 'planned_start', 'planned_end', 'estimated_minutes', 'recurrence', 'weekdays', 'starts_on', 'ends_on', 'archived_at'],
+  templateUpdate: ['title', 'description', 'category', 'is_priority', 'priority_level', 'planned_start', 'planned_end', 'estimated_minutes', 'recurrence', 'weekdays', 'starts_on', 'ends_on', 'archived_at'],
   dayInsert: ['user_id', 'plan_date'],
   dayUpdate: ['day_mode', 'suppressed_template_ids'],
-  occurrenceInsert: ['user_id', 'plan_date', 'template_id', 'title', 'description', 'category', 'is_priority', 'planned_start', 'planned_end', 'estimated_minutes', 'rescheduled_from_id', 'is_customized'],
-  occurrenceUpdate: ['title', 'description', 'category', 'is_priority', 'planned_start', 'planned_end', 'estimated_minutes', 'completion', 'plan_state', 'excluded_reason', 'is_customized', 'is_minimum'],
+  occurrenceInsert: ['user_id', 'plan_date', 'template_id', 'title', 'description', 'category', 'is_priority', 'priority_level', 'planned_start', 'planned_end', 'estimated_minutes', 'rescheduled_from_id', 'is_customized'],
+  occurrenceUpdate: ['title', 'description', 'category', 'is_priority', 'priority_level', 'planned_start', 'planned_end', 'estimated_minutes', 'completion', 'plan_state', 'excluded_reason', 'is_customized', 'is_minimum'],
 })
+
+// The level (high, medium, low); a row from before levels existed only has the old flag.
+const levelOfRow = (row) => (isPriorityLevel(row.priority_level) ? row.priority_level : row.is_priority ? 'high' : DEFAULT_PRIORITY)
+// Both columns are written, always in step (the backend keeps them in step as well).
+const priorityColumns = (v) => {
+  const level = levelOf(v)
+  return { is_priority: level === 'high', priority_level: level }
+}
 
 // PostgREST returns `time` as HH:MM:SS; the planner works with HH:MM.
 const hhmm = (value) => (typeof value === 'string' && value.length >= 5 ? value.slice(0, 5) : value ?? null)
@@ -29,7 +39,8 @@ export function templateFromRow(row) {
     title: row.title,
     description: row.description ?? null,
     category: row.category ?? null,
-    isPriority: Boolean(row.is_priority),
+    isPriority: levelOfRow(row) === 'high',
+    priorityLevel: levelOfRow(row),
     plannedStart: hhmm(row.planned_start),
     plannedEnd: hhmm(row.planned_end),
     estimatedMinutes: row.estimated_minutes ?? null,
@@ -59,7 +70,8 @@ export function occurrenceFromRow(row) {
     title: row.title,
     description: row.description ?? null,
     category: row.category ?? null,
-    isPriority: Boolean(row.is_priority),
+    isPriority: levelOfRow(row) === 'high',
+    priorityLevel: levelOfRow(row),
     plannedStart: hhmm(row.planned_start),
     plannedEnd: hhmm(row.planned_end),
     estimatedMinutes: row.estimated_minutes ?? null,
@@ -80,7 +92,7 @@ const templateFields = (v) => ({
   title: v.title,
   description: v.description ?? null,
   category: v.category ?? null,
-  is_priority: Boolean(v.isPriority),
+  ...priorityColumns(v),
   planned_start: v.plannedStart ?? null,
   planned_end: v.plannedEnd ?? null,
   estimated_minutes: v.estimatedMinutes ?? null,
@@ -103,7 +115,7 @@ export const occurrenceInsertRow = (userId, draft) => ({
   title: draft.title,
   description: draft.description ?? null,
   category: draft.category ?? null,
-  is_priority: Boolean(draft.isPriority),
+  ...priorityColumns(draft),
   planned_start: draft.plannedStart ?? null,
   planned_end: draft.plannedEnd ?? null,
   estimated_minutes: draft.estimatedMinutes ?? null,
@@ -127,7 +139,7 @@ export const occurrenceDetailsRow = (value) => ({
   title: value.title,
   description: value.description ?? null,
   category: value.category ?? null,
-  is_priority: Boolean(value.isPriority),
+  ...priorityColumns(value),
   planned_start: value.plannedStart ?? null,
   planned_end: value.plannedEnd ?? null,
   estimated_minutes: value.estimatedMinutes ?? null,
@@ -137,7 +149,7 @@ export const occurrenceDetailsRow = (value) => ({
 // Snapshot fields copied from an edited template onto a pending future occurrence.
 // `changes` is the diff from planTemplateEdit (camelCase, snapshot fields only).
 const DIFF_COLUMN = {
-  title: 'title', description: 'description', category: 'category', isPriority: 'is_priority',
+  title: 'title', description: 'description', category: 'category',
   plannedStart: 'planned_start', plannedEnd: 'planned_end', estimatedMinutes: 'estimated_minutes',
 }
 export function occurrenceDiffRow(changes) {
@@ -145,5 +157,6 @@ export function occurrenceDiffRow(changes) {
   for (const [key, value] of Object.entries(changes)) {
     if (DIFF_COLUMN[key]) row[DIFF_COLUMN[key]] = value ?? null
   }
+  if ('priorityLevel' in changes || 'isPriority' in changes) Object.assign(row, priorityColumns(changes))
   return row
 }

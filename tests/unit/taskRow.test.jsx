@@ -226,7 +226,35 @@ describe('TaskRow: My Day planning and focus', () => {
     await user.type(screen.getByLabelText(/Start time/), '09:30')
     await user.click(screen.getByRole('button', { name: 'Save changes' }))
     expect(onEdit).toHaveBeenCalledTimes(1)
-    expect(onEdit.mock.calls[0][1]).toMatchObject({ title: 'Report', plannedStart: '09:30', isPriority: true, estimatedMinutes: 60 })
+    expect(onEdit.mock.calls[0][1]).toMatchObject({ title: 'Report', plannedStart: '09:30', priorityLevel: 'high', estimatedMinutes: 60 })
+  })
+})
+
+describe('TaskRow: priority levels', () => {
+  it('shows High as before, Low as a chip, and nothing extra for Medium', () => {
+    renderRow({ task: task({ title: 'Report', isPriority: true, priorityLevel: 'high' }) })
+    expect(screen.getByText(/Report \(priority\)/)).toBeInTheDocument()
+    expect(screen.queryByText('Low priority')).toBeNull()
+    cleanup()
+    renderRow({ task: task({ title: 'Tidy', priorityLevel: 'low' }) })
+    expect(screen.getByText('Low priority')).toBeInTheDocument()
+    expect(screen.queryByText(/\(priority\)/)).toBeNull()
+    cleanup()
+    renderRow({ task: task({ title: 'Plain', priorityLevel: 'medium' }) })
+    expect(screen.queryByText('Low priority')).toBeNull()
+    expect(screen.queryByText(/\(priority\)/)).toBeNull()
+  })
+
+  it('the Edit form offers High, Medium and Low, starts on the level of the task and saves the one chosen', async () => {
+    const user = userEvent.setup()
+    const { onEdit } = renderRow({ task: task({ title: 'Report', priorityLevel: 'medium' }) })
+    await user.click(screen.getByRole('button', { name: 'Edit Report' }))
+    const select = screen.getByLabelText('Priority')
+    expect([...select.options].map((o) => o.textContent)).toEqual(['High', 'Medium', 'Low'])
+    expect(select).toHaveValue('medium')
+    await user.selectOptions(select, 'low')
+    await user.click(screen.getByRole('button', { name: 'Save changes' }))
+    expect(onEdit.mock.calls[0][1]).toMatchObject({ title: 'Report', priorityLevel: 'low' })
   })
 })
 

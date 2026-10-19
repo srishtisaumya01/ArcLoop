@@ -56,7 +56,7 @@ function PodiumCard({ p, rank }) {
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
           <Avatar name={p.name} size={52} />
           <Box sx={{ minWidth: 0 }}>
-            <Typography variant="h4" component="h3">
+            <Typography variant="h4" component="h2">
               {p.name}
             </Typography>
             <Typography variant="body2" color="text.secondary">

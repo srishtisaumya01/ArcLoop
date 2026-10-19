@@ -19,7 +19,7 @@ export const colors = {
   mint300: '#7CF0C0',
   mint400: '#2ED68B',
   textOnDark: '#FFFFFF',
-  textOnDarkMuted: '#B8C6DD',
+  textOnDarkMuted: '#E6EDF8',
   // Interactive blue for use on the page surface (5.9:1 on white in light mode).
   blue600: themed('blue600', '#1B5BC8'),
   blue700: themed('blue700', '#144AA6'),
@@ -74,11 +74,12 @@ export const shadows = {
 
 export const gradients = {
   hero: `radial-gradient(900px 480px at 85% 0%, ${colors.ice300}66, transparent 70%), ${colors.bg}`,
-  brand: `linear-gradient(115deg, ${colors.royal900} 0%, ${colors.royal800} 38%, ${colors.teal700} 70%, ${colors.mint400} 100%)`,
+  // Dark all the way across, like the footer, so the white text placed on it stays readable wherever a line wraps (the light mint end it used to have gave 2:1).
+  brand: `linear-gradient(115deg, ${colors.royal900} 0%, ${colors.royal800} 38%, #145F82 70%, #0D5C54 100%)`,
   brandVertical: `linear-gradient(160deg, ${colors.royal900} 0%, ${colors.royal800} 45%, ${colors.teal700} 80%, ${colors.mint400} 115%)`,
   accentText: `linear-gradient(90deg, ${colors.mint300}, ${colors.ice300})`,
   // The footer: the brand gradient, kept dark all the way across so white link text stays readable.
-  footer: `linear-gradient(120deg, ${colors.royal900} 0%, ${colors.royal800} 40%, ${colors.teal700} 78%, #14806E 100%)`,
+  footer: `linear-gradient(120deg, ${colors.royal900} 0%, ${colors.royal800} 40%, #145F82 78%, #0D5C54 100%)`,
   // The signed-in sidebar.
   sidebar: `linear-gradient(185deg, ${colors.royal900} 0%, ${colors.royal800} 55%, ${colors.teal700} 100%)`,
   // A saturated pastel of the same blue-to-mint brand gradient, for sections that keep dark text.

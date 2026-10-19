@@ -3,7 +3,8 @@ import { validateProfileInput } from '../utils/profile.js'
 
 // Reads are scoped to the signed-in user by the API.
 // The `id` filter is for clarity, not security.
-const PROFILE_COLUMNS = 'id, display_name, timezone, interests, profile_visibility, progress_visibility, created_at'
+// `username` and `avatar_version` must be listed: the client keeps only the columns named here, so without `avatar_version` a saved picture is never shown.
+const PROFILE_COLUMNS = 'id, username, display_name, avatar_version, timezone, interests, profile_visibility, progress_visibility, created_at'
 
 export async function getMyProfile(userId) {
   if (!dataClient) throw new Error('The backend is not configured.')
