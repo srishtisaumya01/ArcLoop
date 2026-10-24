@@ -31,7 +31,8 @@ function toServiceError(error, fallback) {
     if (error.code === 'not_configured') return new AuthServiceError('not_configured', 'Authentication is not available right now.')
     if (error.fields?.username) return new AuthServiceError(error.code === 'username_taken' ? 'username_taken' : 'invalid_username', error.fields.username)
     if (error.fields?.current_password) return new AuthServiceError('invalid_credentials', 'Your current password is incorrect.')
-    if (error.code === 'validation_error' && error.fields?.password) return new AuthServiceError('weak_password', MESSAGES.weak_password)
+    if (error.code === 'validation_error' && error.fields?.password) return new AuthServiceError('weak_password', typeof error.fields.password === 'string' ? error.fields.password : MESSAGES.weak_password) // the server says exactly what is wrong (too short, too similar to the username, too common…)
+    if (error.status >= 500) return new AuthServiceError('server_busy', 'The server is starting up or busy. Please wait a minute and try again.')
     if (MESSAGES[error.code]) return new AuthServiceError(error.code, MESSAGES[error.code])
     if (error.code === 'unauthenticated') return new AuthServiceError('session_expired', MESSAGES.session_expired)
   }
