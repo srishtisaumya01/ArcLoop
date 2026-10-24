@@ -29,6 +29,8 @@ class Profile(models.Model):
     username = models.CharField(max_length=30, unique=True, null=True, blank=True)
     display_name = models.CharField(max_length=60, null=True, blank=True)
     # The person's working hours: check-in opens at the start, and the end is when they plan to check out.
+    # Reminder emails when a streak is about to break (5 pm and 10 pm). The person can switch them off from the email.
+    email_reminders = models.BooleanField(default=True)
     shift_start = models.TimeField(default=time(9, 0))
     shift_end = models.TimeField(default=time(18, 0))
     # When the picture last changed (the picture itself is in ProfileAvatar, so ordinary profile reads never load its bytes).

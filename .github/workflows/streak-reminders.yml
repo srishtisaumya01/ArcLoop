@@ -1,0 +1,19 @@
+# Calls the API every 30 minutes; the API sends whichever streak reminder emails are due (5 pm and 10 pm in each person's own
+# timezone). It does nothing for people who already marked attendance, and sends each email at most once a day.
+# Needs the repository secret CRON_SECRET (the same value as DJANGO_CRON_SECRET on Render).
+name: Streak reminders
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch: {}
+jobs:
+  remind:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ask the API to send due reminders
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          curl --fail --silent --show-error --retry 3 --retry-delay 20 --retry-all-errors --max-time 150 \
+            -X POST -H "X-Cron-Secret: $CRON_SECRET" \
+            https://arcloop.onrender.com/api/v1/cron/streak-reminders/

@@ -221,6 +221,10 @@ EMAIL_USE_TLS = _flag('DJANGO_EMAIL_USE_TLS', True)
 EMAIL_USE_SSL = _flag('DJANGO_EMAIL_USE_SSL', False)
 EMAIL_TIMEOUT = 10
 DEFAULT_FROM_EMAIL = os.environ.get('DJANGO_FROM_EMAIL', 'Arcloop <no-reply@localhost>')
+# Streak reminder emails (5 pm / 10 pm, each person's own clock). People who never changed the default timezone (UTC) are
+# reminded on this one. CRON_SECRET lets the scheduler call /api/v1/cron/streak-reminders/ (unset: that endpoint does not exist).
+REMINDER_DEFAULT_TIMEZONE = os.environ.get('DJANGO_REMINDER_DEFAULT_TIMEZONE', 'Asia/Kolkata')
+CRON_SECRET = os.environ.get('DJANGO_CRON_SECRET', '')
 
 if not DEBUG and EMAIL_BACKEND.endswith('smtp.EmailBackend') and EMAIL_HOST in ('', 'localhost'):
     # A production server with no mail host would fail on the first reset request; say so at start-up.

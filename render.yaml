@@ -35,6 +35,8 @@ services:
         sync: false
       - key: DJANGO_FROM_EMAIL
         sync: false
+      - key: DJANGO_CRON_SECRET  # a long random string; the same value is the GitHub secret CRON_SECRET (streak reminder emails)
+        sync: false
       - key: FRONTEND_URL
         value: https://arc-loop.vercel.app
       - key: DJANGO_CSRF_TRUSTED_ORIGINS
