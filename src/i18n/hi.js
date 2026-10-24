@@ -785,4 +785,10 @@ export const hi = {
   "That code is wrong or has expired. Check it, or ask for a new one.": "यह कोड गलत है या खत्म हो चुका है। जाँचें, या नया कोड माँगें।",
   "The code was right. Now set a new password and you will be logged in.": "कोड सही था। अब नया पासवर्ड रखें, फिर आप लॉग इन हो जाएँगे।",
   "Verify code": "कोड जाँचें",
+  "Mark attendance in your challenges": "अपने चैलेंज में उपस्थिति लगाएँ",
+  "One tick a day, on the day. Nothing to catch up on.": "रोज़ एक टिक, उसी दिन। पीछे कुछ पूरा करने को नहीं।",
+  "Streaks that stay kind": "ऐसी स्ट्रीक जो आप पर सख़्त नहीं",
+  "Doing just one challenge a day keeps your streak alive.": "दिन में सिर्फ़ एक चैलेंज करने से भी आपकी स्ट्रीक चलती रहती है।",
+  "Solo or with friends": "अकेले या दोस्तों के साथ",
+  "Join a challenge on your own or bring your people along.": "चैलेंज अकेले जॉइन करें या अपने लोगों को साथ लाएँ।",
 }

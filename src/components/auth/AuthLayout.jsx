@@ -1,4 +1,5 @@
 import { Alert, Box, Container, Typography } from '@mui/material'
+import { CalendarCheck, Flame, Users } from 'lucide-react'
 import Logo from '../ui/Logo.jsx'
 import { isBackendConfigured } from '../../services/backend.js'
 import { useI18n } from '../../hooks/useI18n.js'
@@ -18,7 +19,7 @@ export default function AuthLayout({ title, subtitle, children, footer }) {
     >
       <Container sx={{ maxWidth: `${contentWidths.page}px !important` }}>
         <Box sx={{ display: 'grid', gap: { xs: 3, md: 0 }, gridTemplateColumns: { xs: '1fr', md: '1fr 1.1fr' }, maxWidth: 1040, mx: 'auto', borderRadius: `${radii.lg}px`, overflow: 'hidden', boxShadow: '0 30px 80px rgba(6, 18, 43, 0.35)', bgcolor: colors.surface, border: '1px solid rgba(255, 255, 255, 0.4)' }}>
-          <Box sx={{ position: 'relative', overflow: 'hidden', display: { xs: 'none', md: 'flex' }, flexDirection: 'column', justifyContent: 'space-between', p: 6, background: gradients.brandVertical, color: colors.textOnDark }}>
+          <Box sx={{ position: 'relative', overflow: 'hidden', display: { xs: 'none', md: 'flex' }, flexDirection: 'column', justifyContent: 'flex-start', gap: 5, p: 6, background: gradients.brandVertical, color: colors.textOnDark }}>
             <Box aria-hidden="true" sx={{ position: 'absolute', right: -140, bottom: -160, width: 360, height: 360, borderRadius: '50%', border: '56px solid rgba(255, 255, 255, 0.1)', pointerEvents: 'none' }} />
             <Logo onDark size={52} />
             <Box sx={{ position: 'relative' }}>
@@ -28,6 +29,23 @@ export default function AuthLayout({ title, subtitle, children, footer }) {
               <Typography sx={{ color: 'rgba(255, 255, 255, 0.82)' }}>
                 {t('Build habits at your own pace, and share only what you choose to share.')}
               </Typography>
+            </Box>
+            <Box component="ul" sx={{ position: 'relative', listStyle: 'none', m: 0, p: 0, display: 'grid', gap: 1.5 }}>
+              {[
+                [CalendarCheck, 'Mark attendance in your challenges', 'One tick a day, on the day. Nothing to catch up on.'],
+                [Flame, 'Streaks that stay kind', 'Doing just one challenge a day keeps your streak alive.'],
+                [Users, 'Solo or with friends', 'Join a challenge on your own or bring your people along.'],
+              ].map(([Icon, title, text]) => (
+                <Box component="li" key={title} sx={{ display: 'flex', gap: 1.75, alignItems: 'flex-start', p: 1.75, borderRadius: '14px', bgcolor: 'rgba(255, 255, 255, 0.1)', border: '1px solid rgba(255, 255, 255, 0.16)' }}>
+                  <Box aria-hidden="true" sx={{ width: 36, height: 36, flexShrink: 0, borderRadius: '10px', display: 'grid', placeItems: 'center', bgcolor: 'rgba(124, 240, 192, 0.2)', color: colors.mint300 }}>
+                    <Icon size={20} />
+                  </Box>
+                  <Box>
+                    <Typography sx={{ fontWeight: 700, lineHeight: 1.3 }}>{t(title)}</Typography>
+                    <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.78)' }}>{t(text)}</Typography>
+                  </Box>
+                </Box>
+              ))}
             </Box>
           </Box>
 
