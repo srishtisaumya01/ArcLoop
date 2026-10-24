@@ -24,6 +24,17 @@ services:
         value: "true"
       - key: DJANGO_ALLOWED_HOSTS
         value: arcloop.onrender.com,arc-loop.vercel.app
+      # Email for the password-reset code (set these in the dashboard; never commit them):
+      #   DJANGO_EMAIL_HOST=smtp.gmail.com  DJANGO_EMAIL_PORT=587  DJANGO_EMAIL_HOST_USER=<gmail address>
+      #   DJANGO_EMAIL_HOST_PASSWORD=<Gmail app password>  DJANGO_FROM_EMAIL=Arcloop <gmail address>
+      - key: DJANGO_EMAIL_HOST
+        sync: false
+      - key: DJANGO_EMAIL_HOST_USER
+        sync: false
+      - key: DJANGO_EMAIL_HOST_PASSWORD
+        sync: false
+      - key: DJANGO_FROM_EMAIL
+        sync: false
       - key: FRONTEND_URL
         value: https://arc-loop.vercel.app
       - key: DJANGO_CSRF_TRUSTED_ORIGINS

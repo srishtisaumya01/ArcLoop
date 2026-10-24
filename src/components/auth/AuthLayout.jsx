@@ -1,5 +1,5 @@
 import { Alert, Box, Container, Typography } from '@mui/material'
-import { LogoMark } from '../ui/Logo.jsx'
+import Logo from '../ui/Logo.jsx'
 import { isBackendConfigured } from '../../services/backend.js'
 import { useI18n } from '../../hooks/useI18n.js'
 import { colors, contentWidths, gradients, navOuterHeight, radii } from '../../theme/tokens.js'
@@ -20,7 +20,7 @@ export default function AuthLayout({ title, subtitle, children, footer }) {
         <Box sx={{ display: 'grid', gap: { xs: 3, md: 0 }, gridTemplateColumns: { xs: '1fr', md: '1fr 1.1fr' }, maxWidth: 1040, mx: 'auto', borderRadius: `${radii.lg}px`, overflow: 'hidden', boxShadow: '0 30px 80px rgba(6, 18, 43, 0.35)', bgcolor: colors.surface, border: '1px solid rgba(255, 255, 255, 0.4)' }}>
           <Box sx={{ position: 'relative', overflow: 'hidden', display: { xs: 'none', md: 'flex' }, flexDirection: 'column', justifyContent: 'space-between', p: 6, background: gradients.brandVertical, color: colors.textOnDark }}>
             <Box aria-hidden="true" sx={{ position: 'absolute', right: -140, bottom: -160, width: 360, height: 360, borderRadius: '50%', border: '56px solid rgba(255, 255, 255, 0.1)', pointerEvents: 'none' }} />
-            <LogoMark size={56} />
+            <Logo onDark size={52} />
             <Box sx={{ position: 'relative' }}>
               <Typography variant="h3" component="p" sx={{ mb: 2 }}>
                 {t('Consistency over perfection.')}
@@ -32,6 +32,9 @@ export default function AuthLayout({ title, subtitle, children, footer }) {
           </Box>
 
           <Box sx={{ p: { xs: 3, sm: 5, md: 6 } }}>
+            <Box sx={{ display: { xs: 'flex', md: 'none' }, mb: 3 }}>
+              <Logo size={40} />
+            </Box>
             {!isBackendConfigured && (
               <Alert severity="warning" variant="outlined" sx={{ mb: 3 }}>
                 {t('Accounts are not available right now.')}

@@ -137,3 +137,8 @@ class ProfileSerializer(serializers.ModelSerializer):
         if len(','.join(value)) > 400:
             raise serializers.ValidationError('Too many interests.')
         return value
+
+
+class OtpVerifySerializer(serializers.Serializer):
+    email = EmailField(max_length=MAX_EMAIL)
+    code = serializers.RegexField(r'^\d{6}$', max_length=6, error_messages={'invalid': 'Enter the 6-digit code.'})

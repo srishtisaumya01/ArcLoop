@@ -1,4 +1,5 @@
 import hashlib
+import hmac
 from datetime import time
 import re
 import secrets
@@ -109,3 +110,47 @@ class AuthToken(models.Model):
             expires_at=timezone.now() + timedelta(days=settings.AUTH_TOKEN_LIFETIME_DAYS),
         )
         return raw, token
+
+
+class PasswordResetCode(models.Model):
+    """The six-digit code emailed for a password reset. One row per person (a new request replaces the old code); only a
+    hash is stored. It expires, and a wrong guess is counted so it cannot be guessed by trying them all."""
+
+    LIFETIME = timedelta(minutes=10)
+    RESEND_AFTER = timedelta(seconds=45)
+    MAX_ATTEMPTS = 5
+
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, primary_key=True, on_delete=models.CASCADE, related_name='reset_code')
+    code_hash = models.CharField(max_length=64)
+    created_at = models.DateTimeField(default=timezone.now)
+    expires_at = models.DateTimeField()
+    attempts = models.PositiveSmallIntegerField(default=0)
+
+    @staticmethod
+    def digest(user, code):
+        return hashlib.sha256(f'{code}:{user.pk}:{settings.SECRET_KEY}'.encode('utf-8')).hexdigest()
+
+    @classmethod
+    def issue(cls, user):
+        """A new code for `user`, or None if one was sent a moment ago (so the button cannot be used to flood a mailbox)."""
+        existing = cls.objects.filter(user=user).first()
+        if existing and timezone.now() - existing.created_at < cls.RESEND_AFTER:
+            return None
+        code = f'{secrets.randbelow(1_000_000):06d}'
+        now = timezone.now()
+        cls.objects.update_or_create(user=user, defaults={'code_hash': cls.digest(user, code), 'created_at': now, 'expires_at': now + cls.LIFETIME, 'attempts': 0})
+        return code
+
+    @classmethod
+    def verify(cls, user, code):
+        """True if `code` is the current, unexpired code (and uses it up). Counts every wrong guess."""
+        row = cls.objects.filter(user=user).first()
+        if row is None or row.expires_at <= timezone.now() or row.attempts >= cls.MAX_ATTEMPTS:
+            cls.objects.filter(user=user).delete()
+            return False
+        if hmac.compare_digest(row.code_hash, cls.digest(user, code)):
+            row.delete()
+            return True
+        row.attempts += 1
+        row.save(update_fields=['attempts'])
+        return False

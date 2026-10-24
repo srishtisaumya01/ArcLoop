@@ -22,6 +22,7 @@ const MESSAGES = {
   email_taken: 'An account may already exist for that email. Try logging in or resetting your password.',
   invalid_reset_link: 'This reset link is invalid or has expired. Request a new one.',
   session_expired: 'Your session has expired. Please log in again.',
+  invalid_otp: 'That code is wrong or has expired. Check it, or ask for a new one.',
 }
 
 function toServiceError(error, fallback) {
@@ -81,6 +82,25 @@ export async function requestPasswordReset(email) {
     await api.post('/auth/password/reset/', { email: email.trim() })
   } catch (error) {
     throw toServiceError(error, 'We could not send the reset email. Please try again.')
+  }
+}
+
+// Password reset with a code: the email gets a six-digit code (the API answers the same whether or not the address has an
+// account), then the code is checked and, if right, the API hands back the one-time pass that lets a new password be set.
+export async function requestResetCode(email) {
+  try {
+    await api.post('/auth/password/otp/request/', { email: email.trim() })
+  } catch (error) {
+    throw toServiceError(error, 'We could not send the code. Please try again.')
+  }
+}
+
+export async function verifyResetCode({ email, code }) {
+  try {
+    return await api.post('/auth/password/otp/verify/', { email: email.trim(), code: code.trim() }) // { uid, token }
+  } catch (error) {
+    if (error instanceof ApiError && error.fields?.code) throw new AuthServiceError('invalid_otp', error.fields.code)
+    throw toServiceError(error, 'We could not check the code. Please try again.')
   }
 }
 
