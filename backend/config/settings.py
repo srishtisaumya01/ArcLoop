@@ -220,6 +220,8 @@ EMAIL_HOST_PASSWORD = os.environ.get('DJANGO_EMAIL_HOST_PASSWORD', '')
 EMAIL_USE_TLS = _flag('DJANGO_EMAIL_USE_TLS', True)
 EMAIL_USE_SSL = _flag('DJANGO_EMAIL_USE_SSL', False)
 EMAIL_TIMEOUT = 10
+MAIL_RELAY_URL = os.environ.get('DJANGO_MAIL_RELAY_URL', '')  # used only with config.email_backends.GoogleScriptEmailBackend
+MAIL_RELAY_SECRET = os.environ.get('DJANGO_MAIL_RELAY_SECRET', '')
 BREVO_API_KEY = os.environ.get('DJANGO_BREVO_API_KEY', '')  # used only with config.email_backends.BrevoEmailBackend (email over HTTPS)
 DEFAULT_FROM_EMAIL = os.environ.get('DJANGO_FROM_EMAIL', 'Arcloop <no-reply@localhost>')
 # Streak reminder emails (5 pm / 10 pm, each person's own clock). People who never changed the default timezone (UTC) are

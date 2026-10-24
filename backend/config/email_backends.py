@@ -50,3 +50,37 @@ class BrevoEmailBackend(BaseEmailBackend):
         with urllib.request.urlopen(request, timeout=15) as response:  # noqa: S310 - a fixed https address
             if response.status >= 300:
                 raise urllib.error.HTTPError(ENDPOINT, response.status, 'brevo error', response.headers, None)
+
+
+class GoogleScriptEmailBackend(BaseEmailBackend):
+    """Sends through a tiny free Google Apps Script web app that belongs to the Gmail account the mail should come from.
+
+    The server calls it over HTTPS (so no blocked SMTP port) with a shared secret; the script then sends with GmailApp, which
+    is free for a normal Gmail account (about 100 emails a day). Set DJANGO_EMAIL_BACKEND=config.email_backends.GoogleScriptEmailBackend,
+    DJANGO_MAIL_RELAY_URL (the web app address) and DJANGO_MAIL_RELAY_SECRET (the same secret stored in the script)."""
+
+    def send_messages(self, email_messages):
+        sent = 0
+        for message in email_messages or []:
+            try:
+                self._send(message)
+                sent += 1
+            except Exception as error:  # noqa: BLE001 - only the kind of failure is logged, never the secret or the address
+                log.error('mail relay send failed: %s', type(error).__name__)
+                if not self.fail_silently:
+                    raise
+        return sent
+
+    def _send(self, message):
+        html = next((content for content, kind in getattr(message, 'alternatives', []) if kind == 'text/html'), '')
+        payload = {'secret': settings.MAIL_RELAY_SECRET, 'to': ','.join(message.to), 'subject': message.subject, 'text': message.body, 'html': html}
+        request = urllib.request.Request(
+            settings.MAIL_RELAY_URL,
+            data=json.dumps(payload).encode('utf-8'),
+            headers={'content-type': 'application/json'},
+            method='POST',
+        )
+        # Apps Script answers a POST with a redirect to the result; urllib follows it (as a GET), which is what it expects.
+        with urllib.request.urlopen(request, timeout=25) as response:  # noqa: S310 - https address from the environment
+            if response.read(200).strip() != b'ok':
+                raise RuntimeError('the mail relay did not accept the message')
