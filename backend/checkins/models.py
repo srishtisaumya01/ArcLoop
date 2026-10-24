@@ -12,3 +12,15 @@ class DayCheckin(models.Model):
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=['user', 'date'], name='one_checkin_per_day')]
+
+
+class ReminderEmailLog(models.Model):
+    """Which reminder emails went out, so each person gets each one at most once a day however often the job runs."""
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='reminder_emails')
+    date = models.DateField()  # the day in the person's own timezone
+    slot = models.CharField(max_length=10)  # 'evening' (5 pm) or 'night' (10 pm)
+    sent_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['user', 'date', 'slot'], name='one_reminder_email_per_slot')]

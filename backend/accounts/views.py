@@ -22,11 +22,12 @@ from django.utils import timezone
 
 from challenges.services import link_pending_memberships
 
-from .models import AuthToken, Profile, ProfileAvatar
+from .models import AuthToken, PasswordResetCode, Profile, ProfileAvatar
 from .serializers import (
     AccountDeleteSerializer,
     EmailChangeSerializer,
     LoginSerializer,
+    OtpVerifySerializer,
     PasswordChangeSerializer,
     PasswordResetConfirmSerializer,
     PasswordResetRequestSerializer,
@@ -235,6 +236,44 @@ class PasswordResetRequestView(PublicAuthView):
                 # The operator sees it in the log (error type only: the message may contain the address or credentials).
                 log_event(request, 'reset_email_failed', logging.ERROR, error=type(error).__name__, user=user.pk)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class OtpRequestView(PublicAuthView):
+    """Emails a six-digit code to reset the password. Always answers the same way, so it cannot show who has an account."""
+
+    def post(self, request):
+        data = PasswordResetRequestSerializer(data=request.data)
+        data.is_valid(raise_exception=True)
+        user = User.objects.filter(username__iexact=data.validated_data['email'], is_active=True).first()
+        log_event(request, 'password_otp_requested')
+        if user is not None:
+            code = PasswordResetCode.issue(user)
+            if code is not None:
+                try:
+                    send_mail(
+                        'Your Arcloop password reset code',
+                        f'Your Arcloop code is {code}.\n\nIt works for 10 minutes. If you did not ask to reset your password, ignore this email: nothing changes.\n',
+                        settings.DEFAULT_FROM_EMAIL,
+                        [user.email],
+                    )
+                except Exception as error:  # noqa: BLE001 - never tell the caller whether this address has an account
+                    log_event(request, 'reset_email_failed', logging.ERROR, error=type(error).__name__, user=user.pk)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class OtpVerifyView(PublicAuthView):
+    """Checks the emailed code. If right, gives back the one-time `uid` and `token` that the reset-confirm endpoint accepts."""
+
+    def post(self, request):
+        data = OtpVerifySerializer(data=request.data)
+        data.is_valid(raise_exception=True)
+        wrong = ApiError('invalid_otp', 'That code is wrong or has expired. Check it, or ask for a new one.', status.HTTP_400_BAD_REQUEST)
+        user = User.objects.filter(username__iexact=data.validated_data['email'], is_active=True).first()
+        if user is None or not PasswordResetCode.verify(user, data.validated_data['code']):
+            log_event(request, 'password_otp_failed', logging.WARNING)
+            raise wrong
+        log_event(request, 'password_otp_verified', user=user.pk)
+        return Response({'uid': urlsafe_base64_encode(force_bytes(user.pk)), 'token': default_token_generator.make_token(user)})
 
 
 class PasswordResetConfirmView(PublicAuthView):

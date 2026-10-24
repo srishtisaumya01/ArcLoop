@@ -12,6 +12,8 @@ urlpatterns = [
     path('profile/avatar/', views.AvatarView.as_view()),
     path('auth/password/change/', views.PasswordChangeView.as_view()),
     path('auth/password/reset/', views.PasswordResetRequestView.as_view()),
+    path('auth/password/otp/request/', views.OtpRequestView.as_view()),
+    path('auth/password/otp/verify/', views.OtpVerifyView.as_view()),
     path('auth/password/reset/confirm/', views.PasswordResetConfirmView.as_view()),
     path('profile/', views.ProfileView.as_view()),
 ]
