@@ -66,3 +66,15 @@ export async function leaveChallenge(slug) {
     throw failure(error, 'We could not leave the challenge. Please try again.')
   }
 }
+
+// Marks (or un-marks) today as attended in one challenge. The server only accepts today, inside the challenge's dates.
+export async function setAttendance(slug, present) {
+  try {
+    const updated = present ? await api.post(`/challenges/${encodeURIComponent(slug)}/attendance/`, {}) : await api.delete(`/challenges/${encodeURIComponent(slug)}/attendance/`)
+    changed()
+    window.dispatchEvent(new Event('arcloop:checkin-changed')) // the streak counts these days too
+    return updated
+  } catch (error) {
+    throw failure(error, 'We could not save your attendance. Please try again.')
+  }
+}

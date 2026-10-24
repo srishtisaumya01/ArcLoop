@@ -8,6 +8,8 @@ from rest_framework.views import APIView
 from challenges.services import local_now, today_for
 from config.errors import validation_error
 
+from challenges.models import ChallengeAttendance
+
 from .models import DayCheckin
 from .streaks import streaks
 
@@ -27,7 +29,10 @@ def opens_at(user, today):
 def body(user):
     today = today_for(user)
     rows = {r.date: r for r in DayCheckin.objects.filter(user=user, date__gte=today - timedelta(days=400))}
-    done = {d for d, r in rows.items() if r.checked_out_at}
+    # A day counts when the person finished their check-in and check-out, or marked attendance in ANY challenge that day
+    # (one challenge is enough: the others never break the streak).
+    marked = set(ChallengeAttendance.objects.filter(enrollment__user=user, date__gte=today - timedelta(days=400)).values_list('date', flat=True))
+    done = {d for d, r in rows.items() if r.checked_out_at} | marked
     current, best = streaks(done, today)
     row = rows.get(today)
     profile = user.profile
@@ -40,6 +45,7 @@ def body(user):
         'earliest_check_out_at': earliest_out.isoformat() if earliest_out else None,
         'checked_in_at': row.checked_in_at.isoformat() if row else None,
         'checked_out_at': row.checked_out_at.isoformat() if row and row.checked_out_at else None,
+        'challenge_marked_today': today in marked,
         'current_streak': current,
         'best_streak': max(best, current),
         'last_days': [{'date': (today - timedelta(days=i)).isoformat(), 'done': (today - timedelta(days=i)) in done} for i in range(6, -1, -1)],

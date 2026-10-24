@@ -9,7 +9,7 @@ from rest_framework.views import APIView
 
 from config.errors import ApiError, validation_error
 
-from .models import Challenge, Enrollment, GroupMember
+from .models import Challenge, ChallengeAttendance, Enrollment, GroupMember
 from .services import MAX_GROUP_MEMBERS, clean_members, enroll, today_for
 
 MAX_CUSTOM_DAYS = 400
@@ -22,9 +22,11 @@ def group_body(group):
     }
 
 
-def enrollment_body(enrollment):
+def enrollment_body(enrollment, today=None):
     return {
         'id': str(enrollment.pk),
+        'today': today.isoformat() if today else None,
+        'attended': sorted(a.date.isoformat() for a in enrollment.attendance.all()),  # the days marked present
         'mode': 'group' if enrollment.group_id else 'solo',
         'start_date': enrollment.start_date.isoformat(),
         'end_date': enrollment.end_date.isoformat(),
@@ -32,7 +34,7 @@ def enrollment_body(enrollment):
     }
 
 
-def challenge_body(challenge, enrollment=None):
+def challenge_body(challenge, enrollment=None, today=None):
     details = challenge.details or {}
     return {
         'slug': challenge.slug,
@@ -50,7 +52,7 @@ def challenge_body(challenge, enrollment=None):
         'duration_days': challenge.duration_days,
         'start_date': challenge.start_date.isoformat() if challenge.start_date else None,
         'end_date': challenge.end_date.isoformat() if challenge.end_date else None,
-        'enrollment': enrollment_body(enrollment) if enrollment else None,
+        'enrollment': enrollment_body(enrollment, today) if enrollment else None,
     }
 
 
@@ -60,7 +62,7 @@ def visible_to(user):
 
 
 def enrollments_of(user):
-    return {e.challenge_id: e for e in Enrollment.objects.filter(user=user).select_related('group')}
+    return {e.challenge_id: e for e in Enrollment.objects.filter(user=user).select_related('group').prefetch_related('attendance')}
 
 
 class ChallengeListView(APIView):
@@ -74,7 +76,8 @@ class ChallengeListView(APIView):
             rows = rows.filter(Q(title__icontains=query) | Q(category__icontains=query) | Q(summary__icontains=query))
         mine = enrollments_of(request.user)
         ordered = sorted(rows, key=lambda c: (not c.featured, c.kind != 'official', c.title.lower()))
-        return Response({'results': [challenge_body(c, mine.get(c.pk)) for c in ordered]})
+        today = today_for(request.user)
+        return Response({'results': [challenge_body(c, mine.get(c.pk), today) for c in ordered]})
 
     def post(self, request):
         data = request.data if isinstance(request.data, dict) else {}
@@ -98,7 +101,7 @@ class ChallengeListView(APIView):
             details={'organizer': {'name': 'You', 'role': 'Your own challenge'}},
         )
         enrollment = Enrollment.objects.create(challenge=challenge, user=request.user, start_date=start, end_date=end)
-        return Response(challenge_body(challenge, enrollment), status=status.HTTP_201_CREATED)
+        return Response(challenge_body(challenge, enrollment, today_for(request.user)), status=status.HTTP_201_CREATED)
 
 
 def get_visible(request, slug):
@@ -111,15 +114,16 @@ def get_visible(request, slug):
 class ChallengeDetailView(APIView):
     def get(self, request, slug):
         challenge = get_visible(request, slug)
-        return Response(challenge_body(challenge, enrollments_of(request.user).get(challenge.pk)))
+        return Response(challenge_body(challenge, enrollments_of(request.user).get(challenge.pk), today_for(request.user)))
 
 
 class MyChallengesView(APIView):
     """Everything this person is in, soonest to finish first, each with its dates and its group."""
 
     def get(self, request):
-        rows = Enrollment.objects.filter(user=request.user).select_related('challenge', 'group').order_by('end_date', 'start_date')
-        return Response({'today': today_for(request.user).isoformat(), 'results': [challenge_body(e.challenge, e) for e in rows]})
+        rows = Enrollment.objects.filter(user=request.user).select_related('challenge', 'group').prefetch_related('attendance').order_by('end_date', 'start_date')
+        today = today_for(request.user)
+        return Response({'today': today.isoformat(), 'results': [challenge_body(e.challenge, e, today) for e in rows]})
 
 
 class EnrollView(APIView):
@@ -149,7 +153,7 @@ class EnrollView(APIView):
             if problems:
                 raise validation_error('Please check the highlighted friends.', {'members': {str(k): v for k, v in problems.items()}})
         enrollment = enroll(request.user, challenge, mode, members, today)
-        return Response(challenge_body(challenge, enrollment), status=status.HTTP_201_CREATED)
+        return Response(challenge_body(challenge, enrollment, today), status=status.HTTP_201_CREATED)
 
 
 class LeaveView(APIView):
@@ -162,3 +166,43 @@ class LeaveView(APIView):
         if challenge.kind == 'custom' and challenge.owner_id == request.user.pk:
             challenge.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class AttendanceView(APIView):
+    """Marking present in one challenge. Only today (in the person's own timezone) can be marked or unmarked, only inside the
+    challenge's dates: earlier days are fixed, later days are not here yet."""
+
+    def _enrollment(self, request, slug):
+        challenge = get_visible(request, slug)
+        enrollment = Enrollment.objects.filter(challenge=challenge, user=request.user).first()
+        if enrollment is None:
+            raise validation_error('Join this challenge first.', None, 'not_enrolled')
+        return challenge, enrollment
+
+    def _day(self, request):
+        today = today_for(request.user)
+        raw = request.data.get('date') if isinstance(request.data, dict) else None
+        raw = raw or request.query_params.get('date') or today.isoformat()
+        try:
+            day = date.fromisoformat(str(raw))
+        except ValueError:
+            raise validation_error('That date is not valid.', {'date': 'That date is not valid.'})
+        if day != today:
+            raise validation_error('You can only mark attendance for today.', {'date': 'You can only mark attendance for today.'}, 'only_today')
+        return day
+
+    def post(self, request, slug):
+        challenge, enrollment = self._enrollment(request, slug)
+        day = self._day(request)
+        if not enrollment.start_date <= day <= enrollment.end_date:
+            raise validation_error('Today is outside this challenge’s dates.', None, 'outside_dates')
+        ChallengeAttendance.objects.get_or_create(enrollment=enrollment, date=day)
+        enrollment = Enrollment.objects.prefetch_related('attendance').select_related('group').get(pk=enrollment.pk)
+        return Response(challenge_body(challenge, enrollment, day))
+
+    def delete(self, request, slug):
+        challenge, enrollment = self._enrollment(request, slug)
+        day = self._day(request)
+        ChallengeAttendance.objects.filter(enrollment=enrollment, date=day).delete()
+        enrollment = Enrollment.objects.prefetch_related('attendance').select_related('group').get(pk=enrollment.pk)
+        return Response(challenge_body(challenge, enrollment, day))

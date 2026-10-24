@@ -760,4 +760,12 @@ export const hi = {
   "Home": "होम",
   "How to join": "कैसे जुड़ें",
   "Quick navigation": "त्वरित नेविगेशन",
+  "Attendance: {title}": "उपस्थिति: {title}",
+  "Attended today": "आज उपस्थित",
+  "Attended {done} of {total} days": "{total} में से {done} दिन उपस्थित",
+  "Save attendance": "उपस्थिति सेव करें",
+  "Tick today to mark that you did this challenge today, then save. Other days cannot be changed.": "आज यह चैलेंज करने पर आज की तारीख़ पर टिक लगाएँ, फिर सेव करें। दूसरे दिन बदले नहीं जा सकते।",
+  "Today is outside this challenge’s dates, so there is nothing to mark.": "आज इस चैलेंज की तारीख़ों से बाहर है, इसलिए कुछ लगाने को नहीं है।",
+  "attended": "उपस्थित",
+  "today": "आज",
 }

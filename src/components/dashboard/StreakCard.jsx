@@ -20,7 +20,7 @@ export default function StreakCard() {
   if (status === 'loading' && !data) return <Skeleton variant="rounded" height={190} />
   if (!data) return null
 
-  const stage = data.checked_out_at ? 'done' : data.checked_in_at ? 'in' : 'out'
+  const stage = data.checked_out_at || data.challenge_marked_today ? 'done' : data.checked_in_at ? 'in' : 'out'
   const dayLetter = (iso) => new Intl.DateTimeFormat(lang === 'hi' ? 'hi-IN' : 'en-GB', { weekday: 'narrow' }).format(new Date(`${iso}T12:00:00`))
   const message =
     stage === 'done'
