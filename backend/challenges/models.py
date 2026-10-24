@@ -64,3 +64,14 @@ class Enrollment(models.Model):
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=['challenge', 'user'], name='one_enrollment_per_challenge')]
+
+
+class ChallengeAttendance(models.Model):
+    """One day a person marked present in one challenge. It can only be made for the day it is, in their own timezone."""
+
+    enrollment = models.ForeignKey(Enrollment, on_delete=models.CASCADE, related_name='attendance')
+    date = models.DateField()
+    marked_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['enrollment', 'date'], name='one_attendance_per_day')]

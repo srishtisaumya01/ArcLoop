@@ -1,14 +1,21 @@
-import { Link as RouterLink } from 'react-router-dom'
+import { useEffect } from 'react'
+import { Link as RouterLink, useRouteError } from 'react-router-dom'
 import { Button, Container, Stack } from '@mui/material'
 import { WifiOff } from 'lucide-react'
 import StatePanel from './StatePanel.jsx'
 import { usePageMeta } from '../../hooks/usePageMeta.js'
 import { useI18n } from '../../hooks/useI18n.js'
+import { STALE_CODE, reloadOnceForNewVersion } from '../../utils/staleCode.js'
 
 // Shown when a page cannot be loaded or crashes while rendering, most often because the connection dropped
 // before its code arrived. Arcloop has no offline mode, so this says so plainly instead of showing a developer error.
 export default function RouteError() {
   const { t } = useI18n()
+  const error = useRouteError()
+  useEffect(() => {
+    console.error('Route error:', error)
+    if (STALE_CODE.test(String(error?.message ?? error))) reloadOnceForNewVersion()
+  }, [error])
   usePageMeta(t('Something went wrong'))
   const offline = typeof navigator !== 'undefined' && navigator.onLine === false
   return (
