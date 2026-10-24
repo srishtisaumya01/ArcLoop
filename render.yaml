@@ -35,6 +35,14 @@ services:
         sync: false
       - key: DJANGO_FROM_EMAIL
         sync: false
+      - key: DJANGO_EMAIL_BACKEND  # config.email_backends.BrevoEmailBackend when the host blocks SMTP ports
+        sync: false
+      - key: DJANGO_BREVO_API_KEY
+        sync: false
+      - key: DJANGO_MAIL_RELAY_URL
+        sync: false
+      - key: DJANGO_MAIL_RELAY_SECRET
+        sync: false
       - key: DJANGO_CRON_SECRET  # a long random string; the same value is the GitHub secret CRON_SECRET (streak reminder emails)
         sync: false
       - key: FRONTEND_URL
