@@ -768,4 +768,5 @@ export const hi = {
   "Today is outside this challenge’s dates, so there is nothing to mark.": "आज इस चैलेंज की तारीख़ों से बाहर है, इसलिए कुछ लगाने को नहीं है।",
   "attended": "उपस्थित",
   "today": "आज",
+  "The server is starting up or busy. Please wait a minute and try again.": "सर्वर शुरू हो रहा है या व्यस्त है। कृपया एक मिनट रुककर फिर कोशिश करें।",
 }
