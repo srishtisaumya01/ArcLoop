@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
 import { Box, Button, Container, InputAdornment, MenuItem, Skeleton, TextField, Typography } from '@mui/material'
-import { ArrowRight, Check, Info, RefreshCw, Search, SearchX, TriangleAlert, Workflow } from 'lucide-react'
+import { ArrowRight, Check, RefreshCw, Search, SearchX, TriangleAlert, Workflow } from 'lucide-react'
 import PageHeader from '../../components/common/PageHeader.jsx'
 import StatePanel from '../../components/common/StatePanel.jsx'
 import ChallengeCard from '../../components/challenges/ChallengeCard.jsx'
@@ -34,7 +34,7 @@ function CardSkeletons() {
 
 export default function ExploreChallengesPage() {
   const { t } = useI18n()
-  usePageMeta(t('Explore challenges'), t('Browse sample Arcloop challenges by category and visibility.'))
+  usePageMeta(t('Explore challenges'), t('Browse Arcloop challenges by category and visibility.'))
   const load = useCallback(() => listChallenges(), [])
   const { status, data, retry } = useAsync(load)
   const [filters, setFilters] = useState(INITIAL_FILTERS)
@@ -53,14 +53,7 @@ export default function ExploreChallengesPage() {
         eyebrow={t('Challenges')}
         title={t('Explore challenges')}
         description={t('Find a challenge to build a habit alongside others, or use one as inspiration for your own.')}
-      >
-        <Box role="note" sx={{ display: 'flex', gap: 1.25, alignItems: 'flex-start', maxWidth: 680, p: 2, borderRadius: '12px', bgcolor: 'rgba(255, 255, 255, 0.1)', border: '1px dashed rgba(255, 255, 255, 0.45)' }}>
-          <Info size={20} aria-hidden="true" style={{ flexShrink: 0, marginTop: 2 }} />
-          <Typography sx={{ color: 'rgba(255, 255, 255, 0.9)' }}>
-            {t('Demo content: these are sample challenges for previewing the layout. They are not real campaigns, and no one has joined them.')}
-          </Typography>
-        </Box>
-      </PageHeader>
+      />
 
       <Container sx={{ maxWidth: `${contentWidths.page}px !important`, py: { xs: 5, md: 8 } }}>
         {status === 'success' && featured && !active && (
@@ -153,7 +146,7 @@ export default function ExploreChallengesPage() {
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', minHeight: 40, mb: 3 }}>
           <Typography role="status" color="text.secondary" aria-live="polite">
             {status === 'loading' && t('Loading challenges…')}
-            {status === 'success' && t('Showing {shown} of {total} sample challenges', { shown: filtered.length, total: data.length })}
+            {status === 'success' && t('Showing {shown} of {total} challenges', { shown: filtered.length, total: data.length })}
           </Typography>
           {active && (
             <Button size="small" onClick={() => setFilters(INITIAL_FILTERS)}>

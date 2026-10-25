@@ -7,12 +7,13 @@ import StatePanel from '../../components/common/StatePanel.jsx'
 import TaskRow from '../../components/planner/TaskRow.jsx'
 import DaySchedule from '../../components/planner/DaySchedule.jsx'
 import FocusTimer from '../../components/planner/FocusTimer.jsx'
+import TodoPicker from '../../components/planner/TodoPicker.jsx'
+import { EMPTY_TASK, toTaskInput } from '../../components/planner/taskForm.js'
 import ScheduleNotice from '../../components/planner/ScheduleNotice.jsx'
 import DayWrapUp from '../../components/planner/DayWrapUp.jsx'
 import DayCapacity from '../../components/planner/DayCapacity.jsx'
 import { carryMessage } from '../../components/planner/dayWrapUp.js'
 import { checkSchedule } from '../../components/planner/scheduleChecks.js'
-import QuickAddTask from '../../components/planner/QuickAddTask.jsx'
 import { formatDay, weekdayName } from '../../components/planner/weekFormat.js'
 import { AuthContext } from '../../context/authContext.js'
 import { useDayPlan } from '../../hooks/useDayPlan.js'
@@ -23,7 +24,6 @@ import { useDayReminders } from '../../hooks/useDayReminders.js'
 import { useDismissible } from '../../hooks/useDismissible.js'
 import { useRecoveryStatus } from '../../hooks/useRecoveryStatus.js'
 import DayModePanel from '../../components/planner/DayModePanel.jsx'
-import MinimumDayPanel from '../../components/planner/MinimumDayPanel.jsx'
 import UndoNotice from '../../components/planner/UndoNotice.jsx'
 import GentleNote from '../../components/planner/GentleNote.jsx'
 import { WELCOME_BACK } from '../../constants/recoveryCopy.js'
@@ -90,7 +90,7 @@ export default function MyDayPage() {
   }
 
   // Quick add makes a one-off task on this day (repeating tasks are made on the Recurring tasks page).
-  const addTask = (input) => run((s) => s.createTask(target, input), { open: true })
+  const addTodos = (titles) => run(async (s) => { for (const title of titles) await s.createTask(target, toTaskInput({ ...EMPTY_TASK, title })) }, { open: true })
 
   const goTo = (target) => setParams(target ? { date: target } : {})
   const offerUndo = (next) => {
@@ -267,11 +267,6 @@ export default function MyDayPage() {
                 onApply={(ids, reason) => perform(async (s) => { for (const id of ids) await s.setAside(id, reason) })} />
             )}
 
-            {plan.exists && plan.minimum && (
-              <MinimumDayPanel occurrences={plan.occurrences} minimum={plan.minimum} canEdit={canEdit} isToday={access === 'today'} busy={busy}
-                onSave={(ids) => run((s) => s.setMinimum(target, ids))} />
-            )}
-
             <FocusTimer focus={focus} target={access === 'today' ? focusTarget : null} viewDate={target} onClearTarget={() => setFocusTarget(null)}
               canMarkDone={(id) => canRecord && active.some((o) => o.id === id && o.completion < 1)}
               onMarkDone={(id) => { const task = active.find((o) => o.id === id); if (task) complete(task, 1) }} />
@@ -289,7 +284,10 @@ export default function MyDayPage() {
               )}
               {!plan.exists && !canEdit && <StatePanel icon={CalendarCheck} title="No plan was recorded" text="Nothing was planned on this day." />}
               {plan.exists && active.length === 0 && setAside.length === 0 && (
-                <StatePanel icon={CalendarCheck} title="No tasks on this day" text={canEdit ? 'Add a task below, or enjoy the open day.' : 'There were no tasks on this day.'} />
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, px: 2, py: 1.25, borderRadius: '12px', border: `1px dashed ${colors.border}`, color: colors.textSecondary }}>
+                  <CalendarCheck size={18} aria-hidden="true" />
+                  <Typography variant="body2">{canEdit ? 'No to-dos yet. Pick some below.' : 'There were no to-dos on this day.'}</Typography>
+                </Box>
               )}
               {active.length > 0 && (
                 <DayCapacity date={target} tasks={active} available={available} onChangeAvailable={setAvailable} busy={busy} onMove={moveToNextDay} getRepeatingIds={getRepeatingIds}
@@ -344,7 +342,7 @@ export default function MyDayPage() {
             {/* Right after the task list, so a keyboard user reaches Undo straight after the tasks. */}
             <UndoNotice notice={activeUndo} busy={undoBusy} error={undoError} onUndo={undoNow} onDismiss={() => setUndo(null)} />
 
-            {canEdit && <QuickAddTask busy={busy} onAdd={addTask} />}
+            {canEdit && <TodoPicker key={target} date={target} existing={plan.occurrences.map((o) => o.title)} busy={busy} onSave={addTodos} />}
 
             {access === 'today' && plan.exists && (
               <DayWrapUp occurrences={plan.occurrences} focusMs={dayFocus.focusedMs} sessions={dayFocus.sessions} busy={busy} onCarry={carryForward} getRepeatingIds={getRepeatingIds}

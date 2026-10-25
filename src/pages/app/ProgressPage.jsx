@@ -119,7 +119,7 @@ export default function ProgressPage() {
             </Section>
             <Section title="Your recurring tasks" description={`The last ${HABIT_WINDOW_DAYS} days. Rest days, and tasks you moved or set aside, are not counted.`} aria-label="Recurring tasks">
               {data.habits.habits.length === 0 ? (
-                <Typography color="text.secondary">No recurring task was planned in this period. <RouterLink to={ROUTES.recurring}>Manage recurring tasks</RouterLink></Typography>
+                <Typography color="text.secondary">No recurring task was planned in this period.</Typography>
               ) : (
                 <Box component="ul" sx={{ listStyle: 'none', m: 0, p: 0, display: 'grid', gap: 1.5, gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, alignItems: 'start' }}>
                   {data.habits.habits.map((habit) => <HabitRow key={habit.templateId} habit={habit} />)}

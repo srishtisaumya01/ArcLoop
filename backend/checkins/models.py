@@ -24,3 +24,15 @@ class ReminderEmailLog(models.Model):
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=['user', 'date', 'slot'], name='one_reminder_email_per_slot')]
+
+
+class UserBadge(models.Model):
+    """A streak badge a person has earned (kept for good, even if the streak later breaks)."""
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='badges')
+    code = models.CharField(max_length=20)  # e.g. 'streak-15'
+    earned_on = models.DateField()  # the day the streak reached the badge's length
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['user', 'code'], name='one_badge_per_code')]

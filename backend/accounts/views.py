@@ -3,7 +3,7 @@ import logging
 from django.conf import settings
 from django.contrib.auth import authenticate, get_user_model
 from django.contrib.auth.tokens import default_token_generator
-from django.core.mail import send_mail
+from django.core.mail import EmailMultiAlternatives, send_mail
 from django.db import IntegrityError, transaction
 from django.utils.encoding import force_bytes, force_str
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
@@ -22,6 +22,7 @@ from django.utils import timezone
 
 from challenges.services import link_pending_memberships
 
+from .emails import reset_code_email
 from .models import AuthToken, PasswordResetCode, Profile, ProfileAvatar
 from .serializers import (
     AccountDeleteSerializer,
@@ -250,12 +251,10 @@ class OtpRequestView(PublicAuthView):
             code = PasswordResetCode.issue(user)
             if code is not None:
                 try:
-                    send_mail(
-                        'Your Arcloop password reset code',
-                        f'Your Arcloop code is {code}.\n\nIt works for 10 minutes. If you did not ask to reset your password, ignore this email: nothing changes.\n',
-                        settings.DEFAULT_FROM_EMAIL,
-                        [user.email],
-                    )
+                    subject, text, html = reset_code_email(user, code)
+                    message = EmailMultiAlternatives(subject, text, settings.DEFAULT_FROM_EMAIL, [user.email])
+                    message.attach_alternative(html, 'text/html')
+                    message.send()
                 except Exception as error:  # noqa: BLE001 - never tell the caller whether this address has an account
                     log_event(request, 'reset_email_failed', logging.ERROR, error=type(error).__name__, user=user.pk)
         return Response(status=status.HTTP_204_NO_CONTENT)

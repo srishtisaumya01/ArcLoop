@@ -8,7 +8,7 @@ import { contentWidths } from '../../theme/tokens.js'
 export default function ImpactStats() {
   const { t } = useI18n()
   return (
-    <Box component="section" aria-label={t('Community highlights, sample data')} sx={{ position: 'relative', zIndex: 2, mt: { xs: -7, md: -12 }, pb: { xs: 2, md: 4 } }}>
+    <Box component="section" aria-label={t('Community highlights')} sx={{ position: 'relative', zIndex: 2, mt: { xs: -7, md: -12 }, pb: { xs: 2, md: 4 } }}>
       <Container sx={{ maxWidth: `${contentWidths.page}px !important` }}>
         <StatTiles stats={COMMUNITY_STATS} elevated />
       </Container>

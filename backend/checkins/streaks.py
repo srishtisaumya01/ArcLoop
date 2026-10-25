@@ -19,3 +19,18 @@ def streaks(done_dates, today):
         best = max(best, run)
         previous = d
     return current, best
+
+
+def runs(done_dates):
+    """Every run of consecutive days as (start, end, length), oldest first."""
+    found, start, previous = [], None, None
+    for d in sorted(set(done_dates)):
+        if previous is not None and d - previous == timedelta(days=1):
+            previous = d
+            continue
+        if start is not None:
+            found.append((start, previous, (previous - start).days + 1))
+        start = previous = d
+    if start is not None:
+        found.append((start, previous, (previous - start).days + 1))
+    return found

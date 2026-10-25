@@ -66,9 +66,8 @@ export default function SignupPage() {
             control={<Checkbox id="field-agree" name="agree" checked={values.agree} onChange={onChange} slotProps={{ input: { 'aria-describedby': errors.agree ? 'field-agree-help' : undefined } }} />}
             label={
               <Typography variant="body2">
-                {tx('I agree to the {terms} and {privacy} (both are drafts).', {
-                  terms: <Link component={RouterLink} to={ROUTES.terms}>{t('Terms')}</Link>,
-                  privacy: <Link component={RouterLink} to={ROUTES.privacy}>{t('Privacy Policy')}</Link>,
+                {tx('I agree to the {terms}.', {
+                  terms: <Link component={RouterLink} to={ROUTES.terms}>{t('Terms & Privacy')}</Link>,
                 })}
               </Typography>
             }

@@ -1,6 +1,6 @@
 import { useCallback, useEffect } from 'react'
 import { Link as RouterLink, useLocation, useParams } from 'react-router-dom'
-import { Alert, Box, Button, Chip, Container, Skeleton, Typography } from '@mui/material'
+import { Box, Button, Chip, Container, Skeleton, Typography } from '@mui/material'
 import { Check, FileQuestion, RefreshCw, TriangleAlert } from 'lucide-react'
 import PageHeader from '../../components/common/PageHeader.jsx'
 import StatePanel from '../../components/common/StatePanel.jsx'
@@ -129,9 +129,6 @@ export default function ChallengeDetailsPage() {
       </PageHeader>
 
       <Container sx={{ maxWidth: `${contentWidths.page}px !important`, py: { xs: 5, md: 8 } }}>
-        <Alert severity="info" variant="outlined" sx={{ mb: 5 }}>
-          {t('Demo content: this challenge is sample data for previewing the layout. Joining is a prototype and is not saved.')}
-        </Alert>
         <Box sx={{ display: 'grid', gap: { xs: 5, md: 7 }, gridTemplateColumns: { xs: '1fr', md: 'minmax(0, 1.6fr) minmax(0, 1fr)' }, alignItems: 'start' }}>
           <Box>
             <Block title="About this challenge">
