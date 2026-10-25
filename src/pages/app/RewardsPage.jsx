@@ -34,7 +34,7 @@ export default function RewardsPage() {
   return (
     <>
       <PageHeader eyebrow={t('Rewards')} title={t('Your rewards')} description={t('Keep your streak going to earn badges. Mark attendance in any challenge each day.')} />
-      <Container sx={{ maxWidth: `${contentWidths.page}px !important`, py: { xs: 4, md: 6 }, display: 'grid', gap: 3 }}>
+      <Container sx={{ maxWidth: `${contentWidths.page}px !important`, py: { xs: 4, md: 6 }, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 3 }}>
         {status === 'loading' && !data && <Skeleton variant="rounded" height={320} />}
         {status === 'error' && !data && (
           <StatePanel tone="error" icon={TriangleAlert} title={t('We couldn’t load your rewards')} text={t('Something went wrong while loading. Please try again.')}

@@ -63,7 +63,7 @@ export default function DashboardPage() {
         quote={quote({ display: { xs: 'none', xl: 'block' }, position: 'absolute', bottom: 16, right: 32, width: 'fit-content', maxWidth: 560, flex: 'none', ml: 0, zIndex: 1 })}
       />
 
-      <Container sx={{ maxWidth: `${contentWidths.page}px !important`, py: { xs: 3, md: 5 }, display: 'grid', gap: 3 }}>
+      <Container sx={{ maxWidth: `${contentWidths.page}px !important`, py: { xs: 3, md: 5 }, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 3 }}>
         <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', alignItems: 'center' }}>
           <Button component={RouterLink} to={ROUTES.day} variant="contained" color="primary" startIcon={<CalendarCheck size={18} aria-hidden="true" />}>
             {t('Open My Day')}

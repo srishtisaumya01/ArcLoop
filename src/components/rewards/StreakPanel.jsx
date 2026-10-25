@@ -13,7 +13,7 @@ export default function StreakPanel({ data, children }) {
   const { t, lang } = useI18n()
   const [year, setYear] = useState('current')
   const p = useStreakTheme()
-  const card = { p: { xs: 2, md: 2.5 }, borderRadius: '16px', background: p.card, border: `1px solid ${p.border}`, color: p.text, boxShadow: p.shadow }
+  const card = { minWidth: 0, p: { xs: 2, md: 2.5 }, borderRadius: '16px', background: p.card, border: `1px solid ${p.border}`, color: p.text, boxShadow: p.shadow }
 
   if (!data.has_enrollment) return null
 
@@ -36,7 +36,7 @@ export default function StreakPanel({ data, children }) {
   const subtitle = `${formatDate(gridStart, lang)} → ${formatDate(graphEnd, lang)} · ${t('weekly')}`
 
   return (
-    <Box sx={{ display: 'grid', gap: 2.5 }}>
+    <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 2.5 }}>
       <StreakStats data={data} />
       <Box sx={card}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1.5, flexWrap: 'wrap', mb: 1.5 }}>
