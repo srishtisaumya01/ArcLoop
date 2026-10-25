@@ -43,12 +43,18 @@ export default function TodoPicker({ date, existing, busy, onSave }) {
     if (!picked.has(norm(title)) && !taken.has(norm(title))) setSelected((list) => [...list, title])
     setCustom('')
   }
+  // What Save adds: everything picked, plus whatever is typed in the box (so Add to list is optional).
+  const pending = custom.trim()
+  const toSave = pending && !picked.has(norm(pending)) && !taken.has(norm(pending)) ? [...selected, pending] : selected
   const save = async () => {
     setSaving(true)
     setProblem('')
-    const { ok, error } = await onSave(selected)
+    const { ok, error } = await onSave(toSave)
     setSaving(false)
-    if (ok) setSelected([])
+    if (ok) {
+      setSelected([])
+      setCustom('')
+    }
     else setProblem(error?.message ?? 'We couldn’t save those. Please try again.')
   }
 
@@ -60,6 +66,8 @@ export default function TodoPicker({ date, existing, busy, onSave }) {
     )
   }
   const yesterdayLeft = available(yesterday)
+  const known = new Set([...TODO_GROUPS.flatMap((g) => g.items), ...yesterday].map(norm))
+  const own = selected.filter((t) => !known.has(norm(t))) // the to-dos typed in by hand, kept in view so they are not lost
   const groups = showAll ? TODO_GROUPS : [{ name: 'Popular', items: POPULAR }]
 
   return (
@@ -70,6 +78,13 @@ export default function TodoPicker({ date, existing, busy, onSave }) {
         <TextField fullWidth size="small" value={custom} onChange={(e) => setCustom(e.target.value)} placeholder="Write your own to-do…" slotProps={{ htmlInput: { 'aria-label': 'Your own to-do', maxLength: 120, enterKeyHint: 'done' } }} />
         <Button type="submit" variant="outlined" startIcon={<Plus size={16} aria-hidden="true" />} sx={{ flexShrink: 0, height: 40 }}>Add to list</Button>
       </Box>
+
+      {own.length > 0 && (
+        <Box sx={{ display: 'grid', gap: 1 }}>
+          <Typography sx={{ fontWeight: 700 }}>Your own</Typography>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>{own.map((t) => chip(t))}</Box>
+        </Box>
+      )}
 
       {yesterdayLeft.length > 0 && (
         <Box sx={{ display: 'grid', gap: 1 }}>
@@ -102,8 +117,8 @@ export default function TodoPicker({ date, existing, busy, onSave }) {
           </Box>
         )}
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1.5, flexWrap: 'wrap' }}>
-          <Typography color="text.secondary">{selected.length === 0 ? 'Pick a few to-dos, then save.' : `${selected.length} selected`}</Typography>
-          <Button variant="contained" disabled={selected.length === 0 || busy || saving} onClick={save}>{saving ? 'Saving…' : selected.length ? `Save ${selected.length} to-do${selected.length === 1 ? '' : 's'}` : 'Save'}</Button>
+          <Typography color="text.secondary">{toSave.length === 0 ? 'Pick a few to-dos, then save.' : `${toSave.length} selected`}</Typography>
+          <Button variant="contained" disabled={toSave.length === 0 || busy || saving} onClick={save}>{saving ? 'Saving…' : toSave.length ? `Save ${toSave.length} to-do${toSave.length === 1 ? '' : 's'}` : 'Save'}</Button>
         </Box>
         {problem && <Typography role="alert" color="error" variant="body2">{problem}</Typography>}
       </Box>
