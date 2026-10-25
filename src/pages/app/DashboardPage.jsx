@@ -76,10 +76,8 @@ export default function DashboardPage() {
           </Button>
         </Box>
         {quote({ display: { xs: 'block', xl: 'none' }, flex: 'none', ml: 0 })}
-        <Box sx={{ display: 'grid', gap: 3, gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: 'repeat(2, minmax(0, 1fr))' } }}>
-          <StreakCard />
-          <ChallengeCounts status={mine.status} items={mine.items} />
-        </Box>
+        <StreakCard />
+        <ChallengeCounts status={mine.status} items={mine.items} />
         {status === 'loading' && !data && (
           <Box aria-busy="true" aria-label={t('Loading your dashboard')} sx={{ display: 'grid', gap: 3 }}>
             <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: 'repeat(2, 1fr)', lg: 'repeat(4, 1fr)' } }}>
