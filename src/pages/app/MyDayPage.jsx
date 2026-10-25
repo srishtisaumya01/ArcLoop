@@ -7,7 +7,8 @@ import StatePanel from '../../components/common/StatePanel.jsx'
 import TaskRow from '../../components/planner/TaskRow.jsx'
 import DaySchedule from '../../components/planner/DaySchedule.jsx'
 import FocusTimer from '../../components/planner/FocusTimer.jsx'
-import QuickAddTask from '../../components/planner/QuickAddTask.jsx'
+import TodoPicker from '../../components/planner/TodoPicker.jsx'
+import { EMPTY_TASK, toTaskInput } from '../../components/planner/taskForm.js'
 import { formatDay, weekdayName } from '../../components/planner/weekFormat.js'
 import { AuthContext } from '../../context/authContext.js'
 import { useDayPlan } from '../../hooks/useDayPlan.js'
@@ -78,7 +79,7 @@ export default function MyDayPage() {
   }
 
   // Quick add makes a one-off task on this day (repeating tasks are made on the Recurring tasks page).
-  const addTask = (input) => run((s) => s.createTask(target, input), { open: true })
+  const addTodos = (titles) => run(async (s) => { for (const title of titles) await s.createTask(target, toTaskInput({ ...EMPTY_TASK, title })) }, { open: true })
 
   const goTo = (target) => setParams(target ? { date: target } : {})
   const offerUndo = (next) => {
@@ -229,7 +230,10 @@ export default function MyDayPage() {
               )}
               {!plan.exists && !canEdit && <StatePanel icon={CalendarCheck} title="No plan was recorded" text="Nothing was planned on this day." />}
               {plan.exists && active.length === 0 && setAside.length === 0 && (
-                <StatePanel icon={CalendarCheck} title="No tasks on this day" text={canEdit ? 'Add a task below, or enjoy the open day.' : 'There were no tasks on this day.'} />
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, px: 2, py: 1.25, borderRadius: '12px', border: `1px dashed ${colors.border}`, color: colors.textSecondary }}>
+                  <CalendarCheck size={18} aria-hidden="true" />
+                  <Typography variant="body2">{canEdit ? 'No to-dos yet. Pick some below.' : 'There were no to-dos on this day.'}</Typography>
+                </Box>
               )}
               {active.length > 0 && (
                 <DaySchedule tasks={active} nowMinutes={nowMinutes} renderTask={(task, marker) => (
@@ -276,7 +280,7 @@ export default function MyDayPage() {
             {/* Right after the task list, so a keyboard user reaches Undo straight after the tasks. */}
             <UndoNotice notice={activeUndo} busy={undoBusy} error={undoError} onUndo={undoNow} onDismiss={() => setUndo(null)} />
 
-            {canEdit && <QuickAddTask busy={busy} onAdd={addTask} />}
+            {canEdit && <TodoPicker key={target} date={target} existing={plan.occurrences.map((o) => o.title)} busy={busy} onSave={addTodos} />}
           </>
         )}
       </Container>
