@@ -1,5 +1,5 @@
-import { Link as RouterLink } from 'react-router-dom'
-import { Box, Button, Container, Skeleton } from '@mui/material'
+import { Link as RouterLink, useSearchParams } from 'react-router-dom'
+import { Box, Button, Container, Skeleton, Tab, Tabs } from '@mui/material'
 import { CalendarCheck, CalendarRange, CircleCheck, ListTodo, RefreshCw, TrendingUp, TriangleAlert, Trophy } from 'lucide-react'
 import UserMenu from '../../components/app/UserMenu.jsx'
 import QuoteCard from '../../components/dashboard/QuoteCard.jsx'
@@ -26,8 +26,14 @@ import { contentWidths } from '../../theme/tokens.js'
 
 // One sentence about how today stands.
 // The signed-in home: a greeting for the time of day, today at a glance, the week, the trend, and the featured challenge.
+const TABS = ['progress', 'day', 'challenges', 'all']
+
 export default function DashboardPage() {
   const { t, lang } = useI18n()
+  const [params, setParams] = useSearchParams()
+  const tab = TABS.includes(params.get('tab')) ? params.get('tab') : 'progress'
+  const show = (name) => tab === name || tab === 'all'
+  const goTo = (name) => setParams(name === 'progress' ? {} : { tab: name }, { replace: true })
   usePageMeta(t('Dashboard'))
   const now = useNow(undefined, 60_000)
   const { displayName, profileStatus } = useAppShell()
@@ -50,7 +56,6 @@ export default function DashboardPage() {
     : []
 
   const quote = (sx) => <QuoteCard now={now} sx={sx} />
-  const goToOngoing = () => document.getElementById('ongoing-challenges')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 
   return (
     <>
@@ -71,15 +76,21 @@ export default function DashboardPage() {
           <Button component={RouterLink} to={ROUTES.week} variant="outlined" color="primary" startIcon={<CalendarRange size={18} aria-hidden="true" />}>
             {t('Plan your week')}
           </Button>
-          <Button variant="outlined" color="primary" startIcon={<Trophy size={18} aria-hidden="true" />} onClick={goToOngoing}>
+          <Button variant="outlined" color="primary" startIcon={<Trophy size={18} aria-hidden="true" />} onClick={() => goTo('challenges')}>
             {mine.status === 'success' ? t('Ongoing challenges ({count})', { count: mine.ongoing.length }) : t('Ongoing challenges')}
           </Button>
         </Box>
         {quote({ display: { xs: 'block', xl: 'none' }, flex: 'none', ml: 0 })}
-        <StreakCard />
-        <ChallengeCounts status={mine.status} items={mine.items} />
-        <ChallengeCard status={mine.status} ongoing={mine.ongoing} />
-        {status === 'loading' && !data && (
+        <Tabs value={tab} onChange={(_, value) => goTo(value)} variant="scrollable" scrollButtons="auto" aria-label={t('Dashboard sections')} sx={{ borderBottom: 1, borderColor: 'divider', minHeight: 44, '& .MuiTab-root': { textTransform: 'none', fontWeight: 700, fontSize: '1rem', minHeight: 44 } }}>
+          <Tab value="progress" label={t('Progress')} />
+          <Tab value="day" label={t('My Day')} />
+          <Tab value="challenges" label={t('Challenges')} />
+          <Tab value="all" label={t('All')} />
+        </Tabs>
+
+        {show('progress') && <StreakCard />}
+
+        {(show('progress') || show('day')) && status === 'loading' && !data && (
           <Box aria-busy="true" aria-label={t('Loading your dashboard')} sx={{ display: 'grid', gap: 3 }}>
             <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: 'repeat(2, 1fr)', lg: 'repeat(4, 1fr)' } }}>
               {[0, 1, 2, 3].map((i) => <Skeleton key={i} variant="rounded" height={132} />)}
@@ -91,7 +102,7 @@ export default function DashboardPage() {
           </Box>
         )}
 
-        {status === 'error' && !data && (
+        {(show('progress') || show('day')) && status === 'error' && !data && (
           <StatePanel
             tone="error"
             icon={TriangleAlert}
@@ -105,22 +116,25 @@ export default function DashboardPage() {
           />
         )}
 
-        {data && (
+        {data && brandNew && (show('progress') || show('day')) && <FirstSteps />}
+
+        {data && !brandNew && (
           <>
-            {brandNew ? (
-              <FirstSteps />
-            ) : (
-              <>
-                <KpiTiles tiles={tiles} />
-                <Box sx={{ display: 'grid', gap: 3, gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: 'repeat(2, minmax(0, 1fr))' } }}>
-                  <TodayCard today={today} />
-                  <WeekCard bars={weekBars(week)} weekStart={week?.weekStart} weekEnd={week?.weekEnd} />
-                </Box>
-                <Box sx={{ display: 'grid', gap: 3, gridTemplateColumns: { xs: 'minmax(0, 1fr)', lg: 'minmax(0, 1.5fr) minmax(0, 1fr)' }, alignItems: 'start' }}>
-                  <TrendCard points={trendPoints(data.weeks)} />
-                </Box>
-              </>
+            {show('progress') && <KpiTiles tiles={tiles} />}
+            {show('day') && (
+              <Box sx={{ display: 'grid', gap: 3, gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: 'repeat(2, minmax(0, 1fr))' } }}>
+                <TodayCard today={today} />
+                <WeekCard bars={weekBars(week)} weekStart={week?.weekStart} weekEnd={week?.weekEnd} />
+              </Box>
             )}
+            {show('progress') && <TrendCard points={trendPoints(data.weeks)} />}
+          </>
+        )}
+
+        {show('challenges') && (
+          <>
+            <ChallengeCounts status={mine.status} items={mine.items} />
+            <ChallengeCard status={mine.status} ongoing={mine.ongoing} />
           </>
         )}
 
