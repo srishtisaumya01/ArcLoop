@@ -1,0 +1,95 @@
+import { useEffect, useState } from 'react'
+import { Box, Button, ButtonBase, Container, Skeleton, Typography } from '@mui/material'
+import { RefreshCw, TriangleAlert } from 'lucide-react'
+import PageHeader from '../../components/common/PageHeader.jsx'
+import StatePanel from '../../components/common/StatePanel.jsx'
+import ActivityGrid from '../../components/rewards/ActivityGrid.jsx'
+import BadgeDialog from '../../components/rewards/BadgeDialog.jsx'
+import BadgeHex from '../../components/rewards/BadgeHex.jsx'
+import { useAppShell } from '../../hooks/useAppShell.js'
+import { useAsync } from '../../hooks/useAsync.js'
+import { useI18n } from '../../hooks/useI18n.js'
+import { usePageMeta } from '../../hooks/usePageMeta.js'
+import { CHECKIN_CHANGED } from '../../services/checkinService.js'
+import { getRewards } from '../../services/rewardsService.js'
+import { formatDate } from '../../utils/appDates.js'
+import { colors, contentWidths, radii } from '../../theme/tokens.js'
+
+function Stat({ label, value }) {
+  return (
+    <Box sx={{ textAlign: 'right' }}>
+      <Typography variant="body2" color="text.secondary">{label}</Typography>
+      <Typography sx={{ fontWeight: 800, fontSize: '1.25rem' }}>{value}</Typography>
+    </Box>
+  )
+}
+
+// Rewards: the streak badges (earned ones to keep and share, locked ones to aim for) and a year of activity.
+export default function RewardsPage() {
+  const { t, lang } = useI18n()
+  usePageMeta(t('Rewards'))
+  const { profile, displayName } = useAppShell()
+  const { status, data, retry } = useAsync(getRewards)
+  const [open, setOpen] = useState(null)
+  useEffect(() => {
+    window.addEventListener(CHECKIN_CHANGED, retry)
+    return () => window.removeEventListener(CHECKIN_CHANGED, retry)
+  }, [retry])
+  const username = profile?.username ?? displayName
+  const earned = data?.badges.filter((b) => b.earned_on) ?? []
+
+  return (
+    <>
+      <PageHeader eyebrow={t('Rewards')} title={t('Your rewards')} description={t('Keep your streak going to earn badges. Mark attendance in any challenge each day.')} />
+      <Container sx={{ maxWidth: `${contentWidths.page}px !important`, py: { xs: 4, md: 6 }, display: 'grid', gap: 3 }}>
+        {status === 'loading' && !data && <Skeleton variant="rounded" height={320} />}
+        {status === 'error' && !data && (
+          <StatePanel tone="error" icon={TriangleAlert} title={t('We couldn’t load your rewards')} text={t('Something went wrong while loading. Please try again.')}
+            action={<Button variant="contained" startIcon={<RefreshCw size={18} aria-hidden="true" />} onClick={retry}>{t('Try again')}</Button>} />
+        )}
+        {data && (
+          <>
+            <Box component="section" aria-labelledby="badges-title" sx={{ p: { xs: 2.5, md: 3 }, borderRadius: `${radii.lg}px`, bgcolor: '#161B26', color: '#F3F4F6', border: `1px solid ${colors.border}` }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 1, mb: 2.5 }}>
+                <Typography id="badges-title" variant="h3" component="h2" sx={{ color: '#FFFFFF' }}>{t('Badges')}</Typography>
+                <Typography sx={{ color: '#9CA3AF' }}>{t('{done} of {total} earned', { done: earned.length, total: data.badges.length })}</Typography>
+              </Box>
+              <Box sx={{ display: 'grid', gap: 2.5, gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', sm: 'repeat(3, minmax(0, 1fr))', md: 'repeat(5, minmax(0, 1fr))' } }}>
+                {data.badges.map((b) => {
+                  const left = b.days - data.current_streak
+                  const body = (
+                    <>
+                      <BadgeHex days={b.days} locked={!b.earned_on} size={104} />
+                      <Typography sx={{ fontWeight: 700, color: '#FFFFFF' }}>{t(b.title)}</Typography>
+                      <Typography variant="body2" sx={{ color: '#9CA3AF' }}>
+                        {b.earned_on ? formatDate(b.earned_on, lang) : left > 0 ? t('{count} days to go', { count: left }) : t('Locked')}
+                      </Typography>
+                    </>
+                  )
+                  return b.earned_on ? (
+                    <ButtonBase key={b.code} onClick={() => setOpen(b)} aria-label={t('Open {title} badge', { title: t(b.title) })} sx={{ display: 'grid', justifyItems: 'center', gap: 0.5, p: 1, borderRadius: '14px', '&:hover': { bgcolor: 'rgba(255,255,255,0.06)' } }}>{body}</ButtonBase>
+                  ) : (
+                    <Box key={b.code} sx={{ display: 'grid', justifyItems: 'center', gap: 0.5, p: 1 }}>{body}</Box>
+                  )
+                })}
+              </Box>
+            </Box>
+
+            <Box component="section" aria-labelledby="activity-title" sx={{ p: { xs: 2.5, md: 3 }, borderRadius: `${radii.lg}px`, bgcolor: colors.surface, border: `1px solid ${colors.border}` }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 2, mb: 2 }}>
+                <Typography id="activity-title" variant="h3" component="h2">{t('{count} active days in the past year', { count: data.activity.length })}</Typography>
+                <Box sx={{ display: 'flex', gap: 3 }}>
+                  <Stat label={t('Total active days')} value={data.total_active_days} />
+                  <Stat label={t('Best streak')} value={data.best_streak} />
+                  <Stat label={t('Current streak')} value={data.current_streak} />
+                </Box>
+              </Box>
+              <ActivityGrid activity={data.activity} today={data.today} />
+            </Box>
+          </>
+        )}
+      </Container>
+      {open && <BadgeDialog badge={open} username={username} open onClose={() => setOpen(null)} />}
+    </>
+  )
+}

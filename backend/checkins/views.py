@@ -2,6 +2,7 @@ import hmac
 from datetime import datetime, timedelta
 
 from django.conf import settings
+from django.db.models import Count
 from django.http import HttpResponse
 from rest_framework.permissions import AllowAny
 
@@ -12,9 +13,11 @@ from rest_framework.views import APIView
 
 from challenges.services import local_now, today_for
 from accounts.models import Profile
+from challenges.models import ChallengeAttendance
 from config.errors import ApiError, validation_error
 
 from .models import DayCheckin
+from .badges import award_and_list
 from .reminders import send_reminders, user_from_unsubscribe_token
 from .services import done_dates
 from .streaks import streaks
@@ -120,3 +123,28 @@ def unsubscribe(request):
 <p style="color:#44546F;line-height:1.5">You can turn them back on any time from your profile settings.</p>
 <a href="{settings.FRONTEND_URL}" style="display:inline-block;margin-top:12px;background:#0A1F66;color:#fff;text-decoration:none;padding:12px 26px;border-radius:999px;font-weight:700">Back to Arcloop</a></div></body>"""
     return HttpResponse(page)
+
+
+class RewardsView(APIView):
+    """Badges earned, and a year of activity for the contribution grid."""
+
+    def get(self, request):
+        user = request.user
+        today = today_for(user)
+        since = today - timedelta(days=370)
+        done, marked = done_dates(user, today)
+        counts = {}
+        for row in ChallengeAttendance.objects.filter(enrollment__user=user, date__gte=since).values('date').annotate(n=Count('id')):
+            counts[row['date']] = row['n']
+        for d in done:  # a day done by check-in alone still counts as one
+            if d >= since:
+                counts.setdefault(d, 1)
+        current, best = streaks(done, today)
+        return Response({
+            'today': today.isoformat(),
+            'badges': award_and_list(user, done),
+            'current_streak': current,
+            'best_streak': max(best, current),
+            'total_active_days': len(done),
+            'activity': [{'date': d.isoformat(), 'count': n} for d, n in sorted(counts.items())],
+        })
