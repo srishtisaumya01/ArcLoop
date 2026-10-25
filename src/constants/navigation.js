@@ -50,8 +50,8 @@ export const SITE_TAB_APP = { label: 'Dashboard', to: ROUTES.app, icon: 'dashboa
 export const APP_TABS = [
   { label: 'Home', to: ROUTES.app, icon: 'home', end: true },
   { label: 'My Day', to: ROUTES.day, icon: 'day' },
-  { label: 'Week', to: ROUTES.week, icon: 'week' },
   { label: 'Challenges', to: ROUTES.appChallenges, icon: 'challenges' },
+  { label: 'Rewards', to: ROUTES.rewards, icon: 'rewards' },
   { label: 'Profile', to: ROUTES.profile, icon: 'profile' },
 ]
 

@@ -1,10 +1,10 @@
 import { NavLink } from 'react-router-dom'
 import { Box } from '@mui/material'
-import { CalendarCheck, CalendarRange, CircleHelp, House, LayoutDashboard, LogIn, Trophy, UserRound } from 'lucide-react'
+import { Award, CalendarCheck, CalendarRange, CircleHelp, House, LayoutDashboard, LogIn, Trophy, UserRound } from 'lucide-react'
 import { useI18n } from '../../hooks/useI18n.js'
 import { bottomNavClearance, bottomNavHeight, colors, navFontFamily } from '../../theme/tokens.js'
 
-const ICONS = { home: House, join: CircleHelp, challenges: Trophy, login: LogIn, dashboard: LayoutDashboard, day: CalendarCheck, week: CalendarRange, profile: UserRound }
+const ICONS = { home: House, join: CircleHelp, challenges: Trophy, login: LogIn, dashboard: LayoutDashboard, day: CalendarCheck, week: CalendarRange, rewards: Award, profile: UserRound }
 
 // The tab bar fixed to the bottom of a phone or small tablet (it is hidden from 900px, where the sidebar or the top bar shows the
 // same places). One icon and a short word per tab; the current page is marked with a filled pill and `aria-current`.
