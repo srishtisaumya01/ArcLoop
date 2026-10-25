@@ -20,7 +20,7 @@ function Cell({ children, label, sub, accent, p }) {
 export default function StreakStats({ data }) {
   const { t, lang } = useI18n()
   const p = useStreakTheme()
-  const GREEN = p.accent
+  const GREEN = p.streakGreen // the streak is green while it is running
   const big = { color: p.strong, fontWeight: 800, fontSize: { xs: '1.75rem', sm: '2.1rem' }, lineHeight: 1.1 }
   const since = data.first_active ? `${formatDate(data.first_active, lang)} – ${t('Present')}` : t('No streak yet')
   const full = data.current_streak > 0
@@ -29,7 +29,7 @@ export default function StreakStats({ data }) {
       <Cell p={p} label={t('Total active days')} sub={since}>
         <Typography sx={big}>{data.total_active_days}</Typography>
       </Cell>
-      <Cell p={p} label={t('Current streak')} sub={range(data.current_streak_range, lang, t)} accent={GREEN}>
+      <Cell p={p} label={t('Current streak')} sub={range(data.current_streak_range, lang, t)} accent={data.current_streak > 0 ? GREEN : undefined}>
         <Box sx={{ position: 'relative', width: 88, height: 88, display: 'grid', placeItems: 'center' }}>
           <svg width="88" height="88" viewBox="0 0 88 88" aria-hidden="true" style={{ position: 'absolute', inset: 0 }}>
             <circle cx="44" cy="44" r="38" fill="none" stroke={p.ringTrack} strokeWidth="5" />
