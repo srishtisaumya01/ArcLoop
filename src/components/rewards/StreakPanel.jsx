@@ -13,7 +13,7 @@ export default function StreakPanel({ data, children }) {
   const { t, lang } = useI18n()
   const [year, setYear] = useState('current')
   const p = useStreakTheme()
-  const card = { p: { xs: 2, md: 2.5 }, borderRadius: '16px', bgcolor: p.card, border: `1px solid ${p.border}`, color: p.text, boxShadow: p.shadow }
+  const card = { p: { xs: 2, md: 2.5 }, borderRadius: '16px', background: p.card, border: `1px solid ${p.border}`, color: p.text, boxShadow: p.shadow }
 
   if (!data.has_enrollment) return null
 

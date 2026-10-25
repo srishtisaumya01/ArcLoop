@@ -25,7 +25,7 @@ export default function StreakStats({ data }) {
   const since = data.first_active ? `${formatDate(data.first_active, lang)} – ${t('Present')}` : t('No streak yet')
   const full = data.current_streak > 0
   return (
-    <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', border: `1px solid ${p.border}`, borderRadius: '16px', bgcolor: p.card, boxShadow: p.shadow, '& > * + *': { borderLeft: `1px solid ${p.border}` } }}>
+    <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', border: `1px solid ${p.border}`, borderRadius: '16px', background: p.card, boxShadow: p.shadow, '& > * + *': { borderLeft: `1px solid ${p.border}` } }}>
       <Cell p={p} label={t('Total active days')} sub={since}>
         <Typography sx={big}>{data.total_active_days}</Typography>
       </Cell>
@@ -35,7 +35,7 @@ export default function StreakStats({ data }) {
             <circle cx="44" cy="44" r="38" fill="none" stroke={p.ringTrack} strokeWidth="5" />
             <circle cx="44" cy="44" r="38" fill="none" stroke={full ? GREEN : p.ringTrack} strokeWidth="5" strokeLinecap="round" strokeDasharray={`${2 * Math.PI * 38 * 0.92} ${2 * Math.PI * 38}`} transform="rotate(-80 44 44)" />
           </svg>
-          <Box sx={{ position: 'absolute', top: -4, left: '50%', transform: 'translateX(-50%)', bgcolor: p.card, px: 0.25, color: full ? GREEN : p.muted }}><Flame size={20} aria-hidden="true" /></Box>
+          <Box sx={{ position: 'absolute', top: -4, left: '50%', transform: 'translateX(-50%)', bgcolor: p.solid, px: 0.25, color: full ? GREEN : p.muted }}><Flame size={20} aria-hidden="true" /></Box>
           <Typography sx={{ ...big, fontSize: '1.9rem' }}>{data.current_streak}</Typography>
         </Box>
       </Cell>
