@@ -3,7 +3,7 @@ import { Box, Button, ButtonBase, Container, Skeleton, Typography } from '@mui/m
 import { RefreshCw, TriangleAlert } from 'lucide-react'
 import PageHeader from '../../components/common/PageHeader.jsx'
 import StatePanel from '../../components/common/StatePanel.jsx'
-import ActivityGrid from '../../components/rewards/ActivityGrid.jsx'
+import StreakPanel from '../../components/rewards/StreakPanel.jsx'
 import BadgeDialog from '../../components/rewards/BadgeDialog.jsx'
 import BadgeHex from '../../components/rewards/BadgeHex.jsx'
 import { useAppShell } from '../../hooks/useAppShell.js'
@@ -14,15 +14,6 @@ import { CHECKIN_CHANGED } from '../../services/checkinService.js'
 import { getRewards } from '../../services/rewardsService.js'
 import { formatDate } from '../../utils/appDates.js'
 import { colors, contentWidths, radii } from '../../theme/tokens.js'
-
-function Stat({ label, value }) {
-  return (
-    <Box sx={{ textAlign: 'right' }}>
-      <Typography variant="body2" color="text.secondary">{label}</Typography>
-      <Typography sx={{ fontWeight: 800, fontSize: '1.25rem' }}>{value}</Typography>
-    </Box>
-  )
-}
 
 // Rewards: the streak badges (earned ones to keep and share, locked ones to aim for) and a year of activity.
 export default function RewardsPage() {
@@ -59,10 +50,10 @@ export default function RewardsPage() {
                   const left = b.days - data.current_streak
                   const body = (
                     <>
-                      <BadgeHex days={b.days} locked={!b.earned_on} size={104} />
+                      <BadgeHex days={b.days} locked={!b.earned_on} progress={data.current_streak / b.days} size={116} />
                       <Typography sx={{ fontWeight: 700, color: '#FFFFFF' }}>{t(b.title)}</Typography>
                       <Typography variant="body2" sx={{ color: '#9CA3AF' }}>
-                        {b.earned_on ? formatDate(b.earned_on, lang) : left > 0 ? t('{count} days to go', { count: left }) : t('Locked')}
+                        {b.earned_on ? formatDate(b.earned_on, lang) : left > 0 ? `${data.current_streak}/${b.days} · ${t('{count} days to go', { count: left })}` : t('Locked')}
                       </Typography>
                     </>
                   )
@@ -75,17 +66,7 @@ export default function RewardsPage() {
               </Box>
             </Box>
 
-            <Box component="section" aria-labelledby="activity-title" sx={{ p: { xs: 2.5, md: 3 }, borderRadius: `${radii.lg}px`, bgcolor: colors.surface, border: `1px solid ${colors.border}` }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 2, mb: 2 }}>
-                <Typography id="activity-title" variant="h3" component="h2">{t('{count} active days in the past year', { count: data.activity.length })}</Typography>
-                <Box sx={{ display: 'flex', gap: 3 }}>
-                  <Stat label={t('Total active days')} value={data.total_active_days} />
-                  <Stat label={t('Best streak')} value={data.best_streak} />
-                  <Stat label={t('Current streak')} value={data.current_streak} />
-                </Box>
-              </Box>
-              <ActivityGrid activity={data.activity} today={data.today} />
-            </Box>
+            <StreakPanel data={data} />
           </>
         )}
       </Container>
