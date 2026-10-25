@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { CalendarDays, Check, Clock, Pencil, Repeat, Timer, Trash2, Undo2 } from 'lucide-react'
 import { Box, Button, Checkbox, Chip, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material'
 import { colors, radii } from '../../theme/tokens.js'
 import TaskReminderControl from '../reminders/TaskReminderControl.jsx'
@@ -17,7 +18,7 @@ const STATES = [
 
 // One task in the day's checklist. Completion is 0 / half / done; set-aside tasks can be put back.
 // Editing changes this day's task only; removing follows the planner's removal rules.
-export default function TaskRow({ task, canRecord, canEdit, busy, moveRange, marker, onFocus, focusing, focusLocked, focusedMs, onSetTime, onCompletion, onSetAside, onRestore, onEdit, onRemove, onStopRepeating, canRemind, reminder, remindersOn, onSetReminder, onRemoveReminder, move, onMove, onUndoMove }) {
+export default function TaskRow({ task, canRecord, canEdit, busy, moveRange, marker, onFocus, focusing, focusLocked, focusedMs, onSetTime, onCompletion, onRestore, onEdit, onRemove, onStopRepeating, canRemind, reminder, remindersOn, onSetReminder, onRemoveReminder, move, onMove, onUndoMove }) {
   const [editing, setEditing] = useState(false)
   const [values, setValues] = useState(null)
   const [errors, setErrors] = useState({})
@@ -26,8 +27,8 @@ export default function TaskRow({ task, canRecord, canEdit, busy, moveRange, mar
   const [moving, setMoving] = useState(false)
   const [timing, setTiming] = useState(false)
   const [progress, setProgress] = useState(0) // the progress chosen in the edit form
+  const [ticked, setTicked] = useState(task.completion >= 1) // the box is only a tick: the Done button is what records it
   const excluded = task.planState === 'excluded'
-  const meta = [timeRange(task), task.estimatedMinutes ? formatMinutes(task.estimatedMinutes) : null, task.category, focusedMs >= 30000 ? `${formatMinutes(Math.max(1, Math.round(focusedMs / 60000)))} focused` : null].filter(Boolean).join(' · ')
   const repeats = Boolean(task.templateId) && !excluded
 
   const startEdit = () => {
@@ -88,32 +89,57 @@ export default function TaskRow({ task, canRecord, canEdit, busy, moveRange, mar
     )
   }
 
+  const done = task.completion >= 1
+  const chips = [
+    timeRange(task) ? { icon: Clock, label: timeRange(task) } : null,
+    task.estimatedMinutes ? { icon: Timer, label: formatMinutes(task.estimatedMinutes) } : null,
+    task.category ? { label: task.category } : null,
+    focusedMs >= 30000 ? { label: `${formatMinutes(Math.max(1, Math.round(focusedMs / 60000)))} focused` } : null,
+    repeats ? { icon: Repeat, label: 'Repeats' } : null,
+  ].filter(Boolean)
+  const toolBtn = { textTransform: 'none', fontWeight: 600, fontSize: '0.8125rem', borderRadius: '999px', px: 1.5, color: colors.textSecondary, '&:hover': { bgcolor: colors.bgAlt, color: colors.textPrimary } }
+
   return (
-    <Box component="li" sx={{ p: 2, borderRadius: `${radii.md}px`, border: `1px solid ${colors.border}`, bgcolor: colors.surface, display: 'grid', gap: 1 }}>
-      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, justifyContent: 'space-between', alignItems: 'center' }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', minWidth: 0 }}>
-          {!excluded && (
-            <Checkbox
-              checked={task.completion >= 1}
-              indeterminate={task.completion > 0 && task.completion < 1}
-              disabled={!canRecord || busy}
-              onChange={() => onCompletion(task, task.completion >= 1 ? 0 : 1)}
-              slotProps={{ input: { 'aria-label': `Done: ${task.title}` } }}
-              sx={{ ml: -1.5, p: 1.25 }} // 44 px square: a comfortable tap target (spec DP-06)
-            />
-          )}
-        <Typography sx={{ fontWeight: 600, overflowWrap: 'anywhere', ...(task.completion >= 1 && !excluded ? { textDecoration: 'line-through', color: 'text.secondary' } : {}) }}>
-          {task.title}
-          {task.isPriority ? ' (priority)' : ''}
-          {levelOf(task) === 'low' && !excluded && <Chip component="span" label="Low priority" size="small" variant="outlined" sx={{ ml: 1, verticalAlign: 'middle' }} />}
-          {task.isMinimum && !excluded && <Chip label="Minimum" size="small" variant="outlined" color="primary" sx={{ ml: 1, verticalAlign: 'middle' }} />}
-          {marker && !excluded && <Chip component="span" label={marker === 'now' ? 'Now' : 'Next up'} size="small" color={marker === 'now' ? 'primary' : 'default'} sx={{ ml: 1, verticalAlign: 'middle' }} />}
-          {focusing && !excluded && <Chip component="span" label="Focusing" size="small" color="success" variant="outlined" sx={{ ml: 1, verticalAlign: 'middle' }} />}
-        </Typography>
+    <Box component="li" sx={{ p: { xs: 1.75, sm: 2.25 }, borderRadius: `${radii.md}px`, border: `1px solid ${done && !excluded ? colors.success : colors.border}`, bgcolor: colors.surface, display: 'grid', gap: 1.25, boxShadow: '0 1px 2px rgba(11, 27, 58, 0.04)' }}>
+      <Box sx={{ display: 'flex', gap: 1.25, alignItems: 'flex-start' }}>
+        {!excluded && (
+          <Checkbox
+            checked={ticked}
+            disabled={!canRecord || busy || done}
+            onChange={(e) => setTicked(e.target.checked)}
+            slotProps={{ input: { 'aria-label': `Tick: ${task.title}` } }}
+            sx={{ ml: -1, mt: -0.5, p: 1.25 }} // 44 px square: a comfortable tap target (spec DP-06)
+          />
+        )}
+        <Box sx={{ flex: 1, minWidth: 0, display: 'grid', gap: 0.75 }}>
+          <Typography sx={{ fontWeight: 700, fontSize: '1.0625rem', lineHeight: 1.35, overflowWrap: 'anywhere', ...(done && !excluded ? { textDecoration: 'line-through', color: 'text.secondary' } : {}) }}>
+            {task.title}
+          </Typography>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75, alignItems: 'center' }}>
+            {task.isPriority && <Chip size="small" label="Priority" color="warning" variant="outlined" />}
+            {levelOf(task) === 'low' && !excluded && <Chip label="Low priority" size="small" variant="outlined" />}
+            {task.isMinimum && !excluded && <Chip label="Minimum" size="small" variant="outlined" color="primary" />}
+            {marker && !excluded && <Chip label={marker === 'now' ? 'Now' : 'Next up'} size="small" color={marker === 'now' ? 'primary' : 'default'} />}
+            {focusing && !excluded && <Chip label="Focusing" size="small" color="success" variant="outlined" />}
+            {chips.map(({ icon: Icon, label }) => (
+              <Chip key={label} size="small" variant="outlined" label={label} icon={Icon ? <Icon size={13} aria-hidden="true" /> : undefined} sx={{ color: colors.textSecondary, borderColor: colors.border, '& .MuiChip-icon': { color: 'inherit' } }} />
+            ))}
+          </Box>
         </Box>
-        {(meta || repeats) && <Typography variant="body2" color="text.secondary">{[meta, repeats ? 'repeats' : null].filter(Boolean).join(' · ')}</Typography>}
+        {!excluded && canRecord && (
+          done ? (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexShrink: 0 }}>
+              <Chip icon={<Check size={14} aria-hidden="true" />} label="Done" color="success" size="small" />
+              <Button size="small" sx={toolBtn} disabled={busy} onClick={() => { setTicked(false); onCompletion(task, 0) }} aria-label={`Undo done: ${task.title}`} startIcon={<Undo2 size={14} aria-hidden="true" />}>Undo</Button>
+            </Box>
+          ) : (
+            <Button variant="contained" size="small" disabled={!ticked || busy} onClick={() => onCompletion(task, 1)} aria-label={`Mark done: ${task.title}`} startIcon={<Check size={16} aria-hidden="true" />} sx={{ flexShrink: 0, borderRadius: '999px', px: 2, fontWeight: 700 }}>
+              Done
+            </Button>
+          )
+        )}
       </Box>
-      {task.description && <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{task.description}</Typography>}
+      {task.description && <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', color: 'text.secondary' }}>{task.description}</Typography>}
       {!excluded && move?.movedFrom && (
         <Typography variant="body2" color="text.secondary">Moved from {weekdayName(move.movedFrom)} {formatDay(move.movedFrom)}</Typography>
       )}
@@ -134,23 +160,22 @@ export default function TaskRow({ task, canRecord, canEdit, busy, moveRange, mar
           )}
         </Box>
       ) : (
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center' }}>
-          {onFocus && task.completion < 1 && (
-            <Button size="small" disabled={busy || focusing || focusLocked} onClick={() => onFocus(task)} aria-label={`Focus on ${task.title}`}
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, alignItems: 'center', pt: 1, borderTop: `1px solid ${colors.border}`, ml: -0.5 }}>
+          {onFocus && !done && (
+            <Button size="small" sx={toolBtn} startIcon={<Timer size={15} aria-hidden="true" />} disabled={busy || focusing || focusLocked} onClick={() => onFocus(task)} aria-label={`Focus on ${task.title}`}
               title={focusLocked && !focusing ? 'A focus session is already running. End it to focus on something else.' : undefined}>Focus</Button>
           )}
           {canEdit && (
-            <Button size="small" disabled={busy} onClick={startEdit} aria-label={`Edit ${task.title}`}>Edit</Button>
+            <Button size="small" sx={toolBtn} startIcon={<Pencil size={15} aria-hidden="true" />} disabled={busy} onClick={startEdit} aria-label={`Edit ${task.title}`}>Edit</Button>
           )}
-          {canEdit && onSetTime && task.completion < 1 && (
-            <Button size="small" disabled={busy} aria-expanded={timing} onClick={() => setTiming((open) => !open)}
+          {canEdit && onSetTime && !done && (
+            <Button size="small" sx={toolBtn} startIcon={<Clock size={15} aria-hidden="true" />} disabled={busy} aria-expanded={timing} onClick={() => setTiming((open) => !open)}
               aria-label={task.plannedStart ? `Change the time of ${task.title}` : `Set a time for ${task.title}`}>{task.plannedStart ? 'Change time' : 'Set time'}</Button>
           )}
-          {canEdit && task.completion < 1 && (
+          {canEdit && !done && (
             <>
-              {onMove && <Button size="small" disabled={busy} onClick={() => setMoving(true)} aria-label={`Move ${task.title}`}>Move</Button>}
-              <Button size="small" disabled={busy} onClick={() => onSetAside(task)} aria-label={`Set aside ${task.title}`}>Set aside</Button>
-              <Button size="small" color="error" disabled={busy} onClick={() => setConfirming(true)} aria-label={`Remove ${task.title}`}>Remove</Button>
+              {onMove && <Button size="small" sx={toolBtn} startIcon={<CalendarDays size={15} aria-hidden="true" />} disabled={busy} onClick={() => setMoving(true)} aria-label={`Move ${task.title}`}>Move</Button>}
+              <Button size="small" sx={{ ...toolBtn, '&:hover': { bgcolor: colors.errorBg, color: colors.error } }} startIcon={<Trash2 size={15} aria-hidden="true" />} disabled={busy} onClick={() => setConfirming(true)} aria-label={`Remove ${task.title}`}>Remove</Button>
             </>
           )}
         </Box>

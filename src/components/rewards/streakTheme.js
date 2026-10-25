@@ -1,18 +1,26 @@
 import { useThemeMode } from '../../hooks/useThemeMode.js'
 
-// Colours of the streak cards in each theme: black with bright green in dark mode, white with deeper green in light mode.
-const DARK = {
-  card: '#0D1117', border: '#1E6B34', strong: '#FFFFFF', text: '#E6EDF3', muted: '#8B949E', accent: '#39D353', line: '#22E55C',
-  cells: ['#161B22', '#0E4429', '#006D32', '#26A641', '#39D353'], gridLines: '#1B3A25', ringTrack: '#1E2A22', shadow: '0 8px 24px rgba(1, 4, 9, 0.25)',
-  selectBg: '#21262D', selectBorder: '#3D444D', selectText: '#F0F6FC', optionBg: '#161B22', scheme: 'dark', dot: '#FFFFFF',
+// Colours of the streak cards: white cards with a brand-gradient top edge, green for progress, the site's blue for the rest.
+const BAR = {
+  position: 'relative',
+  overflow: 'hidden',
+  '&::before': { content: '""', position: 'absolute', top: 0, left: 0, right: 0, height: 4, background: 'linear-gradient(90deg, #1B5BC8, #17A2B8, #2ED68B)' },
 }
-const LIGHT = {
-  card: '#FFFFFF', border: '#B7DFC2', strong: '#0B1B3A', text: '#24292F', muted: '#57606A', accent: '#1A7F37', line: '#1A9F4B',
-  cells: ['#EBEDF0', '#9BE9A8', '#40C463', '#30A14E', '#216E39'], gridLines: '#DCEBE0', ringTrack: '#DDEFE2', shadow: '0 8px 24px rgba(11, 27, 58, 0.08)',
-  selectBg: '#F6F8FA', selectBorder: '#D0D7DE', selectText: '#24292F', optionBg: '#FFFFFF', scheme: 'light', dot: '#FFFFFF',
+const STREAK = {
+  card: '#FFFFFF', solid: '#FFFFFF', border: '#D3E2F6', strong: '#0B1B3A', text: '#14284B', muted: '#5B6B85', accent: '#1B5BC8', line: '#12A67A',
+  cells: ['#E8EEF7', '#BFE9CF', '#6FD39A', '#2DB86B', '#118A4A'], streakGreen: '#16A34A', gridLines: '#DCE6F3', ringTrack: '#E1E9F4', shadow: '0 10px 30px rgba(27, 91, 200, 0.14)',
+  selectBg: '#F3F7FD', selectBorder: '#CBD9EE', selectText: '#14284B', optionBg: '#FFFFFF', scheme: 'light', dot: '#FFFFFF', bar: BAR,
+}
+
+// In the site's dark theme the cards are dark blue instead (a white card would glare there).
+const STREAK_DARK = {
+  ...STREAK,
+  card: 'linear-gradient(135deg, #07184F 0%, #0A2166 100%)', solid: '#08195A', border: 'rgba(124, 240, 192, 0.28)', strong: '#FFFFFF', text: '#EAF1FF', muted: 'rgba(234, 241, 255, 0.7)', accent: '#7CF0C0', line: '#7CF0C0',
+  cells: ['rgba(255, 255, 255, 0.09)', '#1E7F49', '#24A148', '#3DDC6E', '#7CF59A'], streakGreen: '#3DDC6E', gridLines: 'rgba(255, 255, 255, 0.14)', ringTrack: 'rgba(255, 255, 255, 0.18)', shadow: '0 10px 28px rgba(6, 18, 43, 0.3)',
+  selectBg: 'rgba(255, 255, 255, 0.12)', selectBorder: 'rgba(255, 255, 255, 0.3)', selectText: '#FFFFFF', optionBg: '#0A2166', scheme: 'dark', dot: '#FFFFFF',
 }
 
 export function useStreakTheme() {
   const { mode } = useThemeMode()
-  return mode === 'dark' ? DARK : LIGHT
+  return mode === 'dark' ? STREAK_DARK : STREAK
 }

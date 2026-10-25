@@ -303,7 +303,6 @@ export default function MyDayPage() {
                     onFocus={access === 'today' && focus.ready ? setFocusTarget : undefined}
                     onSetTime={setTime}
                     onCompletion={complete} moveRange={moveRange}
-                    onSetAside={(t) => perform((s) => s.setAside(t.id, mode === 'rest' ? 'rest_day' : 'busy_day'))}
                     onRestore={(t) => perform((s) => s.restore(t.id))}
                     move={plan.moves?.[task.id]}
                     onMove={move}

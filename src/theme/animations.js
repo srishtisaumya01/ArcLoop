@@ -37,3 +37,18 @@ export const enter = (delayMs = 0, durationMs = 800) => ({
   animation: `${fadeUp} ${durationMs}ms cubic-bezier(0.2, 0.7, 0.2, 1) ${delayMs}ms both`,
   ...noMotion,
 })
+
+// The line of a chart drawing itself (the path has pathLength="1"), and a plain fade.
+export const drawLine = keyframes`
+  from { stroke-dashoffset: 1; }
+  to { stroke-dashoffset: 0; }
+`
+export const fadeIn = keyframes`
+  from { opacity: 0; }
+  to { opacity: 1; }
+`
+export const cellIn = keyframes`
+  0% { opacity: 0; transform: scale(0.3); }
+  70% { transform: scale(1.12); }
+  100% { opacity: 1; transform: none; }
+`

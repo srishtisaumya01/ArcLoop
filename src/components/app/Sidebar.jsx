@@ -38,7 +38,8 @@ const itemSx = {
   alignItems: 'center',
   gap: 1.5,
   px: 1.75,
-  py: 1.25,
+  py: 'clamp(4px, 1.05vh, 10px)',
+  '@media (max-height: 740px)': { fontSize: '0.9375rem' },
   borderRadius: '12px',
   color: 'rgba(255, 255, 255, 0.86)',
   fontFamily: navFontFamily,
@@ -58,7 +59,7 @@ const itemSx = {
 function NavList({ items, label, onNavigate }) {
   const { t } = useI18n()
   return (
-    <Box component="nav" aria-label={label} sx={{ display: 'grid', gap: 0.5 }}>
+    <Box component="nav" aria-label={label} sx={{ display: 'grid', gap: 'clamp(1px, 0.4vh, 4px)' }}>
       {items.map((item) => {
         const Icon = ICONS[item.icon]
         return (
@@ -85,20 +86,20 @@ function ChallengeMini({ onNavigate }) {
       component={RouterLink}
       to={appChallengePath(challenge.slug)}
       onClick={onNavigate}
-      sx={{ display: 'block', p: 1.75, borderRadius: '14px', bgcolor: 'rgba(255, 255, 255, 0.1)', border: '1px solid rgba(255, 255, 255, 0.22)', color: '#FFFFFF', textDecoration: 'none', '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.16)' } }}
+      sx={{ display: 'none', '@container (min-height: 66px)': { display: 'block' }, flexShrink: 0, width: 1, px: 1.5, py: 0.8, borderRadius: '12px', bgcolor: 'rgba(255, 255, 255, 0.1)', border: '1px solid rgba(255, 255, 255, 0.22)', color: '#FFFFFF', textDecoration: 'none', '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.16)' } }}
     >
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, color: colors.mint300, fontWeight: 700, fontSize: '0.875rem' }}>
-        <Flame size={16} aria-hidden="true" />
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, color: colors.mint300, fontWeight: 700, fontSize: '0.8125rem', lineHeight: 1.2 }}>
+        <Flame size={14} aria-hidden="true" />
         {t(challenge.title)}
-        <Box aria-hidden="true" sx={{ ml: 'auto', width: 8, height: 8, borderRadius: '50%', bgcolor: colors.mint300, animation: `${glow} 1.8s ease-in-out infinite`, ...noMotion }} />
+        <Box aria-hidden="true" sx={{ ml: 'auto', width: 7, height: 7, borderRadius: '50%', bgcolor: colors.mint300, animation: `${glow} 1.8s ease-in-out infinite`, ...noMotion }} />
       </Box>
-      <Typography sx={{ fontWeight: 800, fontSize: '1.0625rem', mt: 0.5 }}>{t('Day {day} of {total}', { day: clock.dayNumber, total: clock.totalDays })}</Typography>
-      <Box aria-hidden="true" sx={{ mt: 1, height: 6, borderRadius: 3, bgcolor: 'rgba(255, 255, 255, 0.22)', overflow: 'hidden' }}>
+      <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 1, mt: 0.2 }}>
+        <Typography sx={{ fontWeight: 800, fontSize: '0.9375rem' }}>{t('Day {day} of {total}', { day: clock.dayNumber, total: clock.totalDays })}</Typography>
+        <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.82)' }}>{clock.daysLeft === 0 ? t('Last day today') : t('{count} days left', { count: clock.daysLeft })}</Typography>
+      </Box>
+      <Box aria-hidden="true" sx={{ mt: 0.5, height: 5, borderRadius: 3, bgcolor: 'rgba(255, 255, 255, 0.22)', overflow: 'hidden' }}>
         <Box sx={{ width: `${Math.round(clock.progress * 100)}%`, height: '100%', borderRadius: 3, background: gradients.accentText }} />
       </Box>
-      <Typography variant="body2" sx={{ mt: 0.75, color: 'rgba(255, 255, 255, 0.82)' }}>
-        {clock.daysLeft === 0 ? t('Last day today') : t('{count} days left', { count: clock.daysLeft })}
-      </Typography>
     </Box>
   )
 }
@@ -121,16 +122,19 @@ export default function Sidebar({ navLabel = 'App', onNavigate }) {
   }
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, minHeight: '100%', px: 2.5, pb: 2.5, pt: { xs: 2.5, md: 0 }, background: gradients.sidebar, color: '#FFFFFF' }}>
-      <Box component={RouterLink} to={ROUTES.app} onClick={onNavigate} aria-label={t('Arcloop home')} sx={{ display: 'flex', alignItems: 'center', height: { xs: 72, md: 176 }, mx: -2.5, px: 3, mb: -0.5, textDecoration: 'none', background: gradients.brand, boxShadow: '0 6px 18px rgba(4, 14, 50, 0.28)' }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 'clamp(8px, 1.8vh, 20px)', height: '100%', overflowY: 'auto', px: 2.5, pb: 'clamp(10px, 1.8vh, 20px)', pt: { xs: 2.5, md: 0 }, background: gradients.sidebar, color: '#FFFFFF' }}>
+      <Box component={RouterLink} to={ROUTES.app} onClick={onNavigate} aria-label={t('Arcloop home')} sx={{ display: 'flex', alignItems: 'center', height: { xs: 72, md: 176 }, flexShrink: 0, '@media (min-width: 900px) and (max-height: 1000px)': { height: 156 }, '@media (min-width: 900px) and (max-height: 820px)': { height: 128 }, '@media (min-width: 900px) and (max-height: 740px)': { height: 96 }, '@media (min-width: 900px) and (max-height: 700px)': { height: 76 }, mx: -2.5, px: 3, mb: -0.5, textDecoration: 'none', background: gradients.brand, boxShadow: '0 6px 18px rgba(4, 14, 50, 0.28)' }}>
         <Logo onDark size={60} />
       </Box>
 
       <NavList items={APP_NAV} label={navLabel} onNavigate={onNavigate} />
 
-      <ChallengeMini onNavigate={onNavigate} />
+      {/* The free space between the menu and the controls below. The challenge card shows itself only when it fits in it (container query), so the sidebar never needs to scroll. */}
+      <Box sx={{ flex: '1 1 0', minHeight: 0, containerType: 'size', display: 'flex', alignItems: 'center' }}>
+        <ChallengeMini onNavigate={onNavigate} />
+      </Box>
 
-      <Box sx={{ mt: 'auto', display: 'grid', gap: 1.5, pt: 1 }}>
+      <Box sx={{ mt: 'auto', display: 'grid', gap: 'clamp(6px, 1.2vh, 12px)', pt: 0.5 }}>
         <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
           <LanguageToggle onDark fullWidth sx={{ flex: 1 }} />
           <ThemeToggle onDark />

@@ -63,7 +63,7 @@ export default function AppShell() {
           <ScrollManager />
 
           <Box component="aside" aria-label={t('Sidebar')} sx={{ display: { xs: 'none', md: 'block' }, width: SIDEBAR_WIDTH, flexShrink: 0 }}>
-            <Box sx={{ position: 'sticky', top: 0, height: '100vh', overflowY: 'auto' }}>
+            <Box sx={{ position: 'sticky', top: 0, height: '100vh', overflow: 'hidden' }}>
               <Sidebar navLabel="App" />
             </Box>
           </Box>

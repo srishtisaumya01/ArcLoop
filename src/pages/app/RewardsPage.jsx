@@ -34,7 +34,7 @@ export default function RewardsPage() {
   return (
     <>
       <PageHeader eyebrow={t('Rewards')} title={t('Your rewards')} description={t('Keep your streak going to earn badges. Mark attendance in any challenge each day.')} />
-      <Container sx={{ maxWidth: `${contentWidths.page}px !important`, py: { xs: 4, md: 6 }, display: 'grid', gap: 3 }}>
+      <Container sx={{ maxWidth: `${contentWidths.page}px !important`, py: { xs: 4, md: 6 }, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 3 }}>
         {status === 'loading' && !data && <Skeleton variant="rounded" height={320} />}
         {status === 'error' && !data && (
           <StatePanel tone="error" icon={TriangleAlert} title={t('We couldn’t load your rewards')} text={t('Something went wrong while loading. Please try again.')}
@@ -42,7 +42,7 @@ export default function RewardsPage() {
         )}
         {data && (
           <>
-            <Box component="section" aria-labelledby="badges-title" sx={{ p: { xs: 2.5, md: 3 }, borderRadius: `${radii.lg}px`, bgcolor: p.card, color: p.text, border: `1px solid ${p.border}`, boxShadow: p.shadow }}>
+            <Box component="section" aria-labelledby="badges-title" sx={{ ...p.bar, p: { xs: 2.5, md: 3 }, borderRadius: `${radii.lg}px`, background: p.card, color: p.text, border: `1px solid ${p.border}`, boxShadow: p.shadow }}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 1, mb: 2.5 }}>
                 <Typography id="badges-title" variant="h3" component="h2" sx={{ color: p.strong }}>{t('Badges')}</Typography>
                 <Typography sx={{ color: p.muted }}>{t('{done} of {total} earned', { done: earned.length, total: data.badges.length })}</Typography>
