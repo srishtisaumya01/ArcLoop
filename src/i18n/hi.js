@@ -871,4 +871,5 @@ export const hi = {
   "Choose a period": "अवधि चुनें",
   "Next 12 months": "अगले 12 महीने",
   "Dashboard sections": "डैशबोर्ड के हिस्से",
+  "Challenge progress graph": "चैलेंज प्रगति ग्राफ़",
 }

@@ -17,7 +17,7 @@ const niceMax = (v) => {
   return unit * step * 4
 }
 
-// "Challenge graph": the number of challenges marked each week, from `start` to `end`, as a green line over a dark panel.
+// "Challenge progress graph": the number of challenges marked each week, from `start` to `end`, as a green line over a dark panel.
 export default function ChallengeGraph({ activity, start, end, title }) {
   const { t, lang } = useI18n()
   const p = useStreakTheme()
@@ -50,7 +50,7 @@ export default function ChallengeGraph({ activity, start, end, title }) {
   let lastMonth = ''
   return (
     <Box ref={ref} sx={{ ...p.bar, border: `1px solid ${p.border}`, borderRadius: '16px', background: p.card, boxShadow: p.shadow, p: { xs: 1.5, sm: 2 } }}>
-      <Typography sx={{ color: GREEN, fontWeight: 800, textAlign: 'center' }}>{t('Challenge graph')}</Typography>
+      <Typography sx={{ color: GREEN, fontWeight: 800, textAlign: 'center' }}>{t('Challenge progress graph')}</Typography>
       <Typography variant="body2" sx={{ color: p.muted, textAlign: 'center', mb: 0.5 }}>{title}</Typography>
       <Box component="svg" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={t('Challenges marked each week')}
         sx={{
