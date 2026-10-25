@@ -22,7 +22,9 @@ from django.utils import timezone
 
 from challenges.services import link_pending_memberships
 
-from .emails import reset_code_email
+import threading
+
+from .emails import reset_code_email, welcome_email
 from .models import AuthToken, PasswordResetCode, Profile, ProfileAvatar
 from .serializers import (
     AccountDeleteSerializer,
@@ -74,6 +76,26 @@ class PublicAuthView(APIView):
     throttle_scope = 'auth'
 
 
+def send_welcome_email(user):
+    """The one-time welcome message. Built here, sent in the background so signing up never waits for the mail server, and a
+    failure to send never fails the sign-up."""
+    try:
+        subject, text, html = welcome_email(user)
+        message = EmailMultiAlternatives(subject, text, settings.DEFAULT_FROM_EMAIL, [user.email])
+        message.attach_alternative(html, 'text/html')
+    except Exception as error:  # noqa: BLE001
+        logging.getLogger(__name__).error('welcome email not built: %s', type(error).__name__)
+        return
+
+    def deliver():
+        try:
+            message.send()
+        except Exception as error:  # noqa: BLE001 - only the kind of failure is logged, never the address
+            logging.getLogger(__name__).error('welcome email failed: %s', type(error).__name__)
+
+    threading.Thread(target=deliver, daemon=True).start()
+
+
 class RegisterView(PublicAuthView):
     def post(self, request):
         data = RegisterSerializer(data=request.data)
@@ -93,6 +115,7 @@ class RegisterView(PublicAuthView):
             raise validation_error('An account may already exist for that email. Try logging in or resetting your password.', {'email': 'Try another email, or log in.'}, 'email_taken')
         user.refresh_from_db()
         link_pending_memberships(user)  # friends who named this username or email in a group are put in it
+        send_welcome_email(user)
         log_event(request, 'registered', user=user.pk)
         return start_session(request, user, data.validated_data['transport'], status.HTTP_201_CREATED)
 
