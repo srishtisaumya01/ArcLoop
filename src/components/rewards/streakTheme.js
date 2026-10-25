@@ -1,3 +1,5 @@
+import { useSyncExternalStore } from 'react'
+
 // Colours of the streak cards: dark blue with the site's teal and mint, in both the light and the dark theme.
 const STREAK = {
   card: 'linear-gradient(135deg, #07184F 0%, #0A2166 100%)', solid: '#08195A', border: 'rgba(124, 240, 192, 0.28)', strong: '#FFFFFF', text: '#EAF1FF', muted: 'rgba(234, 241, 255, 0.7)', accent: '#7CF0C0', line: '#7CF0C0',
@@ -18,7 +20,34 @@ const VIVID = {
   selectBg: 'rgba(255, 255, 255, 0.22)', selectBorder: 'rgba(255, 255, 255, 0.5)', selectText: '#FFFFFF', optionBg: '#17609F', scheme: 'dark', dot: '#1B5BC8',
 }
 
+// The chosen look is remembered in this browser; the little "Look" picker on the cards changes it (temporary, while comparing).
+const KEY = 'arcloop.streakLook'
+const EVENT = 'arcloop:streak-look'
+export const LOOKS = ['navy', 'light', 'vivid']
+const read = () => {
+  try {
+    const fromAddress = new URLSearchParams(window.location.search).get('streak')
+    return LOOKS.includes(fromAddress) ? fromAddress : localStorage.getItem(KEY) || 'navy'
+  } catch {
+    return 'navy'
+  }
+}
+const subscribe = (cb) => {
+  window.addEventListener(EVENT, cb)
+  return () => window.removeEventListener(EVENT, cb)
+}
+export function setStreakLook(look) {
+  try {
+    localStorage.setItem(KEY, look)
+  } catch {
+    /* storage unavailable: the choice lasts until reload */
+  }
+  window.dispatchEvent(new Event(EVENT))
+}
+export function useStreakLook() {
+  return useSyncExternalStore(subscribe, read, () => 'navy')
+}
 export function useStreakTheme() {
-  const look = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('streak') : null
+  const look = useStreakLook()
   return look === 'light' ? LIGHT : look === 'vivid' ? VIVID : STREAK
 }

@@ -5,7 +5,7 @@ import ChallengeGraph from './ChallengeGraph.jsx'
 import StreakStats from './StreakStats.jsx'
 import { useI18n } from '../../hooks/useI18n.js'
 import { addMonthsIso, endOfMonthIso, formatDate } from '../../utils/appDates.js'
-import { useStreakTheme } from './streakTheme.js'
+import { LOOKS, setStreakLook, useStreakLook, useStreakTheme } from './streakTheme.js'
 
 // Three separate black cards: the streak figures, the activity grid (six months from the month of the first challenge, or a whole
 // year chosen in the filter) and the weekly challenge graph. Before the first challenge there is nothing to show.
@@ -13,6 +13,7 @@ export default function StreakPanel({ data, children }) {
   const { t, lang } = useI18n()
   const [year, setYear] = useState('current')
   const p = useStreakTheme()
+  const look = useStreakLook()
   const card = { minWidth: 0, p: { xs: 2, md: 2.5 }, borderRadius: '16px', background: p.card, border: `1px solid ${p.border}`, color: p.text, boxShadow: p.shadow }
 
   if (!data.has_enrollment) return null
@@ -37,6 +38,15 @@ export default function StreakPanel({ data, children }) {
 
   return (
     <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 2.5 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 1 }}>
+        <Typography variant="caption" color="text.secondary">Look</Typography>
+        {LOOKS.map((l) => (
+          <Box key={l} component="button" type="button" onClick={() => setStreakLook(l)} aria-pressed={look === l}
+            sx={{ font: 'inherit', fontSize: '0.8125rem', textTransform: 'capitalize', cursor: 'pointer', px: 1.5, py: 0.25, borderRadius: '999px', border: '1px solid', borderColor: look === l ? 'primary.main' : 'divider', bgcolor: look === l ? 'primary.main' : 'transparent', color: look === l ? 'primary.contrastText' : 'text.secondary' }}>
+            {l}
+          </Box>
+        ))}
+      </Box>
       <StreakStats data={data} />
       <Box sx={card}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1.5, flexWrap: 'wrap', mb: 1.5 }}>
