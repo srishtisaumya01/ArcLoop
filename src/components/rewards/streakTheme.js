@@ -6,4 +6,19 @@ const STREAK = {
   selectBg: 'rgba(255, 255, 255, 0.12)', selectBorder: 'rgba(255, 255, 255, 0.3)', selectText: '#FFFFFF', optionBg: '#0A2166', scheme: 'dark', dot: '#FFFFFF',
 }
 
-export const useStreakTheme = () => STREAK
+// Two other looks to compare, picked by the address: ?streak=light (white cards) or ?streak=vivid (bright blue-to-mint gradient).
+const LIGHT = {
+  card: '#FFFFFF', solid: '#FFFFFF', border: '#D3E2F6', strong: '#0B1B3A', text: '#14284B', muted: '#5B6B85', accent: '#1B5BC8', line: '#12A67A',
+  cells: ['#E8EEF7', '#BFE9CF', '#6FD39A', '#2DB86B', '#118A4A'], streakGreen: '#16A34A', gridLines: '#DCE6F3', ringTrack: '#E1E9F4', shadow: '0 10px 30px rgba(27, 91, 200, 0.14)',
+  selectBg: '#F3F7FD', selectBorder: '#CBD9EE', selectText: '#14284B', optionBg: '#FFFFFF', scheme: 'light', dot: '#FFFFFF',
+}
+const VIVID = {
+  card: 'linear-gradient(135deg, #1B5BC8 0%, #17A2B8 55%, #2ED68B 100%)', solid: '#1B8FC0', border: 'rgba(255, 255, 255, 0.4)', strong: '#FFFFFF', text: '#FFFFFF', muted: 'rgba(255, 255, 255, 0.82)', accent: '#FFFFFF', line: '#FFFFFF',
+  cells: ['rgba(255, 255, 255, 0.2)', 'rgba(255, 255, 255, 0.5)', 'rgba(255, 255, 255, 0.75)', '#FFFFFF', '#FFF3A6'], streakGreen: '#FFFFFF', gridLines: 'rgba(255, 255, 255, 0.28)', ringTrack: 'rgba(255, 255, 255, 0.32)', shadow: '0 12px 30px rgba(27, 91, 200, 0.35)',
+  selectBg: 'rgba(255, 255, 255, 0.22)', selectBorder: 'rgba(255, 255, 255, 0.5)', selectText: '#FFFFFF', optionBg: '#17609F', scheme: 'dark', dot: '#1B5BC8',
+}
+
+export function useStreakTheme() {
+  const look = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('streak') : null
+  return look === 'light' ? LIGHT : look === 'vivid' ? VIVID : STREAK
+}
