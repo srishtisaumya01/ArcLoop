@@ -23,7 +23,7 @@ export default function StreakStats({ data }) {
   const since = data.first_active ? `${formatDate(data.first_active, lang)} – ${t('Present')}` : t('No streak yet')
   const full = data.current_streak > 0
   return (
-    <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', border: '1px solid #1E6B34', borderRadius: '14px', bgcolor: '#0D1117', '& > * + *': { borderLeft: '1px solid #1E6B34' } }}>
+    <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', border: '1px solid #1E6B34', borderRadius: '16px', bgcolor: '#0D1117', boxShadow: '0 8px 24px rgba(1, 4, 9, 0.25)', '& > * + *': { borderLeft: '1px solid #1E6B34' } }}>
       <Cell label={t('Total active days')} sub={since}>
         <Typography sx={big}>{data.total_active_days}</Typography>
       </Cell>

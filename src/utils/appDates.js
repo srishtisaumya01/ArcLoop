@@ -16,3 +16,17 @@ export function addDaysIso(iso, days) {
   const [y, m, d] = iso.split('-').map(Number)
   return todayIso(new Date(y, m - 1, d + days))
 }
+
+const pad2 = (n) => String(n).padStart(2, '0')
+// The first day of the month `n` months after the month of `iso`.
+export function addMonthsIso(iso, n) {
+  const [y, m] = iso.split('-').map(Number)
+  const d = new Date(Date.UTC(y, m - 1 + n, 1))
+  return `${d.getUTCFullYear()}-${pad2(d.getUTCMonth() + 1)}-01`
+}
+// The last day of the month of `iso`.
+export function endOfMonthIso(iso) {
+  const [y, m] = iso.split('-').map(Number)
+  const d = new Date(Date.UTC(y, m, 0))
+  return `${d.getUTCFullYear()}-${pad2(d.getUTCMonth() + 1)}-${pad2(d.getUTCDate())}`
+}

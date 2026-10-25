@@ -7,7 +7,7 @@ const level = (n) => (n <= 0 ? 0 : n === 1 ? 1 : n === 2 ? 2 : n === 3 ? 3 : 4)
 
 // Days from `start` to `end` as small squares, like GitHub's contribution graph (on a dark panel): the more challenges marked on a
 // day, the brighter the green. The squares share the width they are given (and scroll sideways on a very narrow screen).
-export default function ActivityGrid({ activity, start, end }) {
+export default function ActivityGrid({ activity, start, end, today }) {
   const { t, lang } = useI18n()
   const counts = new Map(activity.map((a) => [a.date, a.count]))
   const weekday = (iso) => new Date(`${iso}T12:00:00`).getDay() // Sunday first
@@ -40,7 +40,7 @@ export default function ActivityGrid({ activity, start, end }) {
               <Typography component="span" sx={{ fontSize: '0.65rem', lineHeight: '14px', color: '#8B949E', whiteSpace: 'nowrap', overflow: 'visible' }}>{showMonth ? m : ''}</Typography>
               {week.map((day, di) => (
                 <Box key={di} title={day ? `${dateLabel(day)}: ${counts.get(day) ? t('{count} marked', { count: counts.get(day) }) : t('nothing marked')}` : undefined}
-                  sx={{ aspectRatio: '1', borderRadius: '3px', bgcolor: day ? GRID_COLORS[level(counts.get(day) ?? 0)] : 'transparent', outline: day ? '1px solid rgba(255,255,255,0.04)' : 'none', outlineOffset: '-1px' }} />
+                  sx={{ aspectRatio: '1', borderRadius: '3px', opacity: day && day > today ? 0.45 : 1, bgcolor: day ? GRID_COLORS[level(counts.get(day) ?? 0)] : 'transparent', outline: day ? '1px solid rgba(255,255,255,0.04)' : 'none', outlineOffset: '-1px' }} />
               ))}
             </Box>
           )

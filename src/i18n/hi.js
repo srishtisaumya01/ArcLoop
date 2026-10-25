@@ -867,4 +867,6 @@ export const hi = {
   "Choose a year": "साल चुनें",
   "Current": "मौजूदा",
   "Mark your attendance every day to start a streak.": "स्ट्रीक शुरू करने के लिए रोज़ उपस्थिति लगाएँ।",
+  "Last 6 months": "पिछले 6 महीने",
+  "Choose a period": "अवधि चुनें",
 }

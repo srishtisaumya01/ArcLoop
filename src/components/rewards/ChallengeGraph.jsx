@@ -44,7 +44,7 @@ export default function ChallengeGraph({ activity, start, end, title }) {
   const total = weeks.reduce((s, w) => s + w.total, 0)
   let lastMonth = ''
   return (
-    <Box sx={{ border: '1px solid #1E6B34', borderRadius: '14px', bgcolor: '#0D1117', p: { xs: 1.5, sm: 2 } }}>
+    <Box sx={{ border: '1px solid #1E6B34', borderRadius: '16px', bgcolor: '#0D1117', boxShadow: '0 8px 24px rgba(1, 4, 9, 0.25)', p: { xs: 1.5, sm: 2 } }}>
       <Typography sx={{ color: GREEN, fontWeight: 800, textAlign: 'center' }}>{t('Challenge graph')}</Typography>
       <Typography variant="body2" sx={{ color: '#8B949E', textAlign: 'center', mb: 0.5 }}>{title}</Typography>
       <Box component="svg" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={t('Challenges marked each week')} sx={{ width: 1, height: 'auto', display: 'block' }}>
@@ -60,7 +60,7 @@ export default function ChallengeGraph({ activity, start, end, title }) {
         <path d={area} fill={`url(#${id}a)`} />
         <path d={line} fill="none" stroke={GREEN} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
         {weeks.map((w, i) => {
-          const m = month(w.start)
+          const m = month(w.start < start ? start : w.start) // a week that began before the range is named for its first day inside it
           const show = m !== lastMonth
           lastMonth = m
           return (
