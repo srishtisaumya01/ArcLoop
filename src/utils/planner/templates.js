@@ -4,6 +4,7 @@ import { compareDates, isValidDate, isValidTime, parseTime } from './localDates.
 import { resolveContext } from './context.js'
 import { occursOn } from './recurrence.js'
 import { classifyDate } from './window.js'
+import { DEFAULT_PRIORITY, PRIORITY_LEVELS, isPriorityLevel, levelFromFlag, levelOf, withLevelFromFlag } from './priority.js'
 
 // Fields copied from a template onto each occurrence (the occurrence is a
 // self-contained snapshot, so history stays correct if the template changes).
@@ -12,6 +13,7 @@ export const SNAPSHOT_FIELDS = Object.freeze([
   'description',
   'category',
   'isPriority',
+  'priorityLevel',
   'plannedStart',
   'plannedEnd',
   'estimatedMinutes',
@@ -46,11 +48,16 @@ export function validateTemplateInput(input, { today, config } = {}) {
     else category = input.category.trim()
   }
 
-  let isPriority = false
-  if (input.isPriority !== undefined && input.isPriority !== null) {
-    if (typeof input.isPriority === 'boolean') isPriority = input.isPriority
+  // The level (high, medium, low) wins; the older on/off flag is still understood and means high / medium.
+  let priorityLevel = DEFAULT_PRIORITY
+  if (input.priorityLevel !== undefined && input.priorityLevel !== null) {
+    if (isPriorityLevel(input.priorityLevel)) priorityLevel = input.priorityLevel
+    else errors.priorityLevel = `Choose ${PRIORITY_LEVELS.join(', ')}.`.replace('high, medium, low', 'High, Medium or Low')
+  } else if (input.isPriority !== undefined && input.isPriority !== null) {
+    if (typeof input.isPriority === 'boolean') priorityLevel = levelFromFlag(DEFAULT_PRIORITY, input.isPriority)
     else errors.isPriority = 'Priority must be on or off.'
   }
+  const isPriority = priorityLevel === 'high'
 
   let plannedStart = null
   if (!blank(input.plannedStart)) {
@@ -110,7 +117,7 @@ export function validateTemplateInput(input, { today, config } = {}) {
 
   const ok = Object.keys(errors).length === 0
   const value = ok
-    ? { title, description, category, isPriority, plannedStart, plannedEnd, estimatedMinutes, recurrence, weekdays, startsOn, endsOn }
+    ? { title, description, category, isPriority, priorityLevel, plannedStart, plannedEnd, estimatedMinutes, recurrence, weekdays, startsOn, endsOn }
     : null
   return { ok, value, errors }
 }
@@ -122,7 +129,7 @@ export function validateTemplateInput(input, { today, config } = {}) {
 // `noLongerMatching` and are NOT removed here (open question for the service layer).
 export function planTemplateEdit({ template, changes, occurrences }, rawContext) {
   const ctx = resolveContext(rawContext)
-  const merged = { ...template, ...changes }
+  const merged = { ...template, ...withLevelFromFlag(template, changes) }
   const check = validateTemplateInput(merged, { config: ctx.config })
   if (!check.ok) throw new PlannerError(ERR.INVALID_TEMPLATE, 'The edited task is not valid.', { errors: check.errors })
   const next = { ...template, ...check.value }
@@ -141,7 +148,10 @@ export function planTemplateEdit({ template, changes, occurrences }, rawContext)
       skipped.push({ id: occ.id, reason: 'no_longer_matches' })
     } else {
       const diff = {}
-      for (const field of SNAPSHOT_FIELDS) if (occ[field] !== next[field]) diff[field] = next[field]
+      for (const field of SNAPSHOT_FIELDS) {
+        const before = field === 'priorityLevel' ? levelOf(occ) : occ[field]
+        if (before !== next[field]) diff[field] = next[field]
+      }
       if (Object.keys(diff).length > 0) updates.push({ id: occ.id, changes: diff })
     }
   }

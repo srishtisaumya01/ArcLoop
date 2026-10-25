@@ -44,7 +44,7 @@ export default function GroupPlan() {
       sx={{
         p: { xs: 2.5, md: 3.5 },
         borderRadius: `${radii.lg}px`,
-        bgcolor: 'rgba(255, 255, 255, 0.08)',
+        bgcolor: 'rgba(255, 255, 255, 0.04)',
         border: '1px solid rgba(255, 255, 255, 0.22)',
         backdropFilter: 'blur(8px)',
         boxShadow: '0 24px 60px rgba(6, 18, 43, 0.35)',
@@ -79,7 +79,7 @@ export default function GroupPlan() {
           </Box>
           <Box sx={{ minWidth: 0, pt: 0.25, animation: play ? `${activeText} ${cycle}s ease-in-out ${i * STEP_SECONDS}s infinite` : 'none', ...noMotion }}>
             <Typography sx={{ fontWeight: 800 }}>
-              <Box component="span" sx={{ color: colors.mint300, mr: 1 }}>
+              <Box component="span" sx={{ color: '#C9FFE9', mr: 1 }}>
                 {i + 1}.
               </Box>
               {t(title)}
@@ -100,7 +100,7 @@ export default function GroupPlan() {
                       pr: 1.25,
                       py: 0.5,
                       borderRadius: '999px',
-                      bgcolor: 'rgba(255, 255, 255, 0.12)',
+                      bgcolor: 'rgba(255, 255, 255, 0.06)',
                       border: '1px solid rgba(255, 255, 255, 0.24)',
                       opacity: play ? 1 : 0,
                       animation: play ? `${popIn} 500ms ease ${600 + k * 220}ms both` : 'none',
@@ -111,7 +111,7 @@ export default function GroupPlan() {
                       {m.name[0]}
                     </Box>
                     <Typography variant="body2" sx={{ fontWeight: 600, color: colors.textOnDark }}>
-                      {m.name} <Box component="span" sx={{ color: colors.textOnDarkMuted, fontWeight: 400 }}>@{m.username}</Box>
+                      {m.name} <Box component="span" sx={{ color: colors.textOnDark, fontWeight: 400 }}>@{m.username}</Box>
                     </Typography>
                   </Box>
                 ))}

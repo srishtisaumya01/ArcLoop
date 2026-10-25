@@ -9,11 +9,17 @@ import DaySchedule from '../../components/planner/DaySchedule.jsx'
 import FocusTimer from '../../components/planner/FocusTimer.jsx'
 import TodoPicker from '../../components/planner/TodoPicker.jsx'
 import { EMPTY_TASK, toTaskInput } from '../../components/planner/taskForm.js'
+import ScheduleNotice from '../../components/planner/ScheduleNotice.jsx'
+import DayWrapUp from '../../components/planner/DayWrapUp.jsx'
+import DayCapacity from '../../components/planner/DayCapacity.jsx'
+import { carryMessage } from '../../components/planner/dayWrapUp.js'
+import { checkSchedule } from '../../components/planner/scheduleChecks.js'
 import { formatDay, weekdayName } from '../../components/planner/weekFormat.js'
 import { AuthContext } from '../../context/authContext.js'
 import { useDayPlan } from '../../hooks/useDayPlan.js'
 import { focusTotals, useFocusSession } from '../../hooks/useFocusSession.js'
 import { useNow } from '../../hooks/useNow.js'
+import { useAvailableTime } from '../../hooks/useAvailableTime.js'
 import { useDayReminders } from '../../hooks/useDayReminders.js'
 import { useDismissible } from '../../hooks/useDismissible.js'
 import { useRecoveryStatus } from '../../hooks/useRecoveryStatus.js'
@@ -23,7 +29,7 @@ import GentleNote from '../../components/planner/GentleNote.jsx'
 import { WELCOME_BACK } from '../../constants/recoveryCopy.js'
 import { usePageMeta } from '../../hooks/usePageMeta.js'
 import { ROUTES } from '../../constants/navigation.js'
-import { PLANNER_CONFIG, addDays, diffDays, editableRange, isValidDate, startOfWeek } from '../../utils/planner/index.js'
+import { PLANNER_CONFIG, addDays, compareDates, diffDays, editableRange, isValidDate, startOfWeek } from '../../utils/planner/index.js'
 import { colors, contentWidths, onBrandButtons } from '../../theme/tokens.js'
 
 const MODES = [
@@ -59,14 +65,19 @@ export default function MyDayPage() {
   const [params, setParams] = useSearchParams()
   const dateParam = params.get('date')
   const date = dateParam && isValidDate(dateParam) ? dateParam : undefined
-  const { status, data: plan, error, busy, run, refresh } = useDayPlan(date)
+  const { status, data: plan, error, busy, run, refresh, getRepeatingIds } = useDayPlan(date)
   const [actionError, setActionError] = useState('')
   // The one change that can be undone from the notice at the bottom: finishing a task, or moving one.
   const [undo, setUndo] = useState(null)
   const [undoBusy, setUndoBusy] = useState(false)
   const [undoError, setUndoError] = useState('')
   const undoing = useRef(false) // a second press while one is in flight does nothing
-  const focus = useFocusSession(useContext(AuthContext)?.user?.id) // without a signed-in person the focus timer is simply not offered
+  const userId = useContext(AuthContext)?.user?.id
+  const focus = useFocusSession(userId) // without a signed-in person the focus timer is simply not offered
+  const [available, setAvailable] = useAvailableTime(userId) // the time the person has for a day's tasks, kept in this browser
+  const [capacityNotice, setCapacityNotice] = useState(null) // the words about the last move offered by the capacity note
+  const [carryNotice, setCarryNotice] = useState(null) // the words about the last carry-over from the wrap-up
+  const [timeNotice, setTimeNotice] = useState(null) // what the last time change did, read out politely: the task may jump to another list
   const [focusTarget, setFocusTarget] = useState(null) // the task whose Focus button was pressed, until its session starts or is cancelled
   const clock = useNow(undefined, 60000) // the time of day for "Now" and "Next up", to the minute
   const noticeCount = useRef(0)
@@ -91,7 +102,8 @@ export default function MyDayPage() {
   const canEdit = access === 'today' || access === 'editable_past' || access === 'future'
   const canRecord = access === 'today' || access === 'editable_past'
   const target = plan?.planDate
-  const focused = focusTotals(focus.log, target).byTask
+  const dayFocus = focusTotals(focus.log, target)
+  const focused = dayFocus.byTask
   const nowMinutes = access === 'today' ? clock.getHours() * 60 + clock.getMinutes() : null
   const canRemind = (access === 'today' || access === 'future') && Boolean(plan?.exists)
   const reminders = useDayReminders(target, plan, canRemind)
@@ -99,6 +111,7 @@ export default function MyDayPage() {
   const returning = useRecoveryStatus(plan, access === 'today')
   const [welcomeDismissed, dismissWelcome] = useDismissible(`welcomeBack:${plan?.today ?? 'none'}`)
   const active = plan?.occurrences.filter((o) => o.planState === 'active') ?? []
+  const scheduleChecks = checkSchedule({ tasks: active, nowMinutes })
   const setAside = plan?.occurrences.filter((o) => o.planState === 'excluded') ?? []
   const summary = plan?.summary
   const mode = plan?.day?.dayMode ?? 'normal'
@@ -108,6 +121,47 @@ export default function MyDayPage() {
   const noticeTask = undo && plan ? plan.occurrences.find((o) => o.id === (undo.occurrenceId ?? undo.sourceId)) : null
   const stillCurrent = undo?.kind === 'move' ? noticeTask?.planState === 'excluded' && noticeTask.excludedReason === 'rescheduled' : noticeTask?.completion === undo?.from
   const activeUndo = undo && undo.planDate === target && stillCurrent ? undo : null
+
+  // Giving, changing or removing a task's time: only the times go to the planner, which merges them into the task and validates them.
+  const setTime = async (task, times) => {
+    const outcome = await run((s) => s.updateOccurrence(task.id, times))
+    if (outcome.ok) {
+      const when = times.plannedStart ? `${times.plannedStart}${times.plannedEnd ? ` to ${times.plannedEnd}` : ''}` : null
+      setTimeNotice({ planDate: target, text: when ? `“${task.title}” is now at ${when}.` : `“${task.title}” no longer has a time.` })
+    }
+    return outcome
+  }
+
+  // The wrap-up's "carry to tomorrow": one-off tasks the person ticked, moved one after another with the planner's own move (so each keeps its
+  // details and can be undone on its own). If one fails, the ones already moved stay moved and the rest stay where they were.
+  const carryForward = async (ids) => {
+    const tomorrow = addDays(plan.today, 1)
+    const tomorrowLabel = `${weekdayName(tomorrow)} ${formatDay(tomorrow)}`
+    let moved = 0
+    const outcome = await run(async (s) => {
+      for (const id of ids) {
+        await s.rescheduleOccurrence(id, tomorrow)
+        moved += 1
+      }
+    })
+    setCarryNotice({ planDate: target, text: carryMessage({ moved, tomorrowLabel, failure: outcome.ok ? null : outcome.error?.message ?? 'Please try again.' }) })
+    return outcome
+  }
+
+  // The capacity note's "move to the next day": the same one-after-another move as the wrap-up, from the day on screen to the day after it.
+  const moveToNextDay = async (ids) => {
+    const next = addDays(target, 1)
+    const nextLabel = `${weekdayName(next)} ${formatDay(next)}`
+    let moved = 0
+    const outcome = await run(async (s) => {
+      for (const id of ids) {
+        await s.rescheduleOccurrence(id, next)
+        moved += 1
+      }
+    })
+    setCapacityNotice({ planDate: target, text: carryMessage({ moved, tomorrowLabel: nextLabel, failure: outcome.ok ? null : outcome.error?.message ?? 'Please try again.' }) })
+    return outcome
+  }
 
   const complete = async (task, value) => {
     const outcome = await perform((s) => s.setCompletion(task.id, value))
@@ -236,10 +290,18 @@ export default function MyDayPage() {
                 </Box>
               )}
               {active.length > 0 && (
+                <DayCapacity date={target} tasks={active} available={available} onChangeAvailable={setAvailable} busy={busy} onMove={moveToNextDay} getRepeatingIds={getRepeatingIds}
+                  canMove={canEdit} nextLabel={moveRange && compareDates(addDays(target, 1), moveRange.latest) <= 0 ? `${weekdayName(addDays(target, 1))} ${formatDay(addDays(target, 1))}` : null}
+                  notice={capacityNotice?.planDate === target ? capacityNotice.text : null} />
+              )}
+              {canEdit && active.length > 0 && <ScheduleNotice date={target} checks={scheduleChecks} />}
+              {timeNotice?.planDate === target && <Typography role="status" variant="body2" color="text.secondary" sx={{ mb: 1 }}>{timeNotice.text}</Typography>}
+              {active.length > 0 && (
                 <DaySchedule tasks={active} nowMinutes={nowMinutes} renderTask={(task, marker) => (
                   <TaskRow key={task.id} task={task} canRecord={canRecord} canEdit={canEdit} busy={busy}
                     marker={marker} focusing={focus.session?.taskId === task.id} focusLocked={Boolean(focus.session)} focusedMs={focused.get(task.id)}
                     onFocus={access === 'today' && focus.ready ? setFocusTarget : undefined}
+                    onSetTime={setTime}
                     onCompletion={complete} moveRange={moveRange}
                     onSetAside={(t) => perform((s) => s.setAside(t.id, mode === 'rest' ? 'rest_day' : 'busy_day'))}
                     onRestore={(t) => perform((s) => s.restore(t.id))}
@@ -281,6 +343,11 @@ export default function MyDayPage() {
             <UndoNotice notice={activeUndo} busy={undoBusy} error={undoError} onUndo={undoNow} onDismiss={() => setUndo(null)} />
 
             {canEdit && <TodoPicker key={target} date={target} existing={plan.occurrences.map((o) => o.title)} busy={busy} onSave={addTodos} />}
+
+            {access === 'today' && plan.exists && (
+              <DayWrapUp occurrences={plan.occurrences} focusMs={dayFocus.focusedMs} sessions={dayFocus.sessions} busy={busy} onCarry={carryForward} getRepeatingIds={getRepeatingIds}
+                tomorrowLabel={`${weekdayName(addDays(plan.today, 1))} ${formatDay(addDays(plan.today, 1))}`} notice={carryNotice?.planDate === target ? carryNotice.text : null} />
+            )}
           </>
         )}
       </Container>

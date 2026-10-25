@@ -1,5 +1,7 @@
+import { DEFAULT_PRIORITY, levelOf } from '../../utils/planner/priority.js'
+
 // Helpers for the add and edit task forms.
-export const EMPTY_TASK = { title: '', description: '', category: '', plannedStart: '', plannedEnd: '', estimatedMinutes: '', isPriority: false }
+export const EMPTY_TASK = { title: '', description: '', category: '', plannedStart: '', plannedEnd: '', estimatedMinutes: '', priorityLevel: DEFAULT_PRIORITY }
 
 const text = (value) => {
   const trimmed = String(value ?? '').trim()
@@ -17,7 +19,7 @@ export function toTaskInput(values) {
     plannedStart: values.plannedStart || null,
     plannedEnd: values.plannedEnd || null,
     estimatedMinutes: minutes === '' ? null : Number(minutes),
-    isPriority: values.isPriority,
+    priorityLevel: values.priorityLevel,
   }
 }
 
@@ -29,6 +31,6 @@ export function taskToValues(task) {
     plannedStart: task.plannedStart ?? '',
     plannedEnd: task.plannedEnd ?? '',
     estimatedMinutes: task.estimatedMinutes ? String(task.estimatedMinutes) : '',
-    isPriority: Boolean(task.isPriority),
+    priorityLevel: levelOf(task),
   }
 }

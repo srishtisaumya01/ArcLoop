@@ -23,12 +23,12 @@ test.describe('Challenge library', () => {
 
   test('the new categories filter the library', async ({ page }) => {
     await page.goto('/challenges')
-    await page.getByRole('combobox', { name: 'Category' }).click()
+    await page.getByRole('combobox', { name: 'Category' }).click({ delay: 100 }) // a press and release a moment apart, as a hand does (an instant one in WebKit lands on the menu that just opened)
     await page.getByRole('option', { name: 'Exam preparation' }).click()
     await expect(page.getByText('Showing 4 of 26 sample challenges')).toBeVisible()
     await expect(page.getByRole('heading', { name: 'Daily MCQ Mastery' })).toBeVisible()
     await expect(page.getByRole('heading', { name: 'Morning movement' })).toHaveCount(0)
-    await page.getByRole('combobox', { name: 'Category' }).click()
+    await page.getByRole('combobox', { name: 'Category' }).click({ delay: 100 }) // a press and release a moment apart, as a hand does (an instant one in WebKit lands on the menu that just opened)
     await page.getByRole('option', { name: 'Developers & tech' }).click()
     await expect(page.getByText('Showing 4 of 26 sample challenges')).toBeVisible()
     await page.getByRole('button', { name: 'Clear filters' }).first().click()

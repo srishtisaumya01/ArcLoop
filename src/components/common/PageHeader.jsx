@@ -9,13 +9,13 @@ const tones = (offset) => ({
   light: { band: { background: gradients.hero, borderBottom: `1px solid ${colors.border}`, pt: { xs: 5, md: 8 } }, accent: colors.blue600, text: 'text.secondary' },
   brand: {
     band: {
-      background: gradients.brand,
+      background: gradients.footer, // dark all the way across, so white text stays readable where a line wraps to the right
       color: colors.textOnDark,
       mt: `-${offset}px`,
       pt: { xs: `${offset + 40}px`, md: `${offset + 64}px` },
     },
     accent: colors.mint300,
-    text: 'rgba(255, 255, 255, 0.86)',
+    text: 'rgba(255, 255, 255, 0.94)',
   },
 })
 

@@ -4,6 +4,8 @@ import { colors, radii } from '../../theme/tokens.js'
 import TaskReminderControl from '../reminders/TaskReminderControl.jsx'
 import MoveTaskForm from './MoveTaskForm.jsx'
 import TaskFields from './TaskFields.jsx'
+import TaskTimeControl from './TaskTimeControl.jsx'
+import { levelOf } from '../../utils/planner/priority.js'
 import { taskToValues, toTaskInput } from './taskForm.js'
 import { EXCLUDED_LABEL, formatDay, formatMinutes, timeRange, weekdayName } from './weekFormat.js'
 
@@ -15,13 +17,14 @@ const STATES = [
 
 // One task in the day's checklist. Completion is 0 / half / done; set-aside tasks can be put back.
 // Editing changes this day's task only; removing follows the planner's removal rules.
-export default function TaskRow({ task, canRecord, canEdit, busy, moveRange, marker, onFocus, focusing, focusLocked, focusedMs, onCompletion, onSetAside, onRestore, onEdit, onRemove, onStopRepeating, canRemind, reminder, remindersOn, onSetReminder, onRemoveReminder, move, onMove, onUndoMove }) {
+export default function TaskRow({ task, canRecord, canEdit, busy, moveRange, marker, onFocus, focusing, focusLocked, focusedMs, onSetTime, onCompletion, onSetAside, onRestore, onEdit, onRemove, onStopRepeating, canRemind, reminder, remindersOn, onSetReminder, onRemoveReminder, move, onMove, onUndoMove }) {
   const [editing, setEditing] = useState(false)
   const [values, setValues] = useState(null)
   const [errors, setErrors] = useState({})
   const [message, setMessage] = useState('')
   const [confirming, setConfirming] = useState(false)
   const [moving, setMoving] = useState(false)
+  const [timing, setTiming] = useState(false)
   const [progress, setProgress] = useState(0) // the progress chosen in the edit form
   const excluded = task.planState === 'excluded'
   const meta = [timeRange(task), task.estimatedMinutes ? formatMinutes(task.estimatedMinutes) : null, task.category, focusedMs >= 30000 ? `${formatMinutes(Math.max(1, Math.round(focusedMs / 60000)))} focused` : null].filter(Boolean).join(' · ')
@@ -102,6 +105,7 @@ export default function TaskRow({ task, canRecord, canEdit, busy, moveRange, mar
         <Typography sx={{ fontWeight: 600, overflowWrap: 'anywhere', ...(task.completion >= 1 && !excluded ? { textDecoration: 'line-through', color: 'text.secondary' } : {}) }}>
           {task.title}
           {task.isPriority ? ' (priority)' : ''}
+          {levelOf(task) === 'low' && !excluded && <Chip component="span" label="Low priority" size="small" variant="outlined" sx={{ ml: 1, verticalAlign: 'middle' }} />}
           {task.isMinimum && !excluded && <Chip label="Minimum" size="small" variant="outlined" color="primary" sx={{ ml: 1, verticalAlign: 'middle' }} />}
           {marker && !excluded && <Chip component="span" label={marker === 'now' ? 'Now' : 'Next up'} size="small" color={marker === 'now' ? 'primary' : 'default'} sx={{ ml: 1, verticalAlign: 'middle' }} />}
           {focusing && !excluded && <Chip component="span" label="Focusing" size="small" color="success" variant="outlined" sx={{ ml: 1, verticalAlign: 'middle' }} />}
@@ -138,6 +142,10 @@ export default function TaskRow({ task, canRecord, canEdit, busy, moveRange, mar
           {canEdit && (
             <Button size="small" disabled={busy} onClick={startEdit} aria-label={`Edit ${task.title}`}>Edit</Button>
           )}
+          {canEdit && onSetTime && task.completion < 1 && (
+            <Button size="small" disabled={busy} aria-expanded={timing} onClick={() => setTiming((open) => !open)}
+              aria-label={task.plannedStart ? `Change the time of ${task.title}` : `Set a time for ${task.title}`}>{task.plannedStart ? 'Change time' : 'Set time'}</Button>
+          )}
           {canEdit && task.completion < 1 && (
             <>
               {onMove && <Button size="small" disabled={busy} onClick={() => setMoving(true)} aria-label={`Move ${task.title}`}>Move</Button>}
@@ -147,6 +155,7 @@ export default function TaskRow({ task, canRecord, canEdit, busy, moveRange, mar
           )}
         </Box>
       )}
+      {timing && !excluded && onSetTime && <TaskTimeControl task={task} busy={busy} onSave={(times) => onSetTime(task, times)} onClose={() => setTiming(false)} />}
       {moving && !excluded && <MoveTaskForm task={task} busy={busy} onMove={onMove} range={moveRange} onCancel={() => setMoving(false)} />}
       {canRemind && !excluded && task.completion < 1 && (
         <TaskReminderControl task={task} reminder={reminder} remindersOn={remindersOn} busy={busy} onSet={onSetReminder} onRemove={onRemoveReminder} />

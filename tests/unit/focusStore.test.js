@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { pauseSession, startSession } from '../../src/utils/focus/focusSession.js'
-import { appendRecord, clearActive, focusStorageKeys, loadActive, readActiveRaw, readLog, writeActive } from '../../src/utils/focus/focusStore.js'
+import { appendRecord, clearActive, focusStorageKeys, loadActive, readActiveRaw, readLog, readSeen, writeActive, writeSeen } from '../../src/utils/focus/focusStore.js'
 
 // The saved focus session and log, against a stand-in for localStorage (so the tests also cover storage that refuses to work).
 const MIN = 60 * 1000
@@ -100,5 +100,28 @@ describe('storage that does not work', () => {
     expect(appendRecord(USER, record(), brokenStorage)).toBe(false)
     expect(() => clearActive(USER, brokenStorage)).not.toThrow()
     expect(loadActive(USER, T0, brokenStorage)).toEqual({ session: null, record: null })
+  })
+})
+
+describe('the last-seen mark shared by tabs', () => {
+  it('is written and read back per person, and is empty until something writes it', () => {
+    expect(readSeen(USER, storage)).toBeNull()
+    writeSeen(USER, T0 + 5 * MIN, storage)
+    expect(readSeen(USER, storage)).toBe(T0 + 5 * MIN)
+    expect(readSeen('user-2', storage)).toBeNull()
+  })
+
+  it('goes away with the active session, and damaged text reads as nothing', () => {
+    writeActive(USER, session(), storage)
+    writeSeen(USER, T0 + MIN, storage)
+    clearActive(USER, storage)
+    expect(readSeen(USER, storage)).toBeNull()
+    storage.setItem(focusStorageKeys.log(USER).replace('.log.', '.seen.'), 'soon')
+    expect(readSeen(USER, storage)).toBeNull()
+  })
+
+  it('never throws when storage will not work', () => {
+    expect(readSeen(USER, brokenStorage)).toBeNull()
+    expect(() => writeSeen(USER, T0, brokenStorage)).not.toThrow()
   })
 })

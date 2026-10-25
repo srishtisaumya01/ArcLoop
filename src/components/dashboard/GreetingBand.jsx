@@ -13,8 +13,8 @@ export const BAND_HEIGHT = 176
 export default function GreetingBand({ greeting, name, dateLabel, quote, account, ready = true }) {
   const { t } = useI18n()
   return (
-    <Box component="section" aria-label={t('Greeting')} sx={{ background: gradients.brand, color: colors.textOnDark, pt: { xs: 3, md: '56px' }, pb: { xs: 3, md: 0 }, height: { md: BAND_HEIGHT }, display: { md: 'flex' }, alignItems: 'center', position: 'relative', overflow: 'hidden' }}>
-      <Box aria-hidden="true" sx={{ position: 'absolute', right: -120, top: -140, width: 420, height: 420, borderRadius: '50%', bgcolor: 'rgba(124, 240, 192, 0.2)', filter: 'blur(90px)', pointerEvents: 'none' }} />
+    <Box component="section" aria-label={t('Greeting')} sx={{ background: gradients.footer, color: colors.textOnDark, pt: { xs: 3, md: '56px' }, pb: { xs: 3, md: 0 }, height: { md: BAND_HEIGHT }, display: { md: 'flex' }, alignItems: 'center', position: 'relative', overflow: 'hidden' }}>
+      <Box aria-hidden="true" sx={{ display: { xs: 'none', md: 'block' }, position: 'absolute', right: -120, top: -140, width: 420, height: 420, borderRadius: '50%', bgcolor: 'rgba(124, 240, 192, 0.2)', filter: 'blur(90px)', pointerEvents: 'none' }} />
       {account && <Box sx={{ display: { xs: 'none', md: 'block' }, position: 'absolute', top: 20, right: 32, zIndex: 1 }}>{account}</Box>}
       <Container sx={{ position: 'relative', maxWidth: `${contentWidths.page}px !important`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 3, flexDirection: { xs: 'column', md: 'row' }, textAlign: { xs: 'center', md: 'left' } }}>
         <Box sx={{ minWidth: 0 }}>

@@ -10,6 +10,8 @@ import { classifyDate } from '../utils/planner/index.js'
 //   status: 'loading' | 'success' | 'error'    (an error after a success keeps `data`)
 //   run(fn): runs a service change, reloads the day, and resolves { ok, result, error } (never throws); `result` is what the
 //            service call returned (the same shape useRecurringTasks gives)
+//   getRepeatingIds(): the ids of the person's templates that really repeat (a task made once has a template too), for the wrap-up and
+//            the capacity note, which must not offer to move a repeating task
 export function useDayPlan(date) {
   const key = date ?? 'today'
   const [result, setResult] = useState(null)
@@ -75,6 +77,8 @@ export function useDayPlan(date) {
     [fetchPlan, key],
   )
 
+  const getRepeatingIds = useCallback(async () => new Set((await plannerService.listTemplates()).filter((t) => t.recurrence !== 'once').map((t) => t.id)), [])
+
   const current = result && result.key === key ? result : null
   return {
     status: current ? current.status : 'loading',
@@ -82,6 +86,7 @@ export function useDayPlan(date) {
     error: current?.error ?? null,
     busy,
     run,
+    getRepeatingIds,
     refresh: useCallback(() => setAttempt((n) => n + 1), []),
   }
 }

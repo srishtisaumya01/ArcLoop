@@ -58,7 +58,7 @@ export default function ExploreChallengesPage() {
       <Container sx={{ maxWidth: `${contentWidths.page}px !important`, py: { xs: 5, md: 8 } }}>
         {status === 'success' && featured && !active && (
           <Box sx={{ mb: { xs: 5, md: 7 } }}>
-            <FeaturedChallengeCard challenge={featured} />
+            <FeaturedChallengeCard challenge={featured} headingLevel="h2" />
           </Box>
         )}
 

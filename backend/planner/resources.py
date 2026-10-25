@@ -12,7 +12,7 @@ from config.resources import Resource
 from . import rules
 from .models import DayPlan, TaskOccurrence, TaskTemplate
 
-TASK_FIELDS = ('title', 'description', 'category', 'is_priority', 'planned_start', 'planned_end', 'estimated_minutes')
+TASK_FIELDS = ('title', 'description', 'category', 'is_priority', 'priority_level', 'planned_start', 'planned_end', 'estimated_minutes')
 
 
 def _apply(obj, values):
@@ -24,11 +24,11 @@ class TemplateResource(Resource):
     name = 'task-templates'
     model = TaskTemplate
     fields = {
-        'id': 'uuid', 'user_id': 'int', 'title': 'text', 'description': 'text', 'category': 'text', 'is_priority': 'bool',
+        'id': 'uuid', 'user_id': 'int', 'title': 'text', 'description': 'text', 'category': 'text', 'is_priority': 'bool', 'priority_level': 'text',
         'planned_start': 'time', 'planned_end': 'time', 'estimated_minutes': 'int', 'recurrence': 'text', 'weekdays': 'intlist',
         'starts_on': 'date', 'ends_on': 'date', 'archived_at': 'datetime', 'created_at': 'datetime',
     }
-    editable = ('title', 'description', 'category', 'is_priority', 'planned_start', 'planned_end', 'estimated_minutes',
+    editable = ('title', 'description', 'category', 'is_priority', 'priority_level', 'planned_start', 'planned_end', 'estimated_minutes',
                 'recurrence', 'weekdays', 'starts_on', 'ends_on', 'archived_at')
     insert_fields = ('user_id', *editable)
     update_fields = editable
@@ -39,6 +39,7 @@ class TemplateResource(Resource):
             if values.get(required) is None:
                 raise validation_error('Please check the highlighted details.', {required: 'This is required.'})
         template = TaskTemplate(user=user, **values)
+        rules.sync_priority(template, values)
         rules.validate_template(template)
         rules.guard_template_cap(TaskTemplate, user, template)
         template.save()
@@ -47,6 +48,7 @@ class TemplateResource(Resource):
     def update(self, user, template, values):
         was_archived = template.archived_at is not None
         _apply(template, values)
+        rules.sync_priority(template, values)
         for required in ('title', 'recurrence', 'starts_on'):
             if getattr(template, required) is None:
                 raise validation_error('Please check the highlighted details.', {required: 'This is required.'})
@@ -117,7 +119,7 @@ class OccurrenceResource(Resource):
     model = TaskOccurrence
     fields = {
         'id': 'uuid', 'user_id': 'int', 'template_id': 'uuid', 'plan_date': 'date', 'title': 'text', 'description': 'text', 'category': 'text',
-        'is_priority': 'bool', 'planned_start': 'time', 'planned_end': 'time', 'estimated_minutes': 'int', 'completion': 'number',
+        'is_priority': 'bool', 'priority_level': 'text', 'planned_start': 'time', 'planned_end': 'time', 'estimated_minutes': 'int', 'completion': 'number',
         'completed_at': 'datetime', 'plan_state': 'text', 'excluded_reason': 'text', 'excluded_at': 'datetime',
         'rescheduled_from_id': 'uuid', 'in_original_plan': 'bool', 'is_customized': 'bool', 'is_minimum': 'bool', 'created_at': 'datetime',
     }
@@ -152,6 +154,7 @@ class OccurrenceResource(Resource):
         if source_id is not None and not TaskOccurrence.objects.filter(user=user, pk=source_id).exists():
             raise not_found('Something this refers to could not be found.')
         occurrence = TaskOccurrence(user=user, template_id=template_id, rescheduled_from_id=source_id, **values)
+        rules.sync_priority(occurrence, values)
         rules.validate_occurrence(occurrence)
         occurrence.in_original_plan = day.baseline_at is None  # D11: tasks created after the baseline belong only to the current plan
         if TaskOccurrence.objects.filter(user=user, plan_date=plan_date).count() >= rules.MAX_OCCURRENCES_PER_DAY:
@@ -163,6 +166,7 @@ class OccurrenceResource(Resource):
         old_completion, old_state = occurrence.completion, occurrence.plan_state
         had_completed_at, had_excluded_at = occurrence.completed_at, occurrence.excluded_at
         _apply(occurrence, values)
+        rules.sync_priority(occurrence, values)
         if occurrence.plan_state == 'excluded' and old_state == 'active':
             occurrence.is_minimum = False  # setting a task aside (or moving it) takes it out of the minimum; it never carries over
         if occurrence.title is None:

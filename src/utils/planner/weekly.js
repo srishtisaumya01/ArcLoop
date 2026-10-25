@@ -4,6 +4,7 @@ import { ERR, PlannerError } from './errors.js'
 import { compareDates, weekDates } from './localDates.js'
 import { expectedTaskView, templatesDueOn } from './occurrences.js'
 import { sortOccurrencesForDisplay } from './ordering.js'
+import { levelOf } from './priority.js'
 import { currentOccurrences, remainingOccurrences, setAsideOccurrences, summarizeDay } from './progress.js'
 
 // Weekly metrics (D8, D9, D12). There is deliberately NO streak anywhere here.
@@ -32,7 +33,8 @@ const taskView = (o) => ({
   completion: o.completion,
   plannedStart: o.plannedStart ?? null,
   plannedEnd: o.plannedEnd ?? null,
-  isPriority: Boolean(o.isPriority),
+  isPriority: levelOf(o) === 'high',
+  priorityLevel: levelOf(o),
   estimatedMinutes: o.estimatedMinutes ?? null,
   planState: o.planState,
   excludedReason: o.excludedReason ?? null,

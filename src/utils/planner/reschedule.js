@@ -5,6 +5,7 @@ import { ERR, PlannerError } from './errors.js'
 import { parseDate, parseTime } from './localDates.js'
 import { planRemoval } from './occurrences.js'
 import { SNAPSHOT_FIELDS } from './templates.js'
+import { levelOf } from './priority.js'
 import { assertEditableDate } from './window.js'
 
 // Rescheduling moves a task to another date WITHOUT rewriting history:
@@ -79,6 +80,8 @@ export function rescheduleOccurrence(
     isCustomized: occurrence.isCustomized || timesChanged,
   }
   for (const field of SNAPSHOT_FIELDS) target[field] = occurrence[field]
+  target.priorityLevel = levelOf(occurrence)
+  target.isPriority = target.priorityLevel === 'high'
   target.plannedStart = start
   target.plannedEnd = end
 
