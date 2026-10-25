@@ -51,7 +51,7 @@ export default function StreakPanel({ data, children }) {
             {years.map((y) => <option key={y} value={y}>{y}</option>)}
           </NativeSelect>
         </Box>
-        <ActivityGrid key={`${gridStart}-${gridEnd}`} activity={data.activity} start={gridStart} end={gridEnd} today={today} />
+        <ActivityGrid key={`${gridStart}-${gridEnd}`} activity={data.activity} start={gridStart} end={gridEnd} />
       </Box>
       <ChallengeGraph activity={data.activity} start={gridStart} end={graphEnd} title={subtitle} />
       {children}

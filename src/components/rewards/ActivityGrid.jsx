@@ -1,15 +1,18 @@
 import { Box, Typography } from '@mui/material'
 import { useI18n } from '../../hooks/useI18n.js'
+import { useInView } from '../../hooks/useInView.js'
 import { addDaysIso } from '../../utils/appDates.js'
+import { cellIn } from '../../theme/animations.js'
 import { useStreakTheme } from './streakTheme.js'
 
 const level = (n) => (n <= 0 ? 0 : n === 1 ? 1 : n === 2 ? 2 : n === 3 ? 3 : 4)
 
 // Days from `start` to `end` as small squares, like GitHub's contribution graph (on a dark panel): the more challenges marked on a
 // day, the brighter the green. The squares share the width they are given (and scroll sideways on a very narrow screen).
-export default function ActivityGrid({ activity, start, end, today }) {
+export default function ActivityGrid({ activity, start, end }) {
   const { t, lang } = useI18n()
   const p = useStreakTheme()
+  const [ref, inView] = useInView({ threshold: 0.15 })
   const counts = new Map(activity.map((a) => [a.date, a.count]))
   const weekday = (iso) => new Date(`${iso}T12:00:00`).getDay() // Sunday first
   const first = addDaysIso(start, -weekday(start)) // back up to a Sunday
@@ -24,7 +27,7 @@ export default function ActivityGrid({ activity, start, end, today }) {
   let lastMonth = ''
   const GAP = '3px'
   return (
-    <Box sx={{ overflowX: 'auto', pb: 0.5 }}>
+    <Box ref={ref} sx={{ overflowX: 'auto', pb: 0.5 }}>
       <Box sx={{ display: 'grid', gridTemplateColumns: `28px repeat(${weeks.length}, minmax(0, 1fr))`, gap: GAP, minWidth: weeks.length > 20 ? 640 : 0 }} role="img" aria-label={t('Your activity')}>
         <Box sx={{ display: 'grid', gridTemplateRows: `14px repeat(7, 1fr)`, gap: GAP }}>
           <span />
@@ -41,7 +44,7 @@ export default function ActivityGrid({ activity, start, end, today }) {
               <Typography component="span" sx={{ fontSize: '0.65rem', lineHeight: '14px', color: p.muted, whiteSpace: 'nowrap', overflow: 'visible' }}>{showMonth ? m : ''}</Typography>
               {week.map((day, di) => (
                 <Box key={di} title={day ? `${dateLabel(day)}: ${counts.get(day) ? t('{count} marked', { count: counts.get(day) }) : t('nothing marked')}` : undefined}
-                  sx={{ aspectRatio: '1', borderRadius: '3px', opacity: day && day > today ? 0.45 : 1, bgcolor: day ? p.cells[level(counts.get(day) ?? 0)] : 'transparent', outline: day ? '1px solid rgba(128,128,128,0.08)' : 'none', outlineOffset: '-1px' }} />
+                  sx={{ aspectRatio: '1', borderRadius: '3px', ...(inView ? { animation: `${cellIn} 420ms cubic-bezier(0.2, 0.7, 0.2, 1) ${Math.min(wi * 22 + di * 12, 1400)}ms both` } : { opacity: 0 }), '@media (prefers-reduced-motion: reduce)': { animation: 'none', opacity: 1 }, bgcolor: day ? p.cells[level(counts.get(day) ?? 0)] : 'transparent', outline: day ? '1px solid rgba(128,128,128,0.08)' : 'none', outlineOffset: '-1px' }} />
               ))}
             </Box>
           )

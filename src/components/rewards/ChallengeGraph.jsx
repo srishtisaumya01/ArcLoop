@@ -1,5 +1,7 @@
 import { Box, Typography } from '@mui/material'
 import { useId } from 'react'
+import { useInView } from '../../hooks/useInView.js'
+import { drawLine, fadeIn } from '../../theme/animations.js'
 import { useI18n } from '../../hooks/useI18n.js'
 import { addDaysIso, formatDate } from '../../utils/appDates.js'
 import { useStreakTheme } from './streakTheme.js'
@@ -21,6 +23,7 @@ export default function ChallengeGraph({ activity, start, end, title }) {
   const p = useStreakTheme()
   const GREEN = p.line
   const id = useId().replace(/:/g, '')
+  const [ref, inView] = useInView({ threshold: 0.2 })
   const weekday = (iso) => new Date(`${iso}T12:00:00`).getDay()
   const first = addDaysIso(start, -weekday(start))
   const weeks = []
@@ -46,10 +49,19 @@ export default function ChallengeGraph({ activity, start, end, title }) {
   const total = weeks.reduce((s, w) => s + w.total, 0)
   let lastMonth = ''
   return (
-    <Box sx={{ border: `1px solid ${p.border}`, borderRadius: '16px', background: p.card, boxShadow: p.shadow, p: { xs: 1.5, sm: 2 } }}>
+    <Box ref={ref} sx={{ border: `1px solid ${p.border}`, borderRadius: '16px', background: p.card, boxShadow: p.shadow, p: { xs: 1.5, sm: 2 } }}>
       <Typography sx={{ color: GREEN, fontWeight: 800, textAlign: 'center' }}>{t('Challenge graph')}</Typography>
       <Typography variant="body2" sx={{ color: p.muted, textAlign: 'center', mb: 0.5 }}>{title}</Typography>
-      <Box component="svg" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={t('Challenges marked each week')} sx={{ width: 1, height: 'auto', display: 'block' }}>
+      <Box component="svg" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={t('Challenges marked each week')}
+        sx={{
+          width: 1, height: 'auto', display: 'block',
+          '& .area, & .dot, & .peak': { opacity: inView ? undefined : 0 },
+          '& .line': { strokeDasharray: 1, strokeDashoffset: inView ? 0 : 1, animation: inView ? `${drawLine} 1600ms cubic-bezier(0.4, 0, 0.2, 1) both` : 'none' },
+          '& .area': { animation: inView ? `${fadeIn} 900ms ease 900ms both` : 'none' },
+          '& .dot': { animation: inView ? `${fadeIn} 400ms ease both` : 'none' },
+          '& .peak': { animation: inView ? `${fadeIn} 500ms ease 1500ms both` : 'none' },
+          '@media (prefers-reduced-motion: reduce)': { '& .line, & .area, & .dot, & .peak': { animation: 'none', opacity: 1, strokeDashoffset: 0 } },
+        }}>
         <defs>
           <linearGradient id={`${id}a`} x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor={GREEN} stopOpacity="0.35" /><stop offset="1" stopColor={GREEN} stopOpacity="0" /></linearGradient>
         </defs>
@@ -59,20 +71,20 @@ export default function ChallengeGraph({ activity, start, end, title }) {
             <text x={PAD.l - 8} y={y(v) + 4} textAnchor="end" fontSize="12" fill={GREEN} fontFamily="Arial, Helvetica, sans-serif">{Number.isInteger(v) ? v : v.toFixed(1)}</text>
           </g>
         ))}
-        <path d={area} fill={`url(#${id}a)`} />
-        <path d={line} fill="none" stroke={GREEN} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
+        <path className="area" d={area} fill={`url(#${id}a)`} />
+        <path className="line" pathLength="1" d={line} fill="none" stroke={GREEN} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
         {weeks.map((w, i) => {
           const m = month(w.start < start ? start : w.start) // a week that began before the range is named for its first day inside it
           const show = m !== lastMonth
           lastMonth = m
           return (
             <g key={w.start}>
-              <circle cx={x(i)} cy={y(w.total)} r="3.5" fill={p.dot} stroke={GREEN} strokeWidth="1.5"><title>{`${formatDate(w.start, lang)}: ${w.total}`}</title></circle>
+              <circle className="dot" style={{ animationDelay: `${Math.round((i / Math.max(1, n - 1)) * 1500)}ms` }} cx={x(i)} cy={y(w.total)} r="3.5" fill={p.dot} stroke={GREEN} strokeWidth="1.5"><title>{`${formatDate(w.start, lang)}: ${w.total}`}</title></circle>
               {show && <text x={x(i)} y={H - 12} textAnchor="middle" fontSize="12" fontWeight="700" fill={GREEN} fontFamily="Arial, Helvetica, sans-serif">{m}</text>}
             </g>
           )
         })}
-        {weeks[peak]?.total > 0 && <text x={x(peak)} y={y(weeks[peak].total) - 10} textAnchor="middle" fontSize="13" fontWeight="800" fill={p.strong} fontFamily="Arial, Helvetica, sans-serif">{weeks[peak].total}</text>}
+        {weeks[peak]?.total > 0 && <text className="peak" x={x(peak)} y={y(weeks[peak].total) - 10} textAnchor="middle" fontSize="13" fontWeight="800" fill={p.strong} fontFamily="Arial, Helvetica, sans-serif">{weeks[peak].total}</text>}
       </Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', px: 1 }}>
         <Typography variant="caption" sx={{ color: p.muted }}>{t('Weekly marks')}</Typography>
