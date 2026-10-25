@@ -1,12 +1,9 @@
 import { useState } from 'react'
-import { Link as RouterLink } from 'react-router-dom'
-import { Box, Button, NativeSelect, Typography } from '@mui/material'
-import { Trophy } from 'lucide-react'
+import { Box, NativeSelect, Typography } from '@mui/material'
 import ActivityGrid from './ActivityGrid.jsx'
 import ChallengeGraph from './ChallengeGraph.jsx'
 import StreakStats from './StreakStats.jsx'
 import { useI18n } from '../../hooks/useI18n.js'
-import { ROUTES } from '../../constants/navigation.js'
 import { addDaysIso, formatDate } from '../../utils/appDates.js'
 
 // The streak figures, the activity grid and the challenge graph on one black panel. They start the month the person joined their
@@ -15,16 +12,7 @@ export default function StreakPanel({ data, children }) {
   const { t, lang } = useI18n()
   const [year, setYear] = useState('current')
 
-  if (!data.has_enrollment) {
-    return (
-      <Box sx={{ p: 3, borderRadius: '20px', bgcolor: '#0D1117', color: '#E6EDF3', display: 'grid', gap: 1.5, justifyItems: 'start' }}>
-        <Typography variant="h4" component="h2" sx={{ display: 'flex', gap: 1, alignItems: 'center', color: '#FFFFFF' }}><Trophy size={20} aria-hidden="true" />{t('Your streak starts with a challenge')}</Typography>
-        <Typography sx={{ color: '#8B949E' }}>{t('Join a challenge and mark attendance each day. Your streak, activity and graph will show up here.')}</Typography>
-        <Button component={RouterLink} to={ROUTES.appChallenges} variant="contained" size="small">{t('Browse challenges')}</Button>
-        {children}
-      </Box>
-    )
-  }
+  if (!data.has_enrollment) return null // before the first challenge there is nothing to show
 
   const today = data.today
   const firstYear = Number(data.first_enrolled.slice(0, 4))
