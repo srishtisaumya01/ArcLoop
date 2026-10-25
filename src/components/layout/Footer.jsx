@@ -71,7 +71,7 @@ export default function Footer() {
         </Box>
         <Box sx={{ mt: 7, pt: 3, borderTop: '1px solid rgba(255,255,255,0.22)' }}>
           <Typography variant="body2" sx={{ color: linkColor }}>
-            © {new Date().getFullYear()} Arcloop. {t('Early build: features shown on this site are in development, and sample content is labelled as such.')}
+            © {new Date().getFullYear()} Arcloop.
           </Typography>
         </Box>
       </Container>

@@ -41,7 +41,7 @@ export default function ProductPreview() {
   return (
     <Box
       role="img"
-      aria-label={t("Illustrative preview of the Arcloop dashboard showing today's habits and weekly progress, using sample data")}
+      aria-label={t("Illustrative preview of the Arcloop dashboard showing today's habits and weekly progress")}
       sx={{
         bgcolor: colors.surface,
         color: colors.textPrimary,

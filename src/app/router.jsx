@@ -1,4 +1,4 @@
-import { createBrowserRouter } from 'react-router-dom'
+import { createBrowserRouter, Navigate } from 'react-router-dom'
 import AppLayout from '../components/layout/AppLayout.jsx'
 import AppShell from '../components/app/AppShell.jsx'
 import PageLoader from '../components/common/PageLoader.jsx'
@@ -28,8 +28,8 @@ export const routes = [
           { path: ROUTES.participants, ...lazyPage(() => import('../pages/public/ParticipantsPage.jsx')) },
           { path: ROUTES.howItWorks, ...lazyPage(() => import('../pages/public/HowItWorksPage.jsx')) },
           { path: ROUTES.faq, ...lazyPage(() => import('../pages/public/FaqPage.jsx')) },
-          { path: ROUTES.privacy, ...lazyPage(() => import('../pages/public/PrivacyPage.jsx')) },
-          { path: ROUTES.terms, ...lazyPage(() => import('../pages/public/TermsPage.jsx')) },
+          { path: ROUTES.terms, ...lazyPage(() => import('../pages/public/TermsPrivacyPage.jsx')) },
+          { path: '/privacy', element: <Navigate to={ROUTES.terms} replace /> }, // old links to the privacy page land on the one combined page
           { path: ROUTES.contact, ...lazyPage(() => import('../pages/public/ContactPage.jsx')) },
           // Handles its own states: the reset link may be invalid or expired.
           { path: ROUTES.updatePassword, ...lazyPage(() => import('../pages/auth/UpdatePasswordPage.jsx')) },

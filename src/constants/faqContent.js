@@ -7,7 +7,7 @@ export const FAQ_GROUPS = [
     items: [
       {
         q: 'Is Arcloop available yet?',
-        a: 'Arcloop is in early development. This page describes what we are building. Accounts and the core app are being added in stages, so a feature described here may not be live yet, and sample content is always labelled as such.',
+        a: 'Arcloop is in early development. This page describes what we are building. Accounts and the core app are being added in stages, so a feature described here may not be live yet.',
       },
       {
         q: 'Is Arcloop only for students or fitness?',
@@ -15,7 +15,7 @@ export const FAQ_GROUPS = [
       },
       {
         q: 'How do I join a challenge?',
-        a: 'Log in, open a challenge and choose how to take part: join solo, or create a group. The How it works page walks through each step. Joining is still a prototype: you can try the flow, but nothing is saved yet.',
+        a: 'Log in, open a challenge and choose how to take part: join solo, or create a group. The How it works page walks through each step.',
       },
       {
         q: 'Can I create my own challenge?',

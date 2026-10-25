@@ -1,6 +1,6 @@
 import { Link as RouterLink } from 'react-router-dom'
 import { Box, Button, Card, CardContent, Typography } from '@mui/material'
-import { CalendarCheck, Repeat, Sparkles } from 'lucide-react'
+import { CalendarCheck, Sparkles, Trophy } from 'lucide-react'
 import Reveal from '../ui/Reveal.jsx'
 import { useI18n } from '../../hooks/useI18n.js'
 import { ROUTES } from '../../constants/navigation.js'
@@ -11,7 +11,7 @@ export default function FirstSteps() {
   const { t } = useI18n()
   const steps = [
     { icon: CalendarCheck, title: 'Plan today', text: 'Add one or two tasks for today and tick them off as you go.', to: ROUTES.day, action: 'Open My Day' },
-    { icon: Repeat, title: 'Start with one habit', text: 'A repeating task comes back on its own, so a habit builds itself.', to: ROUTES.recurring, action: 'Add a repeating task' },
+    { icon: Trophy, title: 'Join a challenge', text: 'Pick a challenge, mark attendance each day and build a streak.', to: ROUTES.appChallenges, action: 'Browse challenges' },
   ]
   return (
     <Reveal>

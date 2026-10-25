@@ -19,7 +19,7 @@ export const ROUTES = {
   profile: '/app/profile',
   appChallenges: '/app/challenges',
   attendance: '/app/attendance',
-  privacy: '/privacy',
+  privacy: '/terms',
   terms: '/terms',
   contact: '/contact',
 }
@@ -62,7 +62,6 @@ export const APP_NAV = [
   { label: 'Week', to: ROUTES.week, icon: 'week' },
   { label: 'Progress', to: ROUTES.progress, icon: 'progress' },
   { label: 'Challenges', to: ROUTES.appChallenges, icon: 'challenges' },
-  { label: 'Recurring Tasks', to: ROUTES.recurring, icon: 'recurring' },
   { label: 'Reminders', to: ROUTES.reminders, icon: 'reminders' },
   { label: 'Profile', to: ROUTES.profile, icon: 'profile' },
   { label: 'Settings', to: ROUTES.settings, icon: 'settings' },
@@ -93,8 +92,7 @@ export const FOOTER_GROUPS = [
   {
     title: 'Legal',
     links: [
-      { label: 'Privacy policy (draft)', to: ROUTES.privacy },
-      { label: 'Terms of service (draft)', to: ROUTES.terms },
+      { label: 'Terms & Privacy', to: ROUTES.terms },
     ],
   },
 ]

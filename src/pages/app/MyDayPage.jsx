@@ -17,7 +17,6 @@ import { useDayReminders } from '../../hooks/useDayReminders.js'
 import { useDismissible } from '../../hooks/useDismissible.js'
 import { useRecoveryStatus } from '../../hooks/useRecoveryStatus.js'
 import DayModePanel from '../../components/planner/DayModePanel.jsx'
-import MinimumDayPanel from '../../components/planner/MinimumDayPanel.jsx'
 import UndoNotice from '../../components/planner/UndoNotice.jsx'
 import GentleNote from '../../components/planner/GentleNote.jsx'
 import { WELCOME_BACK } from '../../constants/recoveryCopy.js'
@@ -211,11 +210,6 @@ export default function MyDayPage() {
             {mode !== 'normal' && plan.exists && (
               <DayModePanel planDate={target} mode={mode} occurrences={plan.occurrences} busy={busy} canEdit={canEdit}
                 onApply={(ids, reason) => perform(async (s) => { for (const id of ids) await s.setAside(id, reason) })} />
-            )}
-
-            {plan.exists && plan.minimum && (
-              <MinimumDayPanel occurrences={plan.occurrences} minimum={plan.minimum} canEdit={canEdit} isToday={access === 'today'} busy={busy}
-                onSave={(ids) => run((s) => s.setMinimum(target, ids))} />
             )}
 
             <FocusTimer focus={focus} target={access === 'today' ? focusTarget : null} viewDate={target} onClearTarget={() => setFocusTarget(null)}

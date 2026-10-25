@@ -10,7 +10,6 @@ import KpiTiles from '../../components/dashboard/KpiTiles.jsx'
 import TodayCard from '../../components/dashboard/TodayCard.jsx'
 import WeekCard from '../../components/dashboard/WeekCard.jsx'
 import TrendCard from '../../components/dashboard/TrendCard.jsx'
-import HabitsCard from '../../components/dashboard/HabitsCard.jsx'
 import ChallengeCard from '../../components/dashboard/ChallengeCard.jsx'
 import FirstSteps from '../../components/dashboard/FirstSteps.jsx'
 import StatePanel from '../../components/common/StatePanel.jsx'
@@ -21,7 +20,7 @@ import { usePageMeta } from '../../hooks/usePageMeta.js'
 import { useMyChallenges } from '../../hooks/useMyChallenges.js'
 import { useProgressOverview } from '../../hooks/useProgressOverview.js'
 import { firstNameOf, greetingFor } from '../../utils/greeting.js'
-import { isBrandNew, summarizeToday, topHabits, trendPoints, weekBars } from '../../utils/dashboard.js'
+import { isBrandNew, summarizeToday, trendPoints, weekBars } from '../../utils/dashboard.js'
 import { ROUTES } from '../../constants/navigation.js'
 import { contentWidths } from '../../theme/tokens.js'
 
@@ -120,7 +119,6 @@ export default function DashboardPage() {
                 </Box>
                 <Box sx={{ display: 'grid', gap: 3, gridTemplateColumns: { xs: 'minmax(0, 1fr)', lg: 'minmax(0, 1.5fr) minmax(0, 1fr)' }, alignItems: 'start' }}>
                   <TrendCard points={trendPoints(data.weeks)} />
-                  <HabitsCard habits={topHabits(data.habits.habits)} />
                 </Box>
                 <ChallengeCard status={mine.status} ongoing={mine.ongoing} />
               </>

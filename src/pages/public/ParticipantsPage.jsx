@@ -97,7 +97,7 @@ function RankTable({ rows, startRank }) {
         }}
       >
         <caption style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>
-          {t('Participants ranked {from} to {to} this week (sample data)', { from: startRank, to: startRank + rows.length - 1 })}
+          {t('Participants ranked {from} to {to} this week', { from: startRank, to: startRank + rows.length - 1 })}
         </caption>
         <thead>
           <tr>
@@ -167,9 +167,7 @@ export default function ParticipantsPage() {
         eyebrow={t('Participants')}
         title={t('Top participants this week')}
         description={t('Celebrating consistency, not perfection: ranked by the share of their scheduled days each person kept this week.')}
-      >
-        <DemoBadge onDark label="Sample data: names and numbers are illustrative" />
-      </PageHeader>
+      />
 
       <Section>
         <Box component="ol" aria-label={t('Top three participants')} sx={{ listStyle: 'none', m: 0, p: 0, display: 'grid', gap: 3, gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' }, mb: 4 }}>
