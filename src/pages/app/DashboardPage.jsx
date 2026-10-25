@@ -66,10 +66,10 @@ export default function DashboardPage() {
 
       <Container sx={{ maxWidth: `${contentWidths.page}px !important`, py: { xs: 3, md: 5 }, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 3 }}>
         <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', alignItems: 'center' }}>
-          <Button variant="outlined" color="primary" startIcon={<TrendingUp size={18} aria-hidden="true" />} onClick={goToProgress}>
+          <Button variant="contained" color="primary" aria-current="page" startIcon={<TrendingUp size={18} aria-hidden="true" />} onClick={goToProgress}>
             {t('Progress')}
           </Button>
-          <Button component={RouterLink} to={ROUTES.day} variant="contained" color="primary" startIcon={<CalendarCheck size={18} aria-hidden="true" />}>
+          <Button component={RouterLink} to={ROUTES.day} variant="outlined" color="primary" startIcon={<CalendarCheck size={18} aria-hidden="true" />}>
             {t('Open My Day')}
           </Button>
           <Button component={RouterLink} to={ROUTES.week} variant="outlined" color="primary" startIcon={<CalendarRange size={18} aria-hidden="true" />}>
