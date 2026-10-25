@@ -38,7 +38,8 @@ const itemSx = {
   alignItems: 'center',
   gap: 1.5,
   px: 1.75,
-  py: 1.25,
+  py: 'clamp(4px, 1.05vh, 10px)',
+  '@media (max-height: 740px)': { fontSize: '0.9375rem' },
   borderRadius: '12px',
   color: 'rgba(255, 255, 255, 0.86)',
   fontFamily: navFontFamily,
@@ -58,7 +59,7 @@ const itemSx = {
 function NavList({ items, label, onNavigate }) {
   const { t } = useI18n()
   return (
-    <Box component="nav" aria-label={label} sx={{ display: 'grid', gap: 0.5 }}>
+    <Box component="nav" aria-label={label} sx={{ display: 'grid', gap: 'clamp(1px, 0.4vh, 4px)' }}>
       {items.map((item) => {
         const Icon = ICONS[item.icon]
         return (
@@ -85,7 +86,7 @@ function ChallengeMini({ onNavigate }) {
       component={RouterLink}
       to={appChallengePath(challenge.slug)}
       onClick={onNavigate}
-      sx={{ display: 'block', p: 1.75, borderRadius: '14px', bgcolor: 'rgba(255, 255, 255, 0.1)', border: '1px solid rgba(255, 255, 255, 0.22)', color: '#FFFFFF', textDecoration: 'none', '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.16)' } }}
+      sx={{ display: 'block', '@media (min-width: 900px) and (max-height: 860px)': { display: 'none' }, p: 1.75, borderRadius: '14px', bgcolor: 'rgba(255, 255, 255, 0.1)', border: '1px solid rgba(255, 255, 255, 0.22)', color: '#FFFFFF', textDecoration: 'none', '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.16)' } }}
     >
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, color: colors.mint300, fontWeight: 700, fontSize: '0.875rem' }}>
         <Flame size={16} aria-hidden="true" />
@@ -121,8 +122,8 @@ export default function Sidebar({ navLabel = 'App', onNavigate }) {
   }
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, minHeight: '100%', px: 2.5, pb: 2.5, pt: { xs: 2.5, md: 0 }, background: gradients.sidebar, color: '#FFFFFF' }}>
-      <Box component={RouterLink} to={ROUTES.app} onClick={onNavigate} aria-label={t('Arcloop home')} sx={{ display: 'flex', alignItems: 'center', height: { xs: 72, md: 176 }, mx: -2.5, px: 3, mb: -0.5, textDecoration: 'none', background: gradients.brand, boxShadow: '0 6px 18px rgba(4, 14, 50, 0.28)' }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 'clamp(8px, 1.8vh, 20px)', height: '100%', overflowY: 'auto', px: 2.5, pb: 'clamp(10px, 1.8vh, 20px)', pt: { xs: 2.5, md: 0 }, background: gradients.sidebar, color: '#FFFFFF' }}>
+      <Box component={RouterLink} to={ROUTES.app} onClick={onNavigate} aria-label={t('Arcloop home')} sx={{ display: 'flex', alignItems: 'center', height: { xs: 72, md: 176 }, flexShrink: 0, '@media (min-width: 900px) and (max-height: 820px)': { height: 128 }, '@media (min-width: 900px) and (max-height: 740px)': { height: 96 }, mx: -2.5, px: 3, mb: -0.5, textDecoration: 'none', background: gradients.brand, boxShadow: '0 6px 18px rgba(4, 14, 50, 0.28)' }}>
         <Logo onDark size={60} />
       </Box>
 
@@ -130,7 +131,7 @@ export default function Sidebar({ navLabel = 'App', onNavigate }) {
 
       <ChallengeMini onNavigate={onNavigate} />
 
-      <Box sx={{ mt: 'auto', display: 'grid', gap: 1.5, pt: 1 }}>
+      <Box sx={{ mt: 'auto', display: 'grid', gap: 'clamp(6px, 1.2vh, 12px)', pt: 0.5 }}>
         <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
           <LanguageToggle onDark fullWidth sx={{ flex: 1 }} />
           <ThemeToggle onDark />
