@@ -78,6 +78,7 @@ export default function DashboardPage() {
         {quote({ display: { xs: 'block', xl: 'none' }, flex: 'none', ml: 0 })}
         <StreakCard />
         <ChallengeCounts status={mine.status} items={mine.items} />
+        <ChallengeCard status={mine.status} ongoing={mine.ongoing} />
         {status === 'loading' && !data && (
           <Box aria-busy="true" aria-label={t('Loading your dashboard')} sx={{ display: 'grid', gap: 3 }}>
             <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: 'repeat(2, 1fr)', lg: 'repeat(4, 1fr)' } }}>
@@ -118,13 +119,11 @@ export default function DashboardPage() {
                 <Box sx={{ display: 'grid', gap: 3, gridTemplateColumns: { xs: 'minmax(0, 1fr)', lg: 'minmax(0, 1.5fr) minmax(0, 1fr)' }, alignItems: 'start' }}>
                   <TrendCard points={trendPoints(data.weeks)} />
                 </Box>
-                <ChallengeCard status={mine.status} ongoing={mine.ongoing} />
               </>
             )}
           </>
         )}
 
-        {brandNew && <ChallengeCard status={mine.status} ongoing={mine.ongoing} />}
       </Container>
     </>
   )
