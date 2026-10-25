@@ -5,14 +5,15 @@ import ChallengeGraph from './ChallengeGraph.jsx'
 import StreakStats from './StreakStats.jsx'
 import { useI18n } from '../../hooks/useI18n.js'
 import { addMonthsIso, endOfMonthIso, formatDate } from '../../utils/appDates.js'
-
-const card = { p: { xs: 2, md: 2.5 }, borderRadius: '16px', bgcolor: '#0D1117', border: '1px solid #1E6B34', color: '#E6EDF3', boxShadow: '0 8px 24px rgba(1, 4, 9, 0.25)' }
+import { useStreakTheme } from './streakTheme.js'
 
 // Three separate black cards: the streak figures, the activity grid (six months from the month of the first challenge, or a whole
 // year chosen in the filter) and the weekly challenge graph. Before the first challenge there is nothing to show.
 export default function StreakPanel({ data, children }) {
   const { t, lang } = useI18n()
   const [year, setYear] = useState('current')
+  const p = useStreakTheme()
+  const card = { p: { xs: 2, md: 2.5 }, borderRadius: '16px', bgcolor: p.card, border: `1px solid ${p.border}`, color: p.text, boxShadow: p.shadow }
 
   if (!data.has_enrollment) return null
 
@@ -22,10 +23,10 @@ export default function StreakPanel({ data, children }) {
   const years = Array.from({ length: thisYear - firstYear + 1 }, (_, i) => thisYear - i)
 
   let gridStart = `${data.first_enrolled.slice(0, 7)}-01`
-  let gridEnd = endOfMonthIso(addMonthsIso(gridStart, 5)) // six months, starting with the month the first challenge was joined
+  let gridEnd = endOfMonthIso(addMonthsIso(gridStart, 11)) // twelve months, starting with the month the first challenge was joined
   if (today > gridEnd) {
     gridEnd = endOfMonthIso(today) // after that, the latest six months
-    gridStart = addMonthsIso(gridEnd, -5)
+    gridStart = addMonthsIso(gridEnd, -11)
   }
   if (year !== 'current') {
     gridStart = `${year}-01-01`
@@ -39,14 +40,14 @@ export default function StreakPanel({ data, children }) {
       <StreakStats data={data} />
       <Box sx={card}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1.5, flexWrap: 'wrap', mb: 1.5 }}>
-          <Typography sx={{ fontWeight: 700, color: '#FFFFFF' }}>{t('Streak')}</Typography>
+          <Typography sx={{ fontWeight: 700, color: p.strong }}>{t('Streak')}</Typography>
           <NativeSelect
             value={year}
             onChange={(e) => setYear(e.target.value)}
             inputProps={{ 'aria-label': t('Choose a period') }}
-            sx={{ color: '#F0F6FC', bgcolor: '#21262D', border: '1px solid #3D444D', borderRadius: '8px', px: 1.5, fontSize: '0.9rem', fontWeight: 600, colorScheme: 'dark', '&:before, &:after': { display: 'none' }, '& select': { py: 0.75, pr: '30px !important', color: '#F0F6FC' }, '& select option': { bgcolor: '#161B22', color: '#F0F6FC' }, '& svg': { color: '#C9D1D9' } }}
+            sx={{ color: p.selectText, bgcolor: p.selectBg, border: `1px solid ${p.selectBorder}`, borderRadius: '8px', px: 1.5, fontSize: '0.9rem', fontWeight: 600, colorScheme: p.scheme, '&:before, &:after': { display: 'none' }, '& select': { py: 0.75, pr: '30px !important', color: p.selectText }, '& select option': { bgcolor: p.optionBg, color: p.selectText }, '& svg': { color: p.muted } }}
           >
-            <option value="current">{t('Last 6 months')}</option>
+            <option value="current">{t('Next 12 months')}</option>
             {years.map((y) => <option key={y} value={y}>{y}</option>)}
           </NativeSelect>
         </Box>

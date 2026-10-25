@@ -13,11 +13,13 @@ import { usePageMeta } from '../../hooks/usePageMeta.js'
 import { CHECKIN_CHANGED } from '../../services/checkinService.js'
 import { getRewards } from '../../services/rewardsService.js'
 import { formatDate } from '../../utils/appDates.js'
-import { colors, contentWidths, radii } from '../../theme/tokens.js'
+import { useStreakTheme } from '../../components/rewards/streakTheme.js'
+import { contentWidths, radii } from '../../theme/tokens.js'
 
 // Rewards: the streak badges (earned ones to keep and share, locked ones to aim for) and a year of activity.
 export default function RewardsPage() {
   const { t, lang } = useI18n()
+  const p = useStreakTheme()
   usePageMeta(t('Rewards'))
   const { profile, displayName } = useAppShell()
   const { status, data, retry } = useAsync(getRewards)
@@ -40,10 +42,10 @@ export default function RewardsPage() {
         )}
         {data && (
           <>
-            <Box component="section" aria-labelledby="badges-title" sx={{ p: { xs: 2.5, md: 3 }, borderRadius: `${radii.lg}px`, bgcolor: '#161B26', color: '#F3F4F6', border: `1px solid ${colors.border}` }}>
+            <Box component="section" aria-labelledby="badges-title" sx={{ p: { xs: 2.5, md: 3 }, borderRadius: `${radii.lg}px`, bgcolor: p.card, color: p.text, border: `1px solid ${p.border}`, boxShadow: p.shadow }}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 1, mb: 2.5 }}>
-                <Typography id="badges-title" variant="h3" component="h2" sx={{ color: '#FFFFFF' }}>{t('Badges')}</Typography>
-                <Typography sx={{ color: '#9CA3AF' }}>{t('{done} of {total} earned', { done: earned.length, total: data.badges.length })}</Typography>
+                <Typography id="badges-title" variant="h3" component="h2" sx={{ color: p.strong }}>{t('Badges')}</Typography>
+                <Typography sx={{ color: p.muted }}>{t('{done} of {total} earned', { done: earned.length, total: data.badges.length })}</Typography>
               </Box>
               <Box sx={{ display: 'grid', gap: 2.5, gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', sm: 'repeat(3, minmax(0, 1fr))', md: 'repeat(5, minmax(0, 1fr))' } }}>
                 {data.badges.map((b) => {
@@ -51,14 +53,14 @@ export default function RewardsPage() {
                   const body = (
                     <>
                       <BadgeHex days={b.days} locked={!b.earned_on} progress={data.current_streak / b.days} size={116} />
-                      <Typography sx={{ fontWeight: 700, color: '#FFFFFF' }}>{t(b.title)}</Typography>
-                      <Typography variant="body2" sx={{ color: '#9CA3AF' }}>
+                      <Typography sx={{ fontWeight: 700, color: p.strong }}>{t(b.title)}</Typography>
+                      <Typography variant="body2" sx={{ color: p.muted }}>
                         {b.earned_on ? formatDate(b.earned_on, lang) : left > 0 ? `${data.current_streak}/${b.days} · ${t('{count} days to go', { count: left })}` : t('Locked')}
                       </Typography>
                     </>
                   )
                   return b.earned_on ? (
-                    <ButtonBase key={b.code} onClick={() => setOpen(b)} aria-label={t('Open {title} badge', { title: t(b.title) })} sx={{ display: 'grid', justifyItems: 'center', gap: 0.5, p: 1, borderRadius: '14px', '&:hover': { bgcolor: 'rgba(255,255,255,0.06)' } }}>{body}</ButtonBase>
+                    <ButtonBase key={b.code} onClick={() => setOpen(b)} aria-label={t('Open {title} badge', { title: t(b.title) })} sx={{ display: 'grid', justifyItems: 'center', gap: 0.5, p: 1, borderRadius: '14px', '&:hover': { bgcolor: 'rgba(128,128,128,0.12)' } }}>{body}</ButtonBase>
                   ) : (
                     <Box key={b.code} sx={{ display: 'grid', justifyItems: 'center', gap: 0.5, p: 1 }}>{body}</Box>
                   )

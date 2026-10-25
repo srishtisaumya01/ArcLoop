@@ -42,10 +42,10 @@ export default function StreakCard() {
   return (
     <StreakPanel data={rewards.data}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
-          <Button component={RouterLink} to={ROUTES.attendance} variant={stage === 'done' ? 'outlined' : 'contained'} size="small" startIcon={stage === 'done' ? <Check size={16} aria-hidden="true" /> : <UserCheck size={16} aria-hidden="true" />} sx={stage === 'done' ? { color: '#E6EDF3', borderColor: '#30363D' } : { bgcolor: '#238636', color: '#FFFFFF', '&:hover': { bgcolor: '#2EA043' } }}>
+          <Button component={RouterLink} to={ROUTES.attendance} variant={stage === 'done' ? 'outlined' : 'contained'} size="small" startIcon={stage === 'done' ? <Check size={16} aria-hidden="true" /> : <UserCheck size={16} aria-hidden="true" />} sx={stage === 'done' ? { borderColor: 'divider' } : { bgcolor: '#238636', color: '#FFFFFF', '&:hover': { bgcolor: '#2EA043' } }}>
             {stage === 'done' ? t('Attendance marked') : t('Mark attendance')}
           </Button>
-          <Typography variant="body2" sx={{ color: '#8B949E' }}>{message}</Typography>
+          <Typography variant="body2" color="text.secondary">{message}</Typography>
       </Box>
     </StreakPanel>
   )

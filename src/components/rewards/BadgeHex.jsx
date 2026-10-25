@@ -17,7 +17,7 @@ export default function BadgeHex({ days, locked = false, progress = 0, size = 96
         <linearGradient id={`${id}r`} x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#F4F6F8" /><stop offset="0.5" stopColor="#9AA3AF" /><stop offset="1" stopColor="#E5E7EB" /></linearGradient>
         <linearGradient id={`${id}g`} x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor={from} /><stop offset="1" stopColor={to} /></linearGradient>
       </defs>
-      <circle cx="80" cy="85" r={RING_R} fill="none" stroke="rgba(255,255,255,0.14)" strokeWidth="6" />
+      <circle cx="80" cy="85" r={RING_R} fill="none" stroke="rgba(128,128,128,0.28)" strokeWidth="6" />
       <circle cx="80" cy="85" r={RING_R} fill="none" stroke={to === '#CA8A04' ? '#FACC15' : from} strokeWidth="6" strokeLinecap="round" strokeDasharray={`${circumference * value} ${circumference}`} transform="rotate(-90 80 85)" opacity={value > 0 ? 1 : 0} />
       <g transform="translate(20 20)" style={{ opacity: locked ? 0.5 : 1, filter: locked ? 'grayscale(1)' : 'none' }}>
         <polygon points={HEX(60, 62, 54, 60)} fill={`url(#${id}r)`} />

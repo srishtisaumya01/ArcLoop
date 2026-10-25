@@ -2,8 +2,8 @@ import { Box, Typography } from '@mui/material'
 import { useId } from 'react'
 import { useI18n } from '../../hooks/useI18n.js'
 import { addDaysIso, formatDate } from '../../utils/appDates.js'
+import { useStreakTheme } from './streakTheme.js'
 
-const GREEN = '#22E55C'
 const W = 900
 const H = 280
 const PAD = { l: 44, r: 24, t: 34, b: 38 }
@@ -18,6 +18,8 @@ const niceMax = (v) => {
 // "Challenge graph": the number of challenges marked each week, from `start` to `end`, as a green line over a dark panel.
 export default function ChallengeGraph({ activity, start, end, title }) {
   const { t, lang } = useI18n()
+  const p = useStreakTheme()
+  const GREEN = p.line
   const id = useId().replace(/:/g, '')
   const weekday = (iso) => new Date(`${iso}T12:00:00`).getDay()
   const first = addDaysIso(start, -weekday(start))
@@ -44,16 +46,16 @@ export default function ChallengeGraph({ activity, start, end, title }) {
   const total = weeks.reduce((s, w) => s + w.total, 0)
   let lastMonth = ''
   return (
-    <Box sx={{ border: '1px solid #1E6B34', borderRadius: '16px', bgcolor: '#0D1117', boxShadow: '0 8px 24px rgba(1, 4, 9, 0.25)', p: { xs: 1.5, sm: 2 } }}>
+    <Box sx={{ border: `1px solid ${p.border}`, borderRadius: '16px', bgcolor: p.card, boxShadow: p.shadow, p: { xs: 1.5, sm: 2 } }}>
       <Typography sx={{ color: GREEN, fontWeight: 800, textAlign: 'center' }}>{t('Challenge graph')}</Typography>
-      <Typography variant="body2" sx={{ color: '#8B949E', textAlign: 'center', mb: 0.5 }}>{title}</Typography>
+      <Typography variant="body2" sx={{ color: p.muted, textAlign: 'center', mb: 0.5 }}>{title}</Typography>
       <Box component="svg" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={t('Challenges marked each week')} sx={{ width: 1, height: 'auto', display: 'block' }}>
         <defs>
           <linearGradient id={`${id}a`} x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor={GREEN} stopOpacity="0.35" /><stop offset="1" stopColor={GREEN} stopOpacity="0" /></linearGradient>
         </defs>
         {ticks.map((v) => (
           <g key={v}>
-            <line x1={PAD.l} x2={W - PAD.r} y1={y(v)} y2={y(v)} stroke="#1B3A25" strokeDasharray="3 4" />
+            <line x1={PAD.l} x2={W - PAD.r} y1={y(v)} y2={y(v)} stroke={p.gridLines} strokeDasharray="3 4" />
             <text x={PAD.l - 8} y={y(v) + 4} textAnchor="end" fontSize="12" fill={GREEN} fontFamily="Arial, Helvetica, sans-serif">{Number.isInteger(v) ? v : v.toFixed(1)}</text>
           </g>
         ))}
@@ -65,15 +67,15 @@ export default function ChallengeGraph({ activity, start, end, title }) {
           lastMonth = m
           return (
             <g key={w.start}>
-              <circle cx={x(i)} cy={y(w.total)} r="3.5" fill="#FFFFFF" stroke={GREEN} strokeWidth="1"><title>{`${formatDate(w.start, lang)}: ${w.total}`}</title></circle>
+              <circle cx={x(i)} cy={y(w.total)} r="3.5" fill={p.dot} stroke={GREEN} strokeWidth="1.5"><title>{`${formatDate(w.start, lang)}: ${w.total}`}</title></circle>
               {show && <text x={x(i)} y={H - 12} textAnchor="middle" fontSize="12" fontWeight="700" fill={GREEN} fontFamily="Arial, Helvetica, sans-serif">{m}</text>}
             </g>
           )
         })}
-        {weeks[peak]?.total > 0 && <text x={x(peak)} y={y(weeks[peak].total) - 10} textAnchor="middle" fontSize="13" fontWeight="800" fill="#FFFFFF" fontFamily="Arial, Helvetica, sans-serif">{weeks[peak].total}</text>}
+        {weeks[peak]?.total > 0 && <text x={x(peak)} y={y(weeks[peak].total) - 10} textAnchor="middle" fontSize="13" fontWeight="800" fill={p.strong} fontFamily="Arial, Helvetica, sans-serif">{weeks[peak].total}</text>}
       </Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', px: 1 }}>
-        <Typography variant="caption" sx={{ color: '#8B949E' }}>{t('Weekly marks')}</Typography>
+        <Typography variant="caption" sx={{ color: p.muted }}>{t('Weekly marks')}</Typography>
         <Typography variant="caption" sx={{ color: GREEN, fontWeight: 700 }}>{t('{count} marks in total', { count: total })}</Typography>
       </Box>
     </Box>
