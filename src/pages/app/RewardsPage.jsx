@@ -42,7 +42,7 @@ export default function RewardsPage() {
         )}
         {data && (
           <>
-            <Box component="section" aria-labelledby="badges-title" sx={{ p: { xs: 2.5, md: 3 }, borderRadius: `${radii.lg}px`, background: p.card, color: p.text, border: `1px solid ${p.border}`, boxShadow: p.shadow }}>
+            <Box component="section" aria-labelledby="badges-title" sx={{ ...p.bar, p: { xs: 2.5, md: 3 }, borderRadius: `${radii.lg}px`, background: p.card, color: p.text, border: `1px solid ${p.border}`, boxShadow: p.shadow }}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 1, mb: 2.5 }}>
                 <Typography id="badges-title" variant="h3" component="h2" sx={{ color: p.strong }}>{t('Badges')}</Typography>
                 <Typography sx={{ color: p.muted }}>{t('{done} of {total} earned', { done: earned.length, total: data.badges.length })}</Typography>
