@@ -86,20 +86,20 @@ function ChallengeMini({ onNavigate }) {
       component={RouterLink}
       to={appChallengePath(challenge.slug)}
       onClick={onNavigate}
-      sx={{ display: 'block', '@media (min-width: 900px) and (max-height: 1040px)': { display: 'none' }, p: 1.75, borderRadius: '14px', bgcolor: 'rgba(255, 255, 255, 0.1)', border: '1px solid rgba(255, 255, 255, 0.22)', color: '#FFFFFF', textDecoration: 'none', '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.16)' } }}
+      sx={{ display: 'block', '@media (min-width: 900px) and (max-height: 975px)': { display: 'none' }, flexShrink: 0, px: 1.5, py: 1.1, borderRadius: '12px', bgcolor: 'rgba(255, 255, 255, 0.1)', border: '1px solid rgba(255, 255, 255, 0.22)', color: '#FFFFFF', textDecoration: 'none', '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.16)' } }}
     >
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, color: colors.mint300, fontWeight: 700, fontSize: '0.875rem' }}>
-        <Flame size={16} aria-hidden="true" />
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, color: colors.mint300, fontWeight: 700, fontSize: '0.8125rem', lineHeight: 1.2 }}>
+        <Flame size={14} aria-hidden="true" />
         {t(challenge.title)}
-        <Box aria-hidden="true" sx={{ ml: 'auto', width: 8, height: 8, borderRadius: '50%', bgcolor: colors.mint300, animation: `${glow} 1.8s ease-in-out infinite`, ...noMotion }} />
+        <Box aria-hidden="true" sx={{ ml: 'auto', width: 7, height: 7, borderRadius: '50%', bgcolor: colors.mint300, animation: `${glow} 1.8s ease-in-out infinite`, ...noMotion }} />
       </Box>
-      <Typography sx={{ fontWeight: 800, fontSize: '1.0625rem', mt: 0.5 }}>{t('Day {day} of {total}', { day: clock.dayNumber, total: clock.totalDays })}</Typography>
-      <Box aria-hidden="true" sx={{ mt: 1, height: 6, borderRadius: 3, bgcolor: 'rgba(255, 255, 255, 0.22)', overflow: 'hidden' }}>
+      <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 1, mt: 0.4 }}>
+        <Typography sx={{ fontWeight: 800, fontSize: '0.9375rem' }}>{t('Day {day} of {total}', { day: clock.dayNumber, total: clock.totalDays })}</Typography>
+        <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.82)' }}>{clock.daysLeft === 0 ? t('Last day today') : t('{count} days left', { count: clock.daysLeft })}</Typography>
+      </Box>
+      <Box aria-hidden="true" sx={{ mt: 0.7, height: 5, borderRadius: 3, bgcolor: 'rgba(255, 255, 255, 0.22)', overflow: 'hidden' }}>
         <Box sx={{ width: `${Math.round(clock.progress * 100)}%`, height: '100%', borderRadius: 3, background: gradients.accentText }} />
       </Box>
-      <Typography variant="body2" sx={{ mt: 0.75, color: 'rgba(255, 255, 255, 0.82)' }}>
-        {clock.daysLeft === 0 ? t('Last day today') : t('{count} days left', { count: clock.daysLeft })}
-      </Typography>
     </Box>
   )
 }
